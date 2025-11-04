@@ -1,0 +1,179 @@
+/* Importar fontes modernas */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&family=Caveat:wght@400;500;600;700&family=Patrick+Hand&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /* Estilos base minimalistas */
+  body {
+    @apply bg-background text-textPrimary antialiased;
+    @apply overflow-x-hidden;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+
+  html {
+    @apply scroll-smooth;
+  }
+
+  /* Dark mode */
+  .dark body {
+    @apply bg-darkBg text-white;
+  }
+
+  /* Headings */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Poppins', 'Inter', sans-serif;
+    @apply font-semibold text-textPrimary;
+  }
+
+  .dark h1, .dark h2, .dark h3, .dark h4, .dark h5, .dark h6 {
+    @apply text-white;
+  }
+}
+
+@layer utilities {
+  /* Container responsivo */
+  .container-custom {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+
+  /* Scroll snapping */
+  .snap-section {
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+  }
+
+  /* Animação de reveal ao scroll */
+  .reveal {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+  }
+
+  .reveal.active {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Custom Scrollbar minimalista */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-surfaceAlt;
+}
+
+.dark ::-webkit-scrollbar-track {
+  @apply bg-darkSurface;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-primary rounded-full;
+  transition: background 0.2s;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-opacity-80;
+}
+
+/* Firefox scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #FF6B9D #F5F5F5;
+}
+
+.dark * {
+  scrollbar-color: #FF6B9D #2D2D2D;
+}
+
+/* Selection */
+::selection {
+  @apply bg-primary bg-opacity-20 text-textPrimary;
+}
+
+/* Focus styles minimalistas */
+*:focus-visible {
+  @apply outline-none ring-2 ring-primary ring-offset-2 ring-offset-background rounded-lg;
+}
+
+.dark *:focus-visible {
+  @apply ring-offset-darkBg;
+}
+
+/* Imagens */
+img {
+  @apply select-none;
+}
+
+/* Transitions padrão */
+a, button {
+  @apply transition-all duration-200;
+}
+
+/* Smooth hover para links */
+a:hover {
+  @apply opacity-80;
+}
+
+/* Loading skeleton */
+@keyframes shimmer-loading {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+.skeleton {
+  @apply bg-surfaceAlt rounded-lg;
+  background: linear-gradient(
+    90deg,
+    #F5F5F5 0%,
+    #E8E8E8 50%,
+    #F5F5F5 100%
+  );
+  background-size: 1000px 100%;
+  animation: shimmer-loading 2s infinite;
+}
+
+.dark .skeleton {
+  background: linear-gradient(
+    90deg,
+    #2D2D2D 0%,
+    #3D3D3D 50%,
+    #2D2D2D 100%
+  );
+  background-size: 1000px 100%;
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  html {
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Print styles */
+@media print {
+  body {
+    @apply bg-white text-black;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+}

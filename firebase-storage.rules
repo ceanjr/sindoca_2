@@ -1,0 +1,24 @@
+rules_version = '2';
+
+// Regras do Firebase Storage para sindoca-3640b.firebasestorage.app
+// Configure em: https://console.firebase.google.com/project/sindoca-3640b/storage/rules
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Regras para a pasta gallery
+    match /gallery/{filename} {
+      // Permitir leitura pública de todas as imagens
+      allow read: if true;
+      
+      // Permitir upload de imagens até 5MB
+      allow write: if request.resource.size < 5 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*');
+    }
+    
+    // Bloquear acesso a outras pastas
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
