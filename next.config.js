@@ -49,7 +49,7 @@ const withPWA = require('next-pwa')({
       },
     },
   ],
-})
+});
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -58,18 +58,21 @@ const nextConfig = {
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: 'firebasestorage.googleapis.com',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
         hostname: 'wpgaxoqbrdyfihwzoxlc.supabase.co',
         pathname: '/storage/v1/object/public/**',
       },
+      {
+        protocol: 'https',
+        hostname: '*.supabase.co',
+        pathname: '/storage/v1/object/public/**',
+      },
     ],
+    formats: ['image/avif', 'image/webp'],
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
+    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
   },
   // Add turbopack config to silence warnings
   turbopack: {},
-}
+};
 
-module.exports = withPWA(nextConfig)
+module.exports = withPWA(nextConfig);

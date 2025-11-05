@@ -136,7 +136,7 @@ export default function MusicSection({ id }) {
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              onClick={() => router.push('/home')}
+              onClick={() => router.push('/')}
               className="px-6 py-3 bg-primary text-white font-semibold rounded-xl shadow-soft-md inline-flex items-center gap-2"
             >
               <Plus size={20} />

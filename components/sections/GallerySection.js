@@ -1,32 +1,23 @@
 'use client';
 
 import { useState, useMemo, useRef, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useInView } from 'react-intersection-observer';
-import { Image as ImageIcon, Heart, Calendar, Plus } from 'lucide-react';
+import { Image as ImageIcon, Heart, Calendar, Plus, Trash2, X, Check } from 'lucide-react';
 import Lightbox from '../Lightbox';
 import MasonryGrid from '../ui/MasonryGrid';
 import Button from '../ui/Button';
 import Badge from '../ui/Badge';
-import {
-  ref as storageRef,
-  uploadBytes,
-  getDownloadURL,
-  listAll,
-  getMetadata,
-} from 'firebase/storage';
-import { storage } from '../../lib/firebase';
+import { useSupabasePhotos } from '@/hooks';
 
 const filterOptions = [
   { label: 'Todas', value: 'all' },
   { label: 'Favoritas', value: 'favorites', icon: Heart },
-  { label: 'Encontros', value: 'encontros' },
-  { label: 'Viagens', value: 'viagens' },
-  { label: 'Momentos', value: 'momentos' },
 ];
 
 export default function GallerySection({ id }) {
-  const [photos, setPhotos] = useState([]);
+  // Use Supabase hook with realtime sync
+  const { photos, loading: isLoadingPhotos, toggleFavorite, uploadPhotos, removePhoto, refresh } = useSupabasePhotos();
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [currentPhoto, setCurrentPhoto] = useState(null);
   const [activeFilter, setActiveFilter] = useState('all');
@@ -36,105 +27,29 @@ export default function GallerySection({ id }) {
     current: 0,
     total: 0,
   });
-  const [isLoadingPhotos, setIsLoadingPhotos] = useState(true);
   const [loadError, setLoadError] = useState(null);
+  const [isDeleteMode, setIsDeleteMode] = useState(false);
+  const [selectedPhotos, setSelectedPhotos] = useState([]);
   const fileInputRef = useRef(null);
   const { ref, inView } = useInView({ threshold: 0.1, triggerOnce: true });
 
+  // Estado para controlar o número de colunas responsivamente
+  const [columns, setColumns] = useState(3);
+
   useEffect(() => {
-    let isSubscribed = true;
-
-    const fetchPhotos = async () => {
-      // Sempre mostrar fotos iniciais primeiro
-
-      if (!storage) {
-        console.warn('Firebase Storage não configurado');
-        setIsLoadingPhotos(false);
-        return;
-      }
-
-      try {
-        const galleryRootRef = storageRef(storage, 'gallery');
-
-        // Timeout de 10 segundos
-        const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('Timeout')), 10000)
-        );
-
-        const result = await Promise.race([
-          listAll(galleryRootRef),
-          timeoutPromise,
-        ]);
-
-        if (!isSubscribed) return;
-
-        if (result.items.length === 0) {
-          console.log(
-            '📷 Nenhuma foto no Firebase Storage - usando fotos de exemplo'
-          );
-          setIsLoadingPhotos(false);
-          return;
-        }
-
-        console.log(
-          `📷 ${result.items.length} fotos encontradas no Firebase Storage`
-        );
-
-        const remotePhotos = await Promise.all(
-          result.items.map(async (item) => {
-            try {
-              const [downloadUrl, metadata] = await Promise.all([
-                getDownloadURL(item),
-                getMetadata(item).catch(() => null),
-              ]);
-
-              const createdAt = metadata?.timeCreated
-                ? new Date(metadata.timeCreated)
-                : null;
-              const formattedDate = createdAt
-                ? createdAt.toISOString().slice(0, 10)
-                : new Date().toISOString().slice(0, 10);
-
-              return {
-                id: item.fullPath,
-                storagePath: item.fullPath,
-                url: downloadUrl,
-                caption:
-                  metadata?.customMetadata?.caption ??
-                  item.name.replace(/\.[^/.]+$/, ''),
-                date: formattedDate,
-                favorite: false,
-                category: metadata?.customMetadata?.category ?? 'momentos',
-              };
-            } catch (err) {
-              console.warn(`Erro ao carregar foto ${item.name}:`, err);
-              return null;
-            }
-          })
-        );
-
-        const validPhotos = remotePhotos.filter((p) => p !== null);
-        validPhotos.sort((a, b) => b.date.localeCompare(a.date));
-
-        if (isSubscribed && validPhotos.length > 0) {
-          setPhotos(validPhotos);
-          console.log('✅ Galeria carregada do Firebase Storage!');
-        }
-      } catch (error) {
-        console.warn('⚠️ Firebase Storage indisponível:', error.message);
-        // Continuar com fotos de exemplo
-      } finally {
-        if (isSubscribed) {
-          setIsLoadingPhotos(false);
-        }
+    const updateColumns = () => {
+      if (window.innerWidth < 640) {
+        setColumns(2); // Mobile: 2 colunas
+      } else if (window.innerWidth < 1024) {
+        setColumns(3); // Tablet: 3 colunas
+      } else {
+        setColumns(4); // Desktop: 4 colunas
       }
     };
 
-    fetchPhotos();
-
-    return () => {
-      isSubscribed = false;
-    };
+    updateColumns();
+    window.addEventListener('resize', updateColumns);
+    return () => window.removeEventListener('resize', updateColumns);
   }, []);
 
   // Filtra as fotos baseado no filtro ativo
@@ -144,13 +59,20 @@ export default function GallerySection({ id }) {
     return photos.filter((p) => p.category === activeFilter);
   }, [photos, activeFilter]);
 
-  // Toggle favorito
-  const toggleFavorite = (photoId) => {
-    setPhotos((prev) =>
-      prev.map((photo) =>
-        photo.id === photoId ? { ...photo, favorite: !photo.favorite } : photo
-      )
-    );
+  // Deletar foto
+  const handleDeletePhoto = async (photoId) => {
+    try {
+      await removePhoto(photoId);
+
+      // Fechar lightbox se a foto deletada estava aberta
+      if (currentPhoto?.id === photoId) {
+        setLightboxOpen(false);
+        setCurrentPhoto(null);
+      }
+    } catch (error) {
+      console.error('❌ Erro ao deletar foto:', error);
+      setUploadError('Erro ao remover foto. Tente novamente.');
+    }
   };
 
   // Abrir lightbox
@@ -160,102 +82,108 @@ export default function GallerySection({ id }) {
   };
 
   const handleAddPhotoClick = () => {
-    if (!storage) {
-      setUploadError('Firebase Storage não configurado.');
-      return;
-    }
     setUploadError(null);
     fileInputRef.current?.click();
+  };
+
+  // Ativar modo de deleção
+  const handleEnterDeleteMode = () => {
+    setIsDeleteMode(true);
+    setSelectedPhotos([]);
+  };
+
+  // Cancelar modo de deleção
+  const handleCancelDeleteMode = () => {
+    setIsDeleteMode(false);
+    setSelectedPhotos([]);
+  };
+
+  // Toggle seleção de foto
+  const handleTogglePhotoSelection = (photoId) => {
+    setSelectedPhotos((prev) =>
+      prev.includes(photoId)
+        ? prev.filter((id) => id !== photoId)
+        : [...prev, photoId]
+    );
+  };
+
+  // Deletar fotos selecionadas
+  const handleDeleteSelectedPhotos = async () => {
+    if (selectedPhotos.length === 0) return;
+
+    for (const photoId of selectedPhotos) {
+      try {
+        await removePhoto(photoId);
+        console.log(`✅ Foto ${photoId} deletada`);
+      } catch (error) {
+        console.error(`❌ Erro ao deletar ${photoId}:`, error);
+      }
+    }
+    
+    // Sai do modo delete
+    setIsDeleteMode(false);
+    setSelectedPhotos([]);
   };
 
   const handleFileChange = async (event) => {
     const files = Array.from(event.target.files || []);
     if (files.length === 0) return;
 
-    if (!storage) {
-      setUploadError('Firebase Storage não configurado.');
-      if (event.target) event.target.value = '';
-      return;
-    }
-
-    // Validar todos os arquivos
+    // Validate file types
     const invalidFiles = files.filter(
-      (file) => !file.type.startsWith('image/')
+      (file) => !file.type || !file.type.startsWith('image/')
     );
     if (invalidFiles.length > 0) {
       setUploadError(
-        `${invalidFiles.length} arquivo(s) não são imagens válidas.`
+        `${invalidFiles.length} arquivo(s) não são imagens válidas. Tipo detectado: ${invalidFiles[0]?.type || 'desconhecido'}`
       );
       if (event.target) event.target.value = '';
       return;
     }
 
-    const largeFiles = files.filter((file) => file.size > 5 * 1024 * 1024);
+    // Validate file size
+    const largeFiles = files.filter((file) => file.size > 10 * 1024 * 1024);
     if (largeFiles.length > 0) {
       setUploadError(
-        `${largeFiles.length} imagem(ns) muito grande(s) (máx 5MB cada).`
+        `${largeFiles.length} imagem(ns) muito grande(s) (máx 10MB cada).`
       );
       if (event.target) event.target.value = '';
       return;
     }
+
+    console.log(`📤 Starting upload of ${files.length} files`);
+    files.forEach((f, i) => console.log(`  ${i + 1}. ${f.name} (${f.type}, ${(f.size / 1024 / 1024).toFixed(2)}MB)`));
 
     setUploadError(null);
     setIsUploading(true);
     setUploadProgress({ current: 0, total: files.length });
 
-    const uploadedPhotos = [];
-    const errors = [];
-
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-
-      try {
-        console.log(`📤 Upload ${i + 1}/${files.length}:`, file.name);
-        setUploadProgress({ current: i + 1, total: files.length });
-
-        const uniqueId = `${Date.now()}-${i}-${file.name.replace(
-          /[^a-zA-Z0-9.-]/g,
-          '_'
-        )}`;
-        const storagePath = `gallery/${uniqueId}`;
-        const fileRef = storageRef(storage, storagePath);
-
-        await uploadBytes(fileRef, file);
-        const downloadUrl = await getDownloadURL(fileRef);
-
-        const newPhoto = {
-          id: storagePath,
-          storagePath,
-          url: downloadUrl,
-          caption: file.name.replace(/\.[^/.]+$/, ''),
-          date: new Date().toISOString().slice(0, 10),
-          favorite: false,
-          category: 'momentos',
-        };
-
-        uploadedPhotos.push(newPhoto);
-        console.log(`✅ Upload ${i + 1}/${files.length} concluído!`);
-      } catch (error) {
-        console.error(`❌ Erro no upload de ${file.name}:`, error);
-        errors.push(file.name);
+    try {
+      const result = await uploadPhotos(files);
+      
+      if (!result) {
+        throw new Error('Upload retornou undefined. Verifique se está autenticado e o workspace existe.');
       }
-    }
 
-    // Adicionar todas as fotos de uma vez
-    if (uploadedPhotos.length > 0) {
-      setPhotos((prev) => [...uploadedPhotos, ...prev]);
-      console.log(
-        `🎉 ${uploadedPhotos.length} foto(s) adicionada(s) à galeria!`
-      );
-    }
+      const { results, errors } = result;
 
-    // Mostrar erros se houver
-    if (errors.length > 0) {
-      setUploadError(
-        `Erro ao enviar ${errors.length} foto(s): ${errors
-          .slice(0, 3)
-          .join(', ')}${errors.length > 3 ? '...' : ''}`
-      );
+      setUploadProgress({ current: results?.length || 0, total: files.length });
+
+      if (results && results.length > 0) {
+        console.log(`🎉 ${results.length} foto(s) adicionada(s) à galeria!`);
+      }
+
+      if (errors && errors.length > 0) {
+        const errorMsg = errors[0]?.error || errors[0];
+        setUploadError(
+          `Erro ao enviar ${errors.length} foto(s): ${errorMsg}`
+        );
+        console.error('Errors:', errors);
+      }
+    } catch (error) {
+      console.error('❌ Erro no upload:', error);
+      const errorMessage = error.message || 'Erro ao enviar fotos. Tente novamente.';
+      setUploadError(errorMessage);
     }
 
     setIsUploading(false);
@@ -265,7 +193,7 @@ export default function GallerySection({ id }) {
 
   return (
     <>
-      <section id={id} className="min-h-screen px-4 py-20" ref={ref}>
+      <section id={id} className="min-h-screen px-2 md:px-4 py-20" ref={ref}>
         <div className="max-w-7xl mx-auto">
           <input
             ref={fileInputRef}
@@ -280,7 +208,7 @@ export default function GallerySection({ id }) {
             initial={{ opacity: 0, y: 30 }}
             animate={inView ? { opacity: 1, y: 0 } : {}}
             transition={{ duration: 0.6 }}
-            className="mb-12"
+            className="mb-12 px-2"
           >
             {/* Title */}
             <div className="text-center mb-8">
@@ -292,11 +220,11 @@ export default function GallerySection({ id }) {
               >
                 <ImageIcon className="text-primary" size={48} />
               </motion.div>
-              <h2 className="font-heading text-4xl md:text-6xl font-bold text-textPrimary mb-4">
+              <h2 className="font-heading text-3xl md:text-6xl font-bold text-textPrimary mb-4">
                 Galeria de <span className="text-primary">Momentos</span>
               </h2>
-              <p className="text-lg text-textSecondary max-w-2xl mx-auto">
-                Cada foto conta uma história especial da nossa jornada juntos
+              <p className="text-md text-textSecondary max-w-2xl mx-auto">
+                Fotinhas do nosso tempo juntos
               </p>
             </div>
 
@@ -314,7 +242,7 @@ export default function GallerySection({ id }) {
             </div>
 
             {/* Filters & Actions */}
-            <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="space-y-4">
               {/* Filters */}
               <div className="flex flex-wrap gap-2">
                 {filterOptions.map((filter) => {
@@ -325,11 +253,12 @@ export default function GallerySection({ id }) {
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
                       onClick={() => setActiveFilter(filter.value)}
+                      disabled={isDeleteMode}
                       className={`px-4 py-2 rounded-xl font-medium text-sm transition-all duration-200 flex items-center gap-2 ${
                         activeFilter === filter.value
                           ? 'bg-primary text-white shadow-soft-md'
                           : 'bg-surface text-textSecondary hover:bg-surfaceAlt'
-                      }`}
+                      } ${isDeleteMode ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
                       {Icon && <Icon size={16} />}
                       {filter.label}
@@ -338,18 +267,38 @@ export default function GallerySection({ id }) {
                 })}
               </div>
 
-              {/* Add Button */}
-              <Button
-                variant="outline"
-                size="sm"
-                icon={Plus}
-                onClick={handleAddPhotoClick}
-                disabled={isUploading}
-              >
-                {isUploading
-                  ? `Enviando ${uploadProgress.current}/${uploadProgress.total}...`
-                  : 'Adicionar Fotos'}
-              </Button>
+              {/* Action Menu */}
+              <div className="flex flex-wrap items-center gap-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  icon={Plus}
+                  onClick={handleAddPhotoClick}
+                  disabled={isUploading || isDeleteMode}
+                >
+                  {isUploading
+                    ? `Enviando ${uploadProgress.current}/${uploadProgress.total}...`
+                    : 'Adicionar'}
+                </Button>
+
+                {!isDeleteMode ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    icon={Trash2}
+                    onClick={handleEnterDeleteMode}
+                    disabled={isUploading || photos.length === 0}
+                  >
+                    Apagar
+                  </Button>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-textSecondary">
+                      {selectedPhotos.length} selecionada(s)
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
             {isUploading && uploadProgress.total > 1 && (
               <div className="mt-4">
@@ -393,8 +342,13 @@ export default function GallerySection({ id }) {
             ) : filteredPhotos.length > 0 ? (
               <MasonryGrid
                 photos={filteredPhotos}
+                columns={columns}
                 onPhotoClick={openLightbox}
                 onToggleFavorite={toggleFavorite}
+                onDeletePhoto={handleDeletePhoto}
+                isDeleteMode={isDeleteMode}
+                selectedPhotos={selectedPhotos}
+                onToggleSelection={handleTogglePhotoSelection}
               />
             ) : (
               <div className="text-center py-20">
@@ -408,22 +362,45 @@ export default function GallerySection({ id }) {
               </div>
             )}
           </motion.div>
-
-          {/* Info Card */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={inView ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.6, delay: 0.5 }}
-            className="mt-12 text-center"
-          >
-            <div className="inline-block bg-surface rounded-2xl p-6 shadow-soft-md">
-              <p className="text-textSecondary">
-                Clique em qualquer foto para visualizar em tela cheia
-              </p>
-            </div>
-          </motion.div>
         </div>
       </section>
+
+      {/* Delete Mode Action Bar - Fixed above bottom navigation */}
+      <AnimatePresence>
+        {isDeleteMode && (
+          <motion.div
+            initial={{ y: 100, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 100, opacity: 0 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+            className="fixed left-0 right-0 z-[100] bg-white shadow-2xl border-t border-gray-200"
+            style={{ bottom: window.innerWidth < 1024 ? '80px' : '0' }}
+          >
+            <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between gap-4">
+              <Button
+                variant="ghost"
+                size="md"
+                icon={X}
+                onClick={handleCancelDeleteMode}
+                className="flex-1 md:flex-initial"
+              >
+                Cancelar
+              </Button>
+
+              <Button
+                variant="danger"
+                size="md"
+                icon={Trash2}
+                onClick={handleDeleteSelectedPhotos}
+                disabled={selectedPhotos.length === 0}
+                className="flex-1 md:flex-initial"
+              >
+                Apagar {selectedPhotos.length > 0 ? `(${selectedPhotos.length})` : ''}
+              </Button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Lightbox */}
       {currentPhoto && (
@@ -449,9 +426,6 @@ export default function GallerySection({ id }) {
           }}
         />
       )}
-
-      {/* Add Photo Modal (simulado) */}
-      {/* Modal removido: upload acontece imediatamente após selecionar a foto */}
     </>
   );
 }

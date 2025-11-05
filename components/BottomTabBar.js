@@ -5,7 +5,7 @@ import { Home, Image, Heart, Music, Trophy, MessageCircle, Gift, Archive } from 
 import { motion } from 'framer-motion'
 
 const tabs = [
-  { id: 'home', path: '/home', label: 'Home', icon: Home },
+  { id: 'inicio', path: '/', label: 'Início', icon: Home },
   { id: 'galeria', path: '/galeria', label: 'Galeria', icon: Image },
   { id: 'amor', path: '/amor', label: 'Amor', icon: Heart },
   { id: 'musica', path: '/musica', label: 'Música', icon: Music },

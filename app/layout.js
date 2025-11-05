@@ -1,17 +1,23 @@
-import './globals.css'
-import AppProvider from '@/components/AppProvider'
-import { AuthProvider } from '@/contexts/AuthContext'
-import ConditionalLayout from '@/components/ConditionalLayout'
-import { Toaster } from 'sonner'
+import './globals.css';
+import AppProvider from '@/components/AppProvider';
+import { AuthProvider } from '@/contexts/AuthContext';
+import ConditionalLayout from '@/components/ConditionalLayout';
+import { Toaster } from 'sonner';
 
 export const metadata = {
-  title: 'Para a Pessoa Mais Incrível do Mundo',
-  description: 'Um cantinho especial feito com muito carinho',
+  title: 'Para Sindoca, a mulher!',
+  description: 'Pra mostrar que eu presto',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
     title: 'Nossa História',
+  },
+  favicons: {
+    icon: '/favicon.ico',
+    shortcut: '/favicon-16x16.png',
+    apple: '/apple-touch-icon.png',
+    android: '/android-chrome-192x192.png',
   },
   applicationName: 'Nossa História de Amor',
   formatDetection: {
@@ -20,21 +26,38 @@ export const metadata = {
   other: {
     'mobile-web-app-capable': 'yes',
   },
-}
+};
 
 export const viewport = {
   width: 'device-width',
   initialScale: 1,
   maximumScale: 5,
   themeColor: '#ff6b9d',
-}
+};
 
 export default function RootLayout({ children }) {
   return (
     <html lang="pt-BR">
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          rel="preconnect"
+          href="https://fonts.gstatic.com"
+          crossOrigin="anonymous"
+        />
+        <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+        <link
+          rel="icon"
+          href="/favicon-16x16.png"
+          type="image/x-icon"
+          sizes="16x16"
+        />
+        <link
+          rel="apple-touch-icon"
+          href="/apple-touch-icon.png"
+          type="image/x-icon"
+          sizes="180x180"
+        />
         <style>{`
           .hide-scrollbar::-webkit-scrollbar {
             display: none;
@@ -64,12 +87,10 @@ export default function RootLayout({ children }) {
             />
 
             {/* Conditional Layout - hides sidebar/footer on auth pages */}
-            <ConditionalLayout>
-              {children}
-            </ConditionalLayout>
+            <ConditionalLayout>{children}</ConditionalLayout>
           </AppProvider>
         </AuthProvider>
       </body>
     </html>
-  )
+  );
 }

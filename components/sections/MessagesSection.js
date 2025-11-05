@@ -1,64 +1,15 @@
 'use client'
 
-import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { useInView } from 'react-intersection-observer'
 import { useRouter } from 'next/navigation'
 import { MessageCircle, Quote, Plus } from 'lucide-react'
-import { useAuth } from '@/contexts/AuthContext'
-import { createClient } from '@/lib/supabase/client'
-import { getUserWorkspaces } from '@/lib/api/workspace'
+import { useRealtimeMessages } from '@/hooks'
 
 export default function MessagesSection({ id }) {
   const router = useRouter()
-  const { user } = useAuth()
-  const [messages, setMessages] = useState([])
-  const [loading, setLoading] = useState(true)
+  const { messages, loading } = useRealtimeMessages()
   const { ref, inView } = useInView({ threshold: 0.1, triggerOnce: true })
-
-  useEffect(() => {
-    if (user) {
-      loadMessages()
-    }
-  }, [user])
-
-  const loadMessages = async () => {
-    try {
-      const supabase = createClient()
-
-      // Get user's workspace
-      const workspacesData = await getUserWorkspaces(user.id)
-      if (workspacesData.length === 0) {
-        setLoading(false)
-        return
-      }
-
-      const workspaceId = workspacesData[0].workspace_id
-
-      // Load messages from content table
-      const { data, error } = await supabase
-        .from('content')
-        .select('*')
-        .eq('workspace_id', workspaceId)
-        .eq('type', 'message')
-        .order('created_at', { ascending: false })
-
-      if (error) throw error
-
-      const formattedMessages = data.map(item => ({
-        id: item.id,
-        title: item.data?.title || 'Mensagem',
-        content: item.data?.content || '',
-        author: item.data?.author || 'Anônimo',
-      }))
-
-      setMessages(formattedMessages)
-    } catch (error) {
-      console.error('Error loading messages:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
 
   return (
     <section id={id} className="min-h-screen px-4 py-20" ref={ref}>
@@ -107,7 +58,7 @@ export default function MessagesSection({ id }) {
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              onClick={() => router.push('/home')}
+              onClick={() => router.push('/')}
               className="px-6 py-3 bg-primary text-white font-semibold rounded-xl shadow-soft-md inline-flex items-center gap-2"
             >
               <Plus size={20} />

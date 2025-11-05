@@ -1,13 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { useInView } from 'react-intersection-observer'
 import { useRouter } from 'next/navigation'
 import { Trophy, Eye, MessageCircle, Plane, Heart, Sparkles, Plus, Award, Star, Target } from 'lucide-react'
-import { useAuth } from '@/contexts/AuthContext'
-import { createClient } from '@/lib/supabase/client'
-import { getUserWorkspaces } from '@/lib/api/workspace'
+import { useRealtimeAchievements } from '@/hooks'
 
 const iconMap = {
   Eye,
@@ -23,58 +21,9 @@ const iconMap = {
 
 export default function AchievementsSection({ id }) {
   const router = useRouter()
-  const { user } = useAuth()
-  const [achievements, setAchievements] = useState([])
-  const [loading, setLoading] = useState(true)
+  const { achievements, loading } = useRealtimeAchievements()
   const [revealedSecrets, setRevealedSecrets] = useState([])
   const { ref, inView } = useInView({ threshold: 0.1, triggerOnce: true })
-
-  useEffect(() => {
-    if (user) {
-      loadAchievements()
-    }
-  }, [user])
-
-  const loadAchievements = async () => {
-    try {
-      const supabase = createClient()
-
-      // Get user's workspace
-      const workspacesData = await getUserWorkspaces(user.id)
-      if (workspacesData.length === 0) {
-        setLoading(false)
-        return
-      }
-
-      const workspaceId = workspacesData[0].workspace_id
-
-      // Load achievements from content table
-      const { data, error } = await supabase
-        .from('content')
-        .select('*')
-        .eq('workspace_id', workspaceId)
-        .eq('type', 'achievement')
-        .order('created_at', { ascending: true })
-
-      if (error) throw error
-
-      const formattedAchievements = data.map(item => ({
-        id: item.id,
-        icon: item.data?.icon || 'Trophy',
-        emoji: item.data?.emoji || '🏆',
-        title: item.data?.title || 'Conquista',
-        date: item.data?.date || '',
-        description: item.data?.description || '',
-        secret: item.data?.secret || '',
-      }))
-
-      setAchievements(formattedAchievements)
-    } catch (error) {
-      console.error('Error loading achievements:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
 
   const toggleSecret = (index) => {
     setRevealedSecrets((prev) =>
@@ -136,7 +85,7 @@ export default function AchievementsSection({ id }) {
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              onClick={() => router.push('/home')}
+              onClick={() => router.push('/')}
               className="px-6 py-3 bg-primary text-white font-semibold rounded-xl shadow-soft-md inline-flex items-center gap-2"
             >
               <Plus size={20} />

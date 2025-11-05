@@ -16,13 +16,13 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 
 const navItems = [
-  { id: 'home', label: 'Home', icon: Home },
+  { id: 'inicio', label: 'Início', icon: Home },
   { id: 'galeria', label: 'Galeria', icon: Image },
   { id: 'amor', label: 'O Que Amo', icon: Heart },
   { id: 'musica', label: 'Música', icon: Music },
   { id: 'conquistas', label: 'Conquistas', icon: Trophy },
   { id: 'mensagens', label: 'Mensagens', icon: MessageCircle },
-  { id: 'sandbox', label: 'Surpresas', icon: Gift },
+  { id: 'surpresas', label: 'Surpresas', icon: Gift },
   { id: 'legado', label: 'Legado', icon: Archive },
 ];
 

@@ -12,8 +12,14 @@ service firebase.storage {
       allow read: if true;
       
       // Permitir upload de imagens até 5MB
-      allow write: if request.resource.size < 5 * 1024 * 1024
+      allow create: if request.resource.size < 5 * 1024 * 1024
                    && request.resource.contentType.matches('image/.*');
+      
+      // Permitir delete de qualquer imagem (você e sua namorada)
+      allow delete: if true;
+      
+      // Permitir update de metadata
+      allow update: if true;
     }
     
     // Bloquear acesso a outras pastas

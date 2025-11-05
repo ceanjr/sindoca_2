@@ -35,6 +35,7 @@ export default function Button({
     accent: 'bg-accent text-white hover:bg-opacity-90 shadow-soft-sm',
     outline: 'border-2 border-primary text-primary hover:bg-primary hover:text-white',
     ghost: 'text-primary hover:bg-primary hover:bg-opacity-10',
+    danger: 'bg-red-500 text-white hover:bg-red-600 shadow-soft-sm',
   };
 
   // Tamanhos
