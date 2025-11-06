@@ -33,6 +33,7 @@ export const viewport = {
   initialScale: 1,
   maximumScale: 5,
   themeColor: '#ff6b9d',
+  viewportFit: 'cover', // Essential for safe area support on iOS devices with notches
 };
 
 export default function RootLayout({ children }) {

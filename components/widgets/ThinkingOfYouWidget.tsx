@@ -15,10 +15,41 @@ interface ThinkingOfYouWidgetProps {
   compact?: boolean;
 }
 
+// Progressive messages that get more intense with each click
+const PROGRESSIVE_MESSAGES = [
+  '{partnerName} pensou em você. De novo. Claro.',
+  '{partnerName} ainda não superou o pensamento anterior.',
+  '{partnerName} tá basicamente com você alugando um triplex na mente.',
+  'Mais uma hora, mais um looping mental de {partnerName}.',
+  '{partnerName} jura que é coincidência pensar tanto assim.',
+  'Aparentemente, você é o único assunto de {partnerName} hoje.',
+  '{partnerName} começou a falar de você com o espelho. Só avisando.',
+  "{partnerName} já tá pesquisando o significado de 'pensar demais'.",
+  'Isso já ultrapassou o limite do saudável, {partnerName}.',
+  '{partnerName} tá um passo de fundar o fã-clube oficial. Cuidado.',
+];
+
+// Short titles for each message level
+const PROGRESSIVE_TITLES = [
+  '💭 De novo por aqui',
+  '💕 Ainda por aí',
+  '🏠 Morando na mente',
+  '🔄 Loop ativado',
+  '🤷 Só coincidência...',
+  '📢 Assunto principal',
+  '🪞 Conversa solo',
+  '🔍 Pesquisando ajuda',
+  '⚠️ Nível crítico',
+  '🎪 Fã-clube incoming',
+];
+
+const MAX_CLICKS_PER_DAY = 10;
+const COOLDOWN_HOURS = 2;
+
 export default function ThinkingOfYouWidget({
   workspaceId,
   partnerId,
-  partnerName,
+  partnerName = '',
   compact = false,
 }: ThinkingOfYouWidgetProps) {
   const { user, profile } = useAuth();
@@ -26,52 +57,42 @@ export default function ThinkingOfYouWidget({
     usePushNotifications();
   const [isSending, setIsSending] = useState(false);
   const [lastSentTime, setLastSentTime] = useState<Date | null>(null);
-  const [partnerThoughtToday, setPartnerThoughtToday] = useState<{
-    thought: boolean;
-    message?: string;
-  }>({ thought: false });
+  const [todayClickCount, setTodayClickCount] = useState(0);
+  const [partnerThoughts, setPartnerThoughts] = useState<{
+    count: number;
+    lastMessage?: string;
+  }>({ count: 0 });
 
-  const messages = [
-    '💭 Estou pensando em você, pensando em nunca mais...',
-    '💕 Saudades de você bb',
-    '🌟 Você é especial... literalmente',
-    '✨ Você ilumina meu dia como ninguém bronzeado faria',
-    '🎵 Pensando em nós naquela cama de jornal',
-    '☁️ Você está na minha mente o tempo todo (Help!!!)',
-    '🌙 Sonhando com você acordado(a)',
-    '🌸 Você é minha flor de tangerina',
-  ];
-
-  // Check if partner thought of you today
+  // Check partner's thoughts for today
   useEffect(() => {
     if (!user || !partnerId) return;
 
-    const checkPartnerThought = async () => {
+    const checkPartnerThoughts = async () => {
       const supabase = createClient();
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
+      // Get ALL messages from partner today
       const { data, error } = await supabase
         .from('content')
-        .select('description, created_at')
+        .select('description, created_at, author_id, data')
         .eq('workspace_id', workspaceId)
         .eq('author_id', partnerId)
         .eq('type', 'message')
         .gte('created_at', today.toISOString())
-        .order('created_at', { ascending: false })
-        .limit(1);
+        .order('created_at', { ascending: false });
 
       if (!error && data && data.length > 0) {
-        setPartnerThoughtToday({
-          thought: true,
-          message: data[0].description,
+        setPartnerThoughts({
+          count: data.length,
+          lastMessage: data[0].description, // Most recent message
         });
       } else {
-        setPartnerThoughtToday({ thought: false });
+        setPartnerThoughts({ count: 0 });
       }
     };
 
-    checkPartnerThought();
+    checkPartnerThoughts();
 
     // Subscribe to new messages
     const supabase = createClient();
@@ -90,23 +111,35 @@ export default function ThinkingOfYouWidget({
             payload.new?.type === 'message' &&
             payload.new?.author_id === partnerId
           ) {
-            setPartnerThoughtToday({
-              thought: true,
-              message: payload.new.description,
-            });
+            // Update count and message using functional update
+            setPartnerThoughts((prev) => {
+              const newCount = prev.count + 1;
+              const messageIndex = Math.min(
+                newCount - 1,
+                MAX_CLICKS_PER_DAY - 1
+              );
+              const notificationTitle = PROGRESSIVE_TITLES[
+                messageIndex
+              ].replace('{partnerName}', partnerName);
 
-            // Show notification when partner thinks of you
-            if (isGranted) {
-              showLocalNotification('💕 Alguém pensou em você!', {
-                body: payload.new.description,
-                icon: '/icon-192x192.png',
-                tag: 'partner-thinking',
+              // Show notification when partner thinks of you
+              if (isGranted) {
+                showLocalNotification(notificationTitle, {
+                  body: payload.new.description,
+                  icon: '/icon-192x192.png',
+                  tag: 'partner-thinking',
+                });
+              }
+
+              toast.success(notificationTitle, {
+                description: payload.new.description,
+                duration: 5000,
               });
-            }
 
-            toast.success('💕 Seu amor pensou em você!', {
-              description: payload.new.description,
-              duration: 5000,
+              return {
+                count: newCount,
+                lastMessage: payload.new.description,
+              };
             });
           }
         }
@@ -116,27 +149,79 @@ export default function ThinkingOfYouWidget({
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user, partnerId, workspaceId, isGranted, showLocalNotification]);
+  }, [user, partnerId, workspaceId, partnerName]);
+
+  // Load user's clicks today
+  useEffect(() => {
+    if (!user) return;
+
+    const loadTodayClicks = async () => {
+      const supabase = createClient();
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const { data, error } = await supabase
+        .from('content')
+        .select('created_at')
+        .eq('workspace_id', workspaceId)
+        .eq('author_id', user.id)
+        .eq('type', 'message')
+        .gte('created_at', today.toISOString())
+        .order('created_at', { ascending: false });
+
+      if (!error && data && data.length > 0) {
+        setTodayClickCount(data.length);
+        // Set last sent time to most recent
+        setLastSentTime(new Date(data[0].created_at));
+      }
+    };
+
+    loadTodayClicks();
+  }, [user, workspaceId]);
 
   const canSend = () => {
+    // Check if reached max clicks for today
+    if (todayClickCount >= MAX_CLICKS_PER_DAY) {
+      return false;
+    }
+
+    // Check cooldown
     if (!lastSentTime) return true;
     const timeSinceLastSend = Date.now() - lastSentTime.getTime();
-    const cooldownMs = 5 * 60 * 1000; // 5 minutes
+    const cooldownMs = COOLDOWN_HOURS * 60 * 60 * 1000;
     return timeSinceLastSend > cooldownMs;
   };
 
   const getRemainingCooldown = () => {
     if (!lastSentTime) return 0;
     const timeSinceLastSend = Date.now() - lastSentTime.getTime();
-    const cooldownMs = 5 * 60 * 1000;
+    const cooldownMs = COOLDOWN_HOURS * 60 * 60 * 1000;
     const remaining = cooldownMs - timeSinceLastSend;
-    return Math.max(0, Math.ceil(remaining / 1000 / 60));
+    const remainingMinutes = Math.ceil(remaining / 1000 / 60);
+
+    // Convert to hours if >= 60 minutes
+    if (remainingMinutes >= 60) {
+      const hours = Math.floor(remainingMinutes / 60);
+      const mins = remainingMinutes % 60;
+      return mins > 0 ? `${hours}h ${mins}min` : `${hours}h`;
+    }
+
+    return `${remainingMinutes} min`;
   };
 
   const sendNotification = async () => {
-    if (!user || !canSend()) {
-      toast.error('Aguarde alguns minutos', {
-        description: `Você pode enviar novamente em ${getRemainingCooldown()} minutos`,
+    if (!user) return;
+
+    if (todayClickCount >= MAX_CLICKS_PER_DAY) {
+      toast.error('Limite diário atingido', {
+        description: `Você já pensou ${MAX_CLICKS_PER_DAY}x hoje. Descanse um pouco! 😅`,
+      });
+      return;
+    }
+
+    if (!canSend()) {
+      toast.error('Aguarde um pouco', {
+        description: `Você pode enviar novamente em ${getRemainingCooldown()}`,
       });
       return;
     }
@@ -149,8 +234,11 @@ export default function ThinkingOfYouWidget({
     }
 
     try {
-      const randomMessage =
-        messages[Math.floor(Math.random() * messages.length)];
+      // Get the message based on current click count (progressive)
+      const messageIndex = Math.min(todayClickCount, MAX_CLICKS_PER_DAY - 1);
+      const messageTemplate = PROGRESSIVE_MESSAGES[messageIndex];
+      const message = messageTemplate.replace(/{partnerName}/g, partnerName);
+      const title = PROGRESSIVE_TITLES[messageIndex];
 
       // Save to database as a notification/message
       const supabase = createClient();
@@ -159,19 +247,39 @@ export default function ThinkingOfYouWidget({
         author_id: user.id,
         type: 'message',
         title: 'Pensando em Você',
-        description: randomMessage,
+        description: message,
         data: {
           type: 'thinking_of_you',
           sent_at: new Date().toISOString(),
+          message_index: messageIndex,
         },
       });
 
       setLastSentTime(new Date());
+      setTodayClickCount((prev) => prev + 1);
+
+      // Send server-side push notification to partner
+      try {
+        await fetch('/api/push/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            recipientUserId: partnerId,
+            title: title,
+            body: message,
+            icon: '/icon-192x192.png',
+            tag: 'thinking-of-you',
+            data: { url: '/' },
+          }),
+        });
+      } catch (error) {
+        console.error('Error sending push notification:', error);
+      }
 
       // Show local notification
       if (isGranted) {
-        await showLocalNotification('Pensando em Você 💕', {
-          body: randomMessage,
+        await showLocalNotification(title, {
+          body: message,
           icon: '/icon-192x192.png',
           tag: 'thinking-of-you',
         });
@@ -179,8 +287,8 @@ export default function ThinkingOfYouWidget({
         // Request permission if not granted
         const granted = await requestPermission();
         if (granted) {
-          await showLocalNotification('Pensando em Você 💕', {
-            body: randomMessage,
+          await showLocalNotification(title, {
+            body: message,
             icon: '/icon-192x192.png',
             tag: 'thinking-of-you',
           });
@@ -188,7 +296,7 @@ export default function ThinkingOfYouWidget({
       }
 
       toast.success('Mensagem enviada! 💕', {
-        description: randomMessage,
+        description: message,
         duration: 5000,
       });
     } catch (error: any) {
@@ -232,14 +340,23 @@ export default function ThinkingOfYouWidget({
 
   // Get button text based on partner
   const getButtonText = () => {
-    if (!profile) return 'Pensando...';
+    if (!profile) return ['Pensando...', ''];
+
     // Check if user is Célio Júnior or Sindy
     const isCelio =
       profile.email === 'celiojunior0110@gmail.com' ||
       profile.full_name?.toLowerCase().includes('celio');
+
+    // Show remaining clicks if close to limit
+    const remainingClicks = MAX_CLICKS_PER_DAY - todayClickCount;
+    const clickText =
+      remainingClicks <= 3 && remainingClicks > 0
+        ? ` (${remainingClicks} restantes)`
+        : '';
+
     return isCelio
-      ? ['Dependência Emocional', 'Diga que está pensando nele']
-      : ['Dependência Emocional', 'Diga que está pensando nela'];
+      ? ['Dependência Emocional', `Diga que está pensando nela${clickText}`]
+      : ['Dependência Emocional', `Diga que está pensando nele${clickText}`];
   };
 
   return (
@@ -288,11 +405,16 @@ export default function ThinkingOfYouWidget({
                 <span className="font-semibold">Enviando...</span>
               </div>
             </>
-          ) : !canSend() ? (
+          ) : !canSend() && todayClickCount < MAX_CLICKS_PER_DAY ? (
             <>
               <p className="font-semibold text-sm">⏰ Aguarde</p>
+              <p className="text-xs text-white/80">{getRemainingCooldown()}</p>
+            </>
+          ) : todayClickCount >= MAX_CLICKS_PER_DAY ? (
+            <>
+              <p className="font-semibold text-sm">🚫 Limite atingido</p>
               <p className="text-xs text-white/80">
-                {getRemainingCooldown()} min
+                {todayClickCount}/{MAX_CLICKS_PER_DAY} hoje
               </p>
             </>
           ) : (
@@ -306,17 +428,31 @@ export default function ThinkingOfYouWidget({
 
       {/* Status Section - 2/3 on desktop, full width on mobile */}
       <motion.div className="w-full md:flex-[0_0_calc(66.666%-0.5rem)] bg-white rounded-3xl p-6 shadow-soft-md border border-gray-100 min-h-[120px]">
-        {partnerThoughtToday.thought ? (
+        {partnerThoughts.count > 0 ? (
           <div>
-            <div className="flex items-center gap-2 mb-3">
-              <Heart size={20} className="text-pink-500" fill="currentColor" />
-              <h3 className="font-bold text-textPrimary">
-                {partnerName || 'ele(a)'} pensou em você hoje! 💕
-              </h3>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Heart
+                  size={20}
+                  className="text-pink-500"
+                  fill="currentColor"
+                />
+                <h3 className="font-bold text-textPrimary">
+                  {partnerName} pensou em você hoje! 💕
+                </h3>
+              </div>
+              <div className="bg-pink-100 text-pink-600 px-3 py-1 rounded-full text-xs font-bold">
+                {partnerThoughts.count}x
+              </div>
             </div>
-            <p className="text-textSecondary text-sm leading-relaxed">
-              {partnerThoughtToday.message}
+            <p className="text-textSecondary text-sm leading-relaxed italic">
+              "{partnerThoughts.lastMessage}"
             </p>
+            {partnerThoughts.count > 1 && (
+              <p className="text-textTertiary text-xs mt-2">
+                Última de {partnerThoughts.count} mensagens hoje
+              </p>
+            )}
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-center py-4">
@@ -332,7 +468,7 @@ export default function ThinkingOfYouWidget({
               <Heart size={32} className="text-gray-300 mb-3" />
             </motion.div>
             <p className="text-textSecondary text-sm">
-              {partnerName || 'Ele(a)'} ainda não pensou em você hoje...
+              {partnerName} ainda não pensou em você hoje...
             </p>
             <p className="text-textTertiary text-xs mt-2">
               Acho que você deveria começar uma briga

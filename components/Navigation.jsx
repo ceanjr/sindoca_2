@@ -69,7 +69,11 @@ export default function Navigation({ activeSection, onSectionChange }) {
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
           onClick={() => setIsOpen(!isOpen)}
-          className="fixed top-6 right-6 z-50 bg-surface shadow-soft-lg rounded-2xl p-3 text-textPrimary hover:shadow-soft-xl transition-all duration-300"
+          className="fixed z-50 bg-surface shadow-soft-lg rounded-2xl p-3 text-textPrimary hover:shadow-soft-xl transition-all duration-300"
+          style={{
+            top: 'calc(1.5rem + env(safe-area-inset-top))',
+            right: 'calc(1.5rem + env(safe-area-inset-right))',
+          }}
           aria-label="Toggle menu"
         >
           {isOpen ? <X size={24} /> : <Menu size={24} />}
@@ -94,7 +98,13 @@ export default function Navigation({ activeSection, onSectionChange }) {
                 animate={{ x: 0 }}
                 exit={{ x: '100%' }}
                 transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                className="fixed right-0 top-0 bottom-0 w-80 max-w-[85vw] bg-surface shadow-soft-xl z-40 p-8 overflow-y-auto"
+                className="fixed right-0 top-0 bottom-0 w-80 max-w-[85vw] bg-surface shadow-soft-xl z-40 overflow-y-auto"
+                style={{
+                  paddingTop: 'calc(2rem + env(safe-area-inset-top))',
+                  paddingBottom: 'calc(2rem + env(safe-area-inset-bottom))',
+                  paddingLeft: '2rem',
+                  paddingRight: 'calc(2rem + env(safe-area-inset-right))',
+                }}
               >
                 <div className="mt-20 space-y-2">
                   {navItems.map((item, index) => {

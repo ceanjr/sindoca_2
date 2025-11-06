@@ -32,6 +32,7 @@ import { useConfirm } from '@/hooks/useConfirm';
 import ConfirmDialog from '../ui/ConfirmDialog';
 import { toast } from 'sonner';
 import AddReasonModal from '@/components/ui/AddReasonModal';
+import { usePushNotifications } from '@/hooks/usePushNotifications';
 
 const iconMap = {
   Smile,
@@ -60,8 +61,17 @@ export default function LoveReasonsSection({ id }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingReason, setEditingReason] = useState(null);
   const [workspaceId, setWorkspaceId] = useState(null);
+  const [partnerId, setPartnerId] = useState(null);
   const { ref, inView } = useInView({ threshold: 0.1, triggerOnce: true });
-  const { isOpen, loading: confirmLoading, config, confirm, handleConfirm, handleCancel } = useConfirm();
+  const {
+    isOpen,
+    loading: confirmLoading,
+    config,
+    confirm,
+    handleConfirm,
+    handleCancel,
+  } = useConfirm();
+  const { showLocalNotification, isGranted } = usePushNotifications();
 
   const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL;
   const isAdmin = user?.email === ADMIN_EMAIL;
@@ -85,6 +95,23 @@ export default function LoveReasonsSection({ id }) {
 
       const wId = workspacesData[0].workspace_id;
       setWorkspaceId(wId);
+
+      const { data: partnerProfile, error: profileError } = await supabase
+        .from('profiles')
+        .select('full_name, nickname')
+        .eq('id', partnerId)
+        .single();
+
+      // Get partner ID
+      const { data: members } = await supabase
+        .from('workspace_members')
+        .select('user_id')
+        .eq('workspace_id', wId);
+
+      const partner = members?.find((m) => m.user_id !== user.id);
+      if (partner) {
+        setPartnerId(partner.user_id);
+      }
 
       // Load love reasons from content table
       const { data, error } = await supabase
@@ -168,6 +195,43 @@ export default function LoveReasonsSection({ id }) {
           .select();
 
         if (error) throw error;
+
+        // Send server-side push notification to partner
+        if (partnerId) {
+          try {
+            await fetch('/api/push/send', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                recipientUserId: partnerId,
+                title: `${partnerProfile?.full_name} adicionou uma nova razão para te aguentar!`,
+                body: `Corre antes que ${
+                  partnerProfile?.full_name === 'Sindy' ? 'ela' : 'ele'
+                } mude de ideia!`,
+                icon: '/icon-192x192.png',
+                tag: 'new-reason',
+                data: { url: '/fotos#razoes' },
+              }),
+            });
+          } catch (error) {
+            console.error('Error sending push notification:', error);
+          }
+        }
+
+        // Show local notification for self
+        if (isGranted) {
+          await showLocalNotification(
+            `${partnerProfile?.full_name} adicionou uma nova razão para te aguentar!`,
+            {
+              body: `Corre antes que ${
+                partnerProfile?.full_name === 'Sindy' ? 'ela' : 'ele'
+              } mude de ideia!`,
+              icon: '/icon-192x192.png',
+              tag: 'new-reason',
+              data: { url: '/fotos#razoes' },
+            }
+          );
+        }
       }
 
       // Reload reasons to get the new one
@@ -186,7 +250,8 @@ export default function LoveReasonsSection({ id }) {
   const handleDeleteReason = async (reasonId) => {
     const confirmed = await confirm({
       title: 'Apagar razão?',
-      message: 'Tem certeza que deseja apagar esta razão? Esta ação não pode ser desfeita.',
+      message:
+        'Tem certeza que deseja apagar esta razão? Esta ação não pode ser desfeita.',
       confirmText: 'Apagar',
       cancelText: 'Cancelar',
       variant: 'danger',

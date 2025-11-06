@@ -1,31 +1,36 @@
-'use client'
+'use client';
 
-import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion'
-import { X } from 'lucide-react'
-import { useEffect } from 'react'
+import {
+  motion,
+  AnimatePresence,
+  useMotionValue,
+  useTransform,
+} from 'framer-motion';
+import { X } from 'lucide-react';
+import { useEffect } from 'react';
 
 export default function BottomSheet({ isOpen, onClose, children, title }) {
-  const y = useMotionValue(0)
-  const opacity = useTransform(y, [0, 300], [1, 0.5])
+  const y = useMotionValue(0);
+  const opacity = useTransform(y, [0, 300], [1, 0.5]);
 
   // Prevent body scroll when modal is open
   useEffect(() => {
     if (isOpen) {
-      document.body.style.overflow = 'hidden'
+      document.body.style.overflow = 'hidden';
     } else {
-      document.body.style.overflow = 'unset'
+      document.body.style.overflow = 'unset';
     }
     return () => {
-      document.body.style.overflow = 'unset'
-    }
-  }, [isOpen])
+      document.body.style.overflow = 'unset';
+    };
+  }, [isOpen]);
 
   const handleDragEnd = (event, info) => {
     // Close if dragged down more than 150px or velocity is high
     if (info.offset.y > 150 || info.velocity.y > 500) {
-      onClose()
+      onClose();
     }
-  }
+  };
 
   return (
     <AnimatePresence>
@@ -60,7 +65,9 @@ export default function BottomSheet({ isOpen, onClose, children, title }) {
 
             {/* Header */}
             <div className="flex items-center justify-between px-6 pb-4 border-b border-textPrimary/10">
-              <h2 className="text-lg font-semibold text-textPrimary">{title}</h2>
+              <h2 className="text-lg font-semibold text-textPrimary">
+                {title}
+              </h2>
               <button
                 onClick={onClose}
                 className="p-2 rounded-full hover:bg-textPrimary/5 transition-colors touch-manipulation"
@@ -70,9 +77,7 @@ export default function BottomSheet({ isOpen, onClose, children, title }) {
             </div>
 
             {/* Content */}
-            <div className="overflow-y-auto flex-1 px-6 py-4">
-              {children}
-            </div>
+            <div className="overflow-y-auto flex-1 px-6 py-4">{children}</div>
 
             {/* Safe Area for iOS */}
             <div className="h-[env(safe-area-inset-bottom)] bg-surface" />
@@ -80,5 +85,5 @@ export default function BottomSheet({ isOpen, onClose, children, title }) {
         </>
       )}
     </AnimatePresence>
-  )
+  );
 }

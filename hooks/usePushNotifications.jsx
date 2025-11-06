@@ -60,22 +60,43 @@ export function usePushNotifications() {
       let sub = await registration.pushManager.getSubscription()
 
       if (!sub) {
+        // Get VAPID public key from environment
+        const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
+
+        if (!vapidPublicKey) {
+          console.error('VAPID public key not configured')
+          return null
+        }
+
         // Create new subscription
-        // Note: You'll need a VAPID public key for production
-        // For now, we'll use a mock subscription
         sub = await registration.pushManager.subscribe({
           userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(
-            // This is a placeholder - replace with your VAPID public key
-            'BEl62iUYgUivxIkv69yViEuiBIa-Ib37J8xQmrxSL3o'
-          ),
-        }).catch(() => null)
+          applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
+        }).catch((error) => {
+          console.error('Error creating push subscription:', error)
+          return null
+        })
       }
 
       if (sub) {
         setSubscription(sub)
-        // Here you would send the subscription to your backend
-        // await sendSubscriptionToServer(sub)
+
+        // Send subscription to backend
+        try {
+          const response = await fetch('/api/push/subscribe', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              subscription: sub.toJSON(),
+            }),
+          })
+
+          if (!response.ok) {
+            console.error('Failed to save subscription to server')
+          }
+        } catch (error) {
+          console.error('Error saving subscription:', error)
+        }
       }
 
       return sub
@@ -123,7 +144,22 @@ export function usePushNotifications() {
   const unsubscribe = async () => {
     if (subscription) {
       try {
+        const endpoint = subscription.endpoint
+
+        // Unsubscribe from browser
         await subscription.unsubscribe()
+
+        // Delete from backend
+        try {
+          await fetch('/api/push/subscribe', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ endpoint }),
+          })
+        } catch (error) {
+          console.error('Error deleting subscription from server:', error)
+        }
+
         setSubscription(null)
         toast.success('Notificações desativadas')
       } catch (error) {

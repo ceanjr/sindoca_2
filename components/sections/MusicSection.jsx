@@ -27,6 +27,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '@/lib/supabase/client';
 import { useConfirm } from '@/hooks/useConfirm';
 import { toast } from 'sonner';
+import { usePushNotifications } from '@/hooks/usePushNotifications';
 
 export default function MusicSection({ id }) {
   const { user } = useAuth();
@@ -49,7 +50,15 @@ export default function MusicSection({ id }) {
   const audioRef = useRef(null);
   const previousTracksCount = useRef(0);
   const { ref, inView } = useInView({ threshold: 0.1, triggerOnce: true });
-  const { isOpen, loading: confirmLoading, config, confirm, handleConfirm, handleCancel } = useConfirm();
+  const {
+    isOpen,
+    loading: confirmLoading,
+    config,
+    confirm,
+    handleConfirm,
+    handleCancel,
+  } = useConfirm();
+  const { showLocalNotification, isGranted } = usePushNotifications();
 
   // Check if Spotify is connected
   useEffect(() => {
@@ -131,6 +140,16 @@ export default function MusicSection({ id }) {
     try {
       await addTrack(track);
       toast.success('Música adicionada à playlist');
+
+      // Show push notification
+      if (isGranted) {
+        await showLocalNotification('🎵 Chama! Toma!', {
+          body: `${track.name} - ${track.artists}`,
+          icon: track.album_art || '/icon-192x192.png',
+          tag: 'new-music',
+          data: { url: '/musica' },
+        });
+      }
     } catch (error) {
       console.error('Failed to add track:', error);
       toast.error('Erro ao adicionar música. Tente novamente.');
@@ -360,12 +379,11 @@ export default function MusicSection({ id }) {
                     }`}
                   >
                     {isMyTurn ? (
-                      <>
-                        🎵 É a sua vez de adicionar uma música!
-                      </>
+                      <>🎵 É a sua vez de adicionar uma música!</>
                     ) : (
                       <>
-                        ⏳ É a vez de {partnerName || 'seu parceiro'} adicionar uma música
+                        ⏳ É a vez de {partnerName || 'seu parceiro'} adicionar
+                        uma música
                       </>
                     )}
                   </p>

@@ -49,13 +49,41 @@ export default function DaysCounter({
     return () => clearInterval(interval);
   }, [startDate]);
 
-  // Random quote on mount
+  // Daily quote - updates once per day
   useEffect(() => {
-    const randomIndex = Math.floor(Math.random() * ROMANTIC_QUOTES.length);
-    setQuote({
-      text: ROMANTIC_QUOTES[randomIndex],
-      author: randomIndex + 1, // posição no array + 1
-    });
+    const getQuoteOfTheDay = () => {
+      const today = new Date().toDateString(); // Gets date string like "Mon Jan 01 2024"
+      const stored = localStorage.getItem('dailyQuote');
+
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          // If it's the same day, use stored quote
+          if (parsed.date === today) {
+            return parsed.quote;
+          }
+        } catch (e) {
+          console.error('Error parsing stored quote:', e);
+        }
+      }
+
+      // New day or no stored quote - generate new one
+      const randomIndex = Math.floor(Math.random() * ROMANTIC_QUOTES.length);
+      const newQuote = {
+        text: ROMANTIC_QUOTES[randomIndex],
+        author: randomIndex + 1,
+      };
+
+      // Store for the day
+      localStorage.setItem('dailyQuote', JSON.stringify({
+        date: today,
+        quote: newQuote,
+      }));
+
+      return newQuote;
+    };
+
+    setQuote(getQuoteOfTheDay());
   }, []);
 
   return (

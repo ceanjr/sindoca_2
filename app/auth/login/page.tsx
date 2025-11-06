@@ -120,8 +120,8 @@ function LoginForm() {
 
   return (
     <AuthCard
-      title="Bem-vindo de Volta"
-      subtitle="Entre para acessar suas memórias"
+      title="Bem-vindo(a) de Volta"
+      subtitle="Entre para acessar seus maiores segredos"
     >
       {/* Toggle entre senha e magic link */}
       <div className="flex gap-2 mb-6 p-1 bg-surfaceAlt rounded-xl">

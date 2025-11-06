@@ -135,8 +135,27 @@ export async function POST(request: NextRequest) {
 
     const partnerId = members?.find(m => m.user_id !== user.id)?.user_id;
 
-    // Update turn to partner (alternate turn)
+    // Send push notification to partner
     if (partnerId) {
+      try {
+        await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/push/send`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            recipientUserId: partnerId,
+            title: '🎵 Nova música adicionada!',
+            body: `${track.name} - ${track.artist}`,
+            icon: track.albumCover || '/icon-192x192.png',
+            tag: 'new-music',
+            data: { url: '/musica' },
+          }),
+        });
+      } catch (error) {
+        console.error('Error sending push notification:', error);
+        // Don't fail the request if push fails
+      }
+
+      // Update turn to partner (alternate turn)
       await supabase
         .from('workspaces')
         .update({
