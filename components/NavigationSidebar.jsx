@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   Home,
@@ -20,7 +20,7 @@ import AdminModal from './AdminModal';
 const navItems = [
   { id: 'inicio', path: '/', label: 'Início', icon: Home },
   { id: 'galeria', path: '/galeria', label: 'Galeria', icon: Image },
-  { id: 'amor', path: '/amor', label: 'O Que Amo', icon: Heart },
+  { id: 'razoes', path: '/razoes', label: 'Razões', icon: Heart },
   { id: 'musica', path: '/musica', label: 'Música', icon: Music },
   { id: 'conquistas', path: '/conquistas', label: 'Conquistas', icon: Trophy },
   {
@@ -36,14 +36,39 @@ const navItems = [
 export default function NavigationSidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { isPageActive, isAdmin } = usePageConfig();
+  const { isPageActive, isAdmin, user } = usePageConfig();
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
 
+  // Debug: Log admin status
+  useEffect(() => {
+    console.log('🔍 NavigationSidebar - Admin Status:', {
+      isAdmin,
+      userEmail: user?.email,
+    });
+  }, [isAdmin, user]);
+
   const handleNavClick = (path, pageId) => {
-    // Check if page is active
+    console.log('🔍 Click attempt:', {
+      path,
+      pageId,
+      isAdmin,
+      isPageActive: isPageActive(pageId)
+    });
+
+    // Admin can access all pages, even disabled ones
+    if (isAdmin) {
+      console.log('✅ Admin access granted, navigating to:', path);
+      router.push(path);
+      return;
+    }
+
+    // Check if page is active for non-admin users
     if (!isPageActive(pageId)) {
+      console.log('❌ Page is disabled for non-admin');
       return; // Don't navigate if page is disabled
     }
+
+    console.log('✅ Regular user access granted, navigating to:', path);
     router.push(path);
   };
 
@@ -59,34 +84,39 @@ export default function NavigationSidebar() {
             const Icon = item.icon;
             const isActive = pathname === item.path;
             const pageIsActive = isPageActive(item.id);
+            // Admin can access all pages
+            const canAccess = isAdmin || pageIsActive;
 
             return (
               <motion.button
                 key={item.id}
                 onClick={() => handleNavClick(item.path, item.id)}
-                whileHover={pageIsActive ? { scale: 1.1 } : {}}
-                whileTap={pageIsActive ? { scale: 0.95 } : {}}
-                disabled={!pageIsActive}
+                whileHover={canAccess ? { scale: 1.1 } : {}}
+                whileTap={canAccess ? { scale: 0.95 } : {}}
+                disabled={!canAccess}
                 className={`group relative flex items-center justify-center w-12 h-12 rounded-xl transition-all duration-300 ${
-                  !pageIsActive
+                  !canAccess
                     ? 'opacity-40 cursor-not-allowed text-gray-400'
                     : isActive
                     ? 'bg-primary text-white shadow-soft-md'
                     : 'text-textSecondary hover:bg-surfaceAlt hover:text-textPrimary'
                 }`}
-                title={pageIsActive ? item.label : `${item.label} (Desativada)`}
+                title={canAccess ? item.label : `${item.label} (Desativada)`}
               >
                 <Icon size={24} />
 
-                {/* Tooltip - only show if page is active */}
-                {pageIsActive && (
+                {/* Tooltip - show for admin always, for others only if active */}
+                {canAccess && (
                   <div className="absolute left-full ml-2 px-3 py-2 bg-gray-900 text-white text-sm rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-200 z-50">
                     {item.label}
+                    {isAdmin && !pageIsActive && (
+                      <span className="ml-2 text-yellow-300">⚠️</span>
+                    )}
                     <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-gray-900" />
                   </div>
                 )}
 
-                {isActive && pageIsActive && (
+                {isActive && canAccess && (
                   <motion.div
                     layoutId="activeIndicator"
                     className="absolute inset-0 rounded-xl border-2 border-primary/30"

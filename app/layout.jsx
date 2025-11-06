@@ -5,13 +5,13 @@ import ConditionalLayout from '@/components/ConditionalLayout';
 import { Toaster } from 'sonner';
 
 export const metadata = {
-  title: 'Para Sindoca, a mulher!',
+  title: 'Uma Sindoca para a Todos Governar',
   description: 'Pra mostrar que eu presto',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'Nossa História',
+    title: 'Lula apoia o Amor',
   },
   favicons: {
     icon: '/favicon.ico',
@@ -19,7 +19,7 @@ export const metadata = {
     apple: '/apple-touch-icon.png',
     android: '/android-chrome-192x192.png',
   },
-  applicationName: 'Nossa História de Amor',
+  applicationName: 'Lula apoia o Amor',
   formatDetection: {
     telephone: false,
   },

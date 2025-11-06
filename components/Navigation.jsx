@@ -19,7 +19,7 @@ import { usePageConfig } from '@/hooks/usePageConfig';
 const navItems = [
   { id: 'inicio', label: 'Início', icon: Home },
   { id: 'galeria', label: 'Galeria', icon: Image },
-  { id: 'amor', label: 'O Que Amo', icon: Heart },
+  { id: 'razoes', label: 'Razões', icon: Heart },
   { id: 'musica', label: 'Música', icon: Music },
   { id: 'conquistas', label: 'Conquistas', icon: Trophy },
   { id: 'mensagens', label: 'Mensagens', icon: MessageCircle },
@@ -30,7 +30,7 @@ const navItems = [
 export default function Navigation({ activeSection, onSectionChange }) {
   const [isOpen, setIsOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
-  const { isPageActive } = usePageConfig();
+  const { isPageActive, isAdmin } = usePageConfig();
 
   useEffect(() => {
     const checkMobile = () => {
@@ -43,8 +43,10 @@ export default function Navigation({ activeSection, onSectionChange }) {
   }, []);
 
   const handleNavClick = (id) => {
-    // Check if page is active
-    if (!isPageActive(id)) {
+    // Admin can access all pages, even disabled ones
+    const canAccess = isAdmin || isPageActive(id);
+
+    if (!canAccess) {
       return; // Don't scroll if page is disabled
     }
 
@@ -99,6 +101,8 @@ export default function Navigation({ activeSection, onSectionChange }) {
                     const Icon = item.icon;
                     const isActive = activeSection === item.id;
                     const pageIsActive = isPageActive(item.id);
+                    // Admin can access all pages
+                    const canAccess = isAdmin || pageIsActive;
 
                     return (
                       <motion.button
@@ -107,9 +111,9 @@ export default function Navigation({ activeSection, onSectionChange }) {
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: index * 0.05 }}
                         onClick={() => handleNavClick(item.id)}
-                        disabled={!pageIsActive}
+                        disabled={!canAccess}
                         className={`w-full flex items-center gap-4 px-6 py-4 rounded-2xl transition-all duration-300 touch-manipulation min-h-[44px] ${
-                          !pageIsActive
+                          !canAccess
                             ? 'opacity-40 cursor-not-allowed text-gray-400'
                             : isActive
                             ? 'bg-primary text-white shadow-soft-md'
@@ -119,8 +123,13 @@ export default function Navigation({ activeSection, onSectionChange }) {
                         <Icon size={24} />
                         <span className="text-lg font-medium">
                           {item.label}
-                          {!pageIsActive && (
+                          {!pageIsActive && !isAdmin && (
                             <span className="text-xs ml-2">(Desativada)</span>
+                          )}
+                          {!pageIsActive && isAdmin && (
+                            <span className="text-xs ml-2 text-yellow-300">
+                              ⚠️
+                            </span>
                           )}
                         </span>
                       </motion.button>
@@ -147,32 +156,37 @@ export default function Navigation({ activeSection, onSectionChange }) {
           const Icon = item.icon;
           const isActive = activeSection === item.id;
           const pageIsActive = isPageActive(item.id);
+          // Admin can access all pages
+          const canAccess = isAdmin || pageIsActive;
 
           return (
             <motion.button
               key={item.id}
               onClick={() => handleNavClick(item.id)}
-              whileHover={pageIsActive ? { scale: 1.05 } : {}}
-              whileTap={pageIsActive ? { scale: 0.95 } : {}}
-              disabled={!pageIsActive}
+              whileHover={canAccess ? { scale: 1.05 } : {}}
+              whileTap={canAccess ? { scale: 0.95 } : {}}
+              disabled={!canAccess}
               className={`group relative flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 ${
-                !pageIsActive
+                !canAccess
                   ? 'opacity-40 cursor-not-allowed text-gray-400'
                   : isActive
                   ? 'bg-primary text-white shadow-soft-md'
                   : 'text-textSecondary hover:bg-surfaceAlt hover:text-textPrimary'
               }`}
-              title={pageIsActive ? item.label : `${item.label} (Desativada)`}
+              title={canAccess ? item.label : `${item.label} (Desativada)`}
             >
               <Icon size={20} />
-              {/* Only show text on hover if page is active */}
-              {pageIsActive && (
+              {/* Show text on hover if can access */}
+              {canAccess && (
                 <span className="text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap">
                   {item.label}
+                  {isAdmin && !pageIsActive && (
+                    <span className="ml-1 text-yellow-300">⚠️</span>
+                  )}
                 </span>
               )}
 
-              {isActive && pageIsActive && (
+              {isActive && canAccess && (
                 <motion.div
                   layoutId="activeIndicator"
                   className="absolute inset-0 rounded-xl border-2 border-primary/20"
