@@ -13,11 +13,10 @@ export const metadata = {
     statusBarStyle: 'black-translucent',
     title: 'Sindoca',
   },
-  favicons: {
+  icons: {
     icon: '/favicon.ico',
     shortcut: '/favicon-16x16.png',
     apple: '/apple-touch-icon.png',
-    android: '/android-chrome-192x192.png',
   },
   applicationName: 'Sindoca',
   formatDetection: {
@@ -46,12 +45,14 @@ export default function RootLayout({ children }) {
           href="https://fonts.gstatic.com"
           crossOrigin="anonymous"
         />
+        <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta
           name="apple-mobile-web-app-status-bar-style"
           content="black-translucent"
         />
         <meta name="apple-mobile-web-app-title" content="Sindoca" />
+        <meta name="application-name" content="Sindoca" />
         <link rel="icon" type="image/x-icon" href="/favicon.ico" />
         <link
           rel="icon"

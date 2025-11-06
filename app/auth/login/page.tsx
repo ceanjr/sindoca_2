@@ -120,7 +120,7 @@ function LoginForm() {
 
   return (
     <AuthCard
-      title="Bem-vindo(a) de Volta"
+      title="Chega mais!"
       subtitle="Entre para acessar seus maiores segredos"
     >
       {/* Toggle entre senha e magic link */}

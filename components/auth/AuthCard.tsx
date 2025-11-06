@@ -1,12 +1,12 @@
-'use client'
+'use client';
 
-import { motion } from 'framer-motion'
-import { ReactNode } from 'react'
+import { motion } from 'framer-motion';
+import { ReactNode } from 'react';
 
 interface AuthCardProps {
-  children: ReactNode
-  title: string
-  subtitle?: string
+  children: ReactNode;
+  title: string;
+  subtitle?: string;
 }
 
 export default function AuthCard({ children, title, subtitle }: AuthCardProps) {
@@ -28,14 +28,18 @@ export default function AuthCard({ children, title, subtitle }: AuthCardProps) {
               transition={{ delay: 0.2, type: 'spring' }}
               className="inline-block mb-4"
             >
-              <div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center shadow-soft-md">
-                <span className="text-3xl">💕</span>
-              </div>
+              <img
+                src="/icon-72x72.png"
+                className="w-14 rounded-xl"
+                alt="logo"
+              />
             </motion.div>
 
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">{title}</h1>
+            <h1 className="text-3xl font-bold text-textPrimary mb-2">
+              {title}
+            </h1>
             {subtitle && (
-              <p className="text-gray-600 text-sm">{subtitle}</p>
+              <p className="text-textSecondary text-sm">{subtitle}</p>
             )}
           </div>
 
@@ -44,5 +48,5 @@ export default function AuthCard({ children, title, subtitle }: AuthCardProps) {
         </div>
       </motion.div>
     </div>
-  )
+  );
 }
