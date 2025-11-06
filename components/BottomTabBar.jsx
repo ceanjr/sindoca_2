@@ -86,8 +86,13 @@ export default function BottomTabBar() {
     <>
       <nav className="fixed bottom-0 left-0 right-0 z-50 lg:hidden">
         {/* Glassmorphism Background */}
-        <div className="bg-surface/95 backdrop-blur-xl border-t border-textPrimary/10 shadow-soft-xl">
-          <div className="flex items-center justify-around px-2 py-2">
+        <div
+          className="bg-surface/95 backdrop-blur-xl border-t border-textPrimary/10 shadow-soft-xl"
+          style={{
+            paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))',
+          }}
+        >
+          <div className="flex items-center justify-around px-2 pt-2">
             {mainTabs.map((tab) => {
               const Icon = tab.icon;
               const isActive = pathname === tab.path;
@@ -201,9 +206,6 @@ export default function BottomTabBar() {
             </motion.button>
           </div>
         </div>
-
-        {/* Safe Area Spacer for iOS */}
-        <div className="h-[env(safe-area-inset-bottom)] bg-surface/95 backdrop-blur-xl" />
       </nav>
 
       {/* Bottom Sheet Menu */}

@@ -4,6 +4,7 @@ import { usePathname } from 'next/navigation';
 import NavigationSidebar from './NavigationSidebar';
 import BottomTabBar from './BottomTabBar';
 import SwipeableLayout from './SwipeableLayout';
+import PushNotificationSetup from './PushNotificationSetup';
 
 export default function ConditionalLayout({ children }) {
   const pathname = usePathname();
@@ -27,6 +28,9 @@ export default function ConditionalLayout({ children }) {
 
       {/* Mobile Bottom Tab Bar */}
       <BottomTabBar />
+
+      {/* Push Notification Setup Banner */}
+      <PushNotificationSetup />
     </>
   );
 }
