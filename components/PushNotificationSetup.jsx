@@ -31,8 +31,14 @@ export default function PushNotificationSetup() {
   }, [isSupported, permission]);
 
   const handleAccept = async () => {
-    const granted = await requestPermission();
-    if (granted) {
+    try {
+      await requestPermission();
+      // Always hide the prompt after requesting, regardless of result
+      setShowPrompt(false);
+      localStorage.setItem('push-prompt-seen', 'true');
+    } catch (error) {
+      console.error('Error requesting permission:', error);
+      // Still hide the prompt even if there's an error
       setShowPrompt(false);
       localStorage.setItem('push-prompt-seen', 'true');
     }
