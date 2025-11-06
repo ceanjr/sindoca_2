@@ -3,7 +3,6 @@
 import { useEffect, useCallback, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, ChevronLeft, ChevronRight, Edit3 } from 'lucide-react'
-import Image from 'next/image'
 import EditCaptionModal from './ui/EditCaptionModal'
 
 export default function Lightbox({ isOpen, onClose, images, currentIndex, onNavigate, photos = [], onUpdateCaption }) {
@@ -142,7 +141,7 @@ export default function Lightbox({ isOpen, onClose, images, currentIndex, onNavi
 
           {/* Image */}
           <motion.div
-            key={photos[currentIndex]?.id || `photo-${currentIndex}`}
+            key={currentIndex}
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.9 }}
@@ -150,23 +149,12 @@ export default function Lightbox({ isOpen, onClose, images, currentIndex, onNavi
             onClick={(e) => e.stopPropagation()}
             className="relative max-w-[90vw] max-h-[85vh] flex flex-col items-center justify-center gap-4"
           >
-            <div className="relative max-w-full max-h-[75vh] w-full h-full flex items-center justify-center">
-              {images[currentIndex] && images[currentIndex].trim() !== '' ? (
-                <Image
-                  src={images[currentIndex]}
-                  alt={photos[currentIndex]?.caption || `Photo ${currentIndex + 1}`}
-                  width={1920}
-                  height={1080}
-                  className="max-w-full max-h-[75vh] w-auto h-auto object-contain rounded-2xl shadow-2xl shadow-primary/20"
-                  style={{ filter: 'saturate(1.2) contrast(1.1)' }}
-                  priority={true}
-                />
-              ) : (
-                <div className="flex items-center justify-center bg-gray-100 rounded-2xl p-8">
-                  <p className="text-gray-600">Imagem não disponível</p>
-                </div>
-              )}
-            </div>
+            <img
+              src={images[currentIndex]}
+              alt={photos[currentIndex]?.caption || `Photo ${currentIndex + 1}`}
+              className="max-w-full max-h-[75vh] object-contain rounded-2xl shadow-2xl shadow-primary/20"
+              style={{ filter: 'saturate(1.2) contrast(1.1)' }}
+            />
 
             {/* Caption */}
             {photos[currentIndex]?.caption && (

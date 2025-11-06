@@ -107,89 +107,27 @@
 - Usa módulos separados
 - Código limpo e manutenível
 
-### 17. ✅ Migração para Next.js Image
+### 17. ❌ Migração para Next.js Image (REVERTIDA)
 
-**Antes:**
-```jsx
-<img src={src} loading="lazy" />
-```
+**Motivo da Reversão:**
+A migração para Next.js Image causou problemas no carregamento das fotos da galeria. Após testes:
+- Fotos não carregavam corretamente (apenas placeholders)
+- Erros de validação de URL
+- Complexidade adicional sem benefício real para este caso de uso
+- Supabase Storage já serve imagens otimizadas via CDN
 
-**Depois:**
-```jsx
-<Image
-  src={src}
-  fill={true}
-  sizes="(max-width: 768px) 100vw, 50vw"
-  className="object-cover"
-/>
-```
+**Decisão:** Manter tags `<img>` nativas com `loading="lazy"` que funcionam perfeitamente.
 
-**Benefícios:**
-- ✅ Lazy loading otimizado com Intersection Observer
-- ✅ Responsive images com sizes attribute
-- ✅ Melhor performance de carregamento
-- ✅ Placeholder states automáticos
-- ✅ onLoad/onError handlers nativos
+**Status:** ✅ **REVERTIDO para `<img>` nativo - Galeria funcionando normalmente**
 
-**Configuração (next.config.js:57):**
-```js
-images: {
-  unoptimized: true, // Supabase Storage compatibility
-  remotePatterns: [
-    {
-      protocol: 'https',
-      hostname: 'wpgaxoqbrdyfihwzoxlc.supabase.co',
-      pathname: '/storage/v1/object/public/**',
-    },
-  ],
-}
-```
+**Arquivos Revertidos:**
+- `components/ui/MasonryGrid.jsx` - Voltou para `<img>` com lazy loading
+- `components/Lightbox.jsx` - Voltou para `<img>` nativo
+- `hooks/useSupabasePhotos.jsx` - Lógica simplificada de URL
+- `next.config.js` - Configuração mínima mantida
 
-**⚠️ Nota Importante:**
-- Otimização automática desabilitada (`unoptimized: true`) por compatibilidade com Supabase Storage
-- Next.js Image Optimization API pode causar erros CORS/autenticação com Supabase
-- Imagens ainda se beneficiam de lazy loading e responsive sizing
-- Para otimização WebP/AVIF: fazer upload já otimizado no Supabase ou usar CDN
-
-**Arquivos Migrados:**
-- `components/ui/MasonryGrid.jsx:227-250` - Galeria com fill mode + validação de URL
-- `components/Lightbox.jsx:154-168` - Visualização full-size com width/height + validação
-- `components/OptimizedImage.jsx` - Helper component (opcional)
-- `components/sections/LoveReasonsSection.jsx` - Avatares locais
-- `components/ui/AddReasonModal.jsx` - Avatares no modal
-
-**Validações Implementadas:**
-```jsx
-// Valida URL antes de renderizar Image
-{photo.url && photo.url.trim() !== '' ? (
-  <Image src={photo.url} fill={true} />
-) : (
-  <div>URL inválida</div>
-)}
-```
-
-**Correções de Bugs:**
-- ✅ Fixed: "Empty string src" error - Adicionada validação de URL em MasonryGrid
-- ✅ Fixed: "Missing src property" error - Adicionada validação em Lightbox
-- ✅ Fixed: "Duplicate keys" error - Key agora usa photo.id em vez de currentIndex
-- ✅ Fixed: "URL inválida" - Fallback para gerar URL do storage_path quando data.url não existe
-- ✅ Fallbacks visuais para fotos sem URL válida
-
-**Lógica de Fallback de URL (hooks/useSupabasePhotos.jsx:93-102):**
-```js
-// 1. Tenta pegar URL do campo data.url
-let photoUrl = photo.data?.url || '';
-
-// 2. Se não existir, gera URL do storage_path
-if (!photoUrl && photo.storage_path) {
-  const { data: urlData } = supabaseRef.current.storage
-    .from('photos')
-    .getPublicUrl(photo.storage_path);
-  photoUrl = urlData?.publicUrl || '';
-}
-```
-
-Isso garante que fotos antigas sem `data.url` ainda funcionem usando `storage_path`.
+**Lição Aprendida:**
+Next.js Image é excelente, mas para imagens externas do Supabase Storage (que já tem CDN e otimização), tags `<img>` nativas com `loading="lazy"` são mais simples e funcionam melhor.
 
 ### 18. ✅ Service Worker Customizado
 

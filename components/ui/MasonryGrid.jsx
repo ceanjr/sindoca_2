@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Heart, Maximize2, Trash2, CheckCircle, ImageIcon } from 'lucide-react';
-import Image from 'next/image';
 
 /**
  * Componente Masonry Grid (estilo Pinterest)
@@ -93,6 +92,7 @@ function MasonryItem({
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
+  const imgRef = useRef(null);
   const touchStartTime = useRef(null);
   const touchStartPos = useRef({ x: 0, y: 0 });
   const hasMoved = useRef(false);
@@ -225,31 +225,28 @@ function MasonryItem({
             </div>
           )}
 
-          {/* Image - Using Next.js Image for optimization */}
-          {photo.url && photo.url.trim() !== '' ? (
-            <Image
-              src={photo.url}
-              alt={photo.caption || `Foto ${photo.id}`}
-              fill={true}
-              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-              className="object-cover transition-transform duration-500 group-hover:scale-105"
-              onLoad={() => {
-                setImageLoaded(true);
-                setImageError(false);
-              }}
-              onError={(e) => {
-                setImageError(true);
-                setImageLoaded(false);
-              }}
-            />
-          ) : (
-            <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
-              <div className="text-center p-4">
-                <ImageIcon className="mx-auto mb-2 text-gray-400" size={32} />
-                <p className="text-xs text-gray-600">URL inválida</p>
-              </div>
-            </div>
-          )}
+          {/* Image */}
+          <img
+            ref={imgRef}
+            src={photo.url}
+            alt={photo.caption || `Foto ${photo.id}`}
+            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+            loading="lazy"
+            onLoad={() => {
+              console.log(`✅ Image loaded: ${photo.id}`, photo.url);
+              setImageLoaded(true);
+              setImageError(false);
+            }}
+            onError={(e) => {
+              console.error(`❌ Image error: ${photo.id}`, {
+                url: photo.url,
+                photo: photo,
+                error: e
+              });
+              setImageError(true);
+              setImageLoaded(false);
+            }}
+          />
 
           {/* Hover Overlay or Selection Indicator - Desktop only */}
           {!isMobile && (

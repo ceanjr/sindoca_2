@@ -1,380 +1,339 @@
-'use client'
+/**
+ * Music Section with Spotify Integration
+ */
+'use client';
 
-import { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
-import { useInView } from 'react-intersection-observer'
-import { useRouter } from 'next/navigation'
-import { Music, Play, Heart, User, Plus, Disc } from 'lucide-react'
-import Button from '../ui/Button'
-import Badge from '../ui/Badge'
-import { useAuth } from '@/contexts/AuthContext'
-import { createClient } from '@/lib/supabase/client'
-import { getUserWorkspaces } from '@/lib/api/workspace'
+import { useState, useEffect, useRef } from 'react';
+import { motion } from 'framer-motion';
+import { useInView } from 'react-intersection-observer';
+import { Music, Play, Pause, Heart, Plus, ExternalLink, Trash2, Loader, Disc } from 'lucide-react';
+import Button from '../ui/Button';
+import Badge from '../ui/Badge';
+import SpotifySearchModal from '../music/SpotifySearchModal';
+import { useRealtimePlaylist } from '@/hooks/useRealtimePlaylist';
+import { useAuth } from '@/contexts/AuthContext';
+import { createClient } from '@/lib/supabase/client';
 
 export default function MusicSection({ id }) {
-  const router = useRouter()
-  const { user } = useAuth()
-  const [songs, setSongs] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState('all')
-  const { ref, inView } = useInView({ threshold: 0.1, triggerOnce: true })
+  const { user } = useAuth();
+  const { tracks, loading, playlistUrl, addTrack, removeTrack } = useRealtimePlaylist();
+  const [searchModalOpen, setSearchModalOpen] = useState(false);
+  const [playingPreview, setPlayingPreview] = useState(null);
+  const [spotifyConnected, setSpotifyConnected] = useState(false);
+  const [connectingSpotify, setConnectingSpotify] = useState(false);
+  const audioRef = useRef(null);
+  const { ref, inView } = useInView({ threshold: 0.1, triggerOnce: true });
 
+  // Check if Spotify is connected
   useEffect(() => {
-    if (user) {
-      loadSongs()
-    }
-  }, [user])
+    const checkSpotifyConnection = async () => {
+      if (!user) return;
 
-  const loadSongs = async () => {
-    try {
-      const supabase = createClient()
-
-      // Get user's workspace
-      const workspacesData = await getUserWorkspaces(user.id)
-      if (workspacesData.length === 0) {
-        setLoading(false)
-        return
-      }
-
-      const workspaceId = workspacesData[0].workspace_id
-
-      // Load songs from content table
+      const supabase = createClient();
       const { data, error } = await supabase
-        .from('content')
-        .select('*, profiles:author_id(*)')
-        .eq('workspace_id', workspaceId)
-        .eq('type', 'music')
-        .order('created_at', { ascending: false })
+        .from('profiles')
+        .select('spotify_tokens')
+        .eq('id', user.id)
+        .single();
 
-      if (error) throw error
+      if (!error && data?.spotify_tokens) {
+        setSpotifyConnected(true);
+      }
+    };
 
-      const formattedSongs = data.map(item => ({
-        id: item.id,
-        title: item.data?.title || '',
-        artist: item.data?.artist || '',
-        addedBy: item.profiles?.full_name || 'Alguém',
-        addedById: item.author_id,
-        date: item.created_at?.slice(0, 10) || '',
-        note: item.data?.note || '',
-        coverColor: item.data?.coverColor || 'from-blue-400 to-cyan-500',
-        isFavorite: item.is_favorite || false,
-      }))
+    checkSpotifyConnection();
+  }, [user]);
 
-      setSongs(formattedSongs)
-    } catch (error) {
-      // console.error('Error loading songs:', error)
-    } finally {
-      setLoading(false)
+  // Check for connection success
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('connected') === 'true') {
+      setSpotifyConnected(true);
+      window.history.replaceState({}, '', '/musica');
     }
-  }
+  }, []);
 
-  // Filtra músicas baseado na tab ativa
-  const filteredPlaylist = songs.filter((song) => {
-    if (activeTab === 'all') return true
-    if (activeTab === 'yours') return song.addedById === user?.id
-    if (activeTab === 'hers') return song.addedById !== user?.id
-    if (activeTab === 'favorites') return song.isFavorite
-    return true
-  })
+  const handleConnectSpotify = () => {
+    setConnectingSpotify(true);
+    window.location.href = '/api/spotify/auth';
+  };
 
-  // Estatísticas
-  const stats = {
-    total: songs.length,
-    yours: songs.filter((s) => s.addedById === user?.id).length,
-    hers: songs.filter((s) => s.addedById !== user?.id).length,
-    favorites: songs.filter((s) => s.isFavorite).length,
-  }
+  const handleAddTrack = async (track) => {
+    try {
+      await addTrack(track);
+    } catch (error) {
+      console.error('Failed to add track:', error);
+      alert('Erro ao adicionar música. Tente novamente.');
+    }
+  };
+
+  const handleRemoveTrack = async (trackId) => {
+    if (!confirm('Remover esta música da playlist?')) return;
+
+    try {
+      await removeTrack(trackId);
+    } catch (error) {
+      console.error('Failed to remove track:', error);
+      alert('Erro ao remover música. Tente novamente.');
+    }
+  };
+
+  const handlePlayPreview = (track) => {
+    const previewUrl = track.data?.preview_url;
+    if (!previewUrl) return;
+
+    if (playingPreview === track.id) {
+      audioRef.current?.pause();
+      setPlayingPreview(null);
+    } else {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.src = previewUrl;
+        audioRef.current.play();
+      }
+      setPlayingPreview(track.id);
+    }
+  };
+
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffTime = Math.abs(now - date);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) return 'Hoje';
+    if (diffDays === 1) return 'Ontem';
+    if (diffDays < 7) return `${diffDays} dias atrás`;
+    if (diffDays < 30) return `${Math.floor(diffDays / 7)} semanas atrás`;
+    return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
+  };
+
+  const formatDuration = (ms) => {
+    const minutes = Math.floor(ms / 60000);
+    const seconds = Math.floor((ms % 60000) / 1000);
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  };
 
   return (
-    <section id={id} className="min-h-screen px-4 py-20" ref={ref}>
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={inView ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.6 }}
-          className="text-center mb-12"
-        >
+    <>
+      <audio
+        ref={audioRef}
+        onEnded={() => setPlayingPreview(null)}
+        onError={() => setPlayingPreview(null)}
+      />
+
+      <section id={id} className="min-h-screen px-4 py-20" ref={ref}>
+        <div className="max-w-7xl mx-auto">
+          {/* Header */}
           <motion.div
-            initial={{ scale: 0, rotate: -180 }}
-            animate={inView ? { scale: 1, rotate: 0 } : {}}
-            transition={{ duration: 0.6, delay: 0.2 }}
-            className="inline-block mb-4"
-          >
-            <Disc className="text-primary" size={48} />
-          </motion.div>
-          <h2 className="font-heading text-4xl md:text-6xl font-bold text-textPrimary mb-4">
-            Nossa <span className="text-primary">Trilha Sonora</span>
-          </h2>
-          <p className="text-lg text-textSecondary max-w-2xl mx-auto">
-            Playlist colaborativa com as músicas que fazem parte da nossa história
-          </p>
-        </motion.div>
-
-        {/* Loading State */}
-        {loading && (
-          <div className="text-center py-20">
-            <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-              className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full mx-auto"
-            />
-            <p className="text-textSecondary mt-4">Carregando...</p>
-          </div>
-        )}
-
-        {/* Empty State */}
-        {!loading && songs.length === 0 && (
-          <div className="text-center py-20">
-            <Music className="mx-auto text-textTertiary mb-6" size={64} />
-            <h3 className="text-2xl font-bold text-textPrimary mb-4">
-              Nenhuma música ainda
-            </h3>
-            <p className="text-textSecondary mb-8 max-w-md mx-auto">
-              Crie uma playlist colaborativa com as músicas especiais da jornada
-            </p>
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => router.push('/')}
-              className="px-6 py-3 bg-primary text-white font-semibold rounded-xl shadow-soft-md inline-flex items-center gap-2"
-            >
-              <Plus size={20} />
-              Adicionar Primeira Música
-            </motion.button>
-          </div>
-        )}
-
-        {/* Stats */}
-        {!loading && songs.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 30 }}
             animate={inView ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.6, delay: 0.3 }}
-            className="flex flex-wrap justify-center gap-4 mb-8"
+            transition={{ duration: 0.6 }}
+            className="text-center mb-12"
           >
-            <Badge variant="primary">
-              <Music size={14} className="inline mr-1" />
-              {stats.total} músicas
-            </Badge>
-            <Badge variant="accent">
-              <User size={14} className="inline mr-1" />
-              {stats.yours} suas escolhas
-            </Badge>
-            <Badge variant="lavender">
-              <User size={14} className="inline mr-1" />
-              {stats.hers} escolhas dela
-            </Badge>
-            <Badge variant="primary">
-              <Heart size={14} className="inline mr-1" />
-              {stats.favorites} favoritas
-            </Badge>
+            <motion.div
+              initial={{ scale: 0, rotate: -180 }}
+              animate={inView ? { scale: 1, rotate: 0 } : {}}
+              transition={{ duration: 0.6, delay: 0.2 }}
+              className="inline-block mb-4"
+            >
+              <Disc className="text-primary" size={48} />
+            </motion.div>
+            <h2 className="font-heading text-4xl md:text-6xl font-bold text-textPrimary mb-4">
+              Nossa <span className="text-primary">Trilha Sonora</span>
+            </h2>
+            <p className="text-lg text-textSecondary max-w-2xl mx-auto">
+              Playlist colaborativa com as músicas que fazem parte da nossa história
+            </p>
           </motion.div>
-        )}
 
-        {!loading && songs.length > 0 && (
-          <div className="grid lg:grid-cols-3 gap-8">
-            {/* Playlist */}
-            <div className="lg:col-span-2">
-              {/* Tabs */}
+          {/* Spotify Connection */}
+          {!spotifyConnected && !loading && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
-              animate={inView ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.6, delay: 0.4 }}
-              className="flex flex-wrap gap-2 mb-6"
+              animate={{ opacity: 1, y: 0 }}
+              className="max-w-md mx-auto mb-12 p-6 bg-gradient-to-br from-green-50 to-green-100 border border-green-200 rounded-2xl text-center"
             >
-              {[
-                { id: 'all', label: 'Todas', icon: Music },
-                { id: 'yours', label: 'Minhas Escolhas', icon: User },
-                { id: 'hers', label: 'Escolhas Dela', icon: User },
-                { id: 'favorites', label: 'Favoritas', icon: Heart },
-              ].map((tab) => {
-                const Icon = tab.icon
-                return (
-                  <motion.button
-                    key={tab.id}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`px-4 py-2 rounded-xl font-medium text-sm transition-all duration-200 flex items-center gap-2 ${
-                      activeTab === tab.id
-                        ? 'bg-primary text-white shadow-soft-md'
-                        : 'bg-surface text-textSecondary hover:bg-surfaceAlt'
-                    }`}
-                  >
-                    <Icon size={16} />
-                    {tab.label}
-                  </motion.button>
-                )
-              })}
+              <Music className="mx-auto mb-4 text-green-600" size={48} />
+              <h3 className="text-xl font-bold text-green-900 mb-2">
+                Conectar ao Spotify
+              </h3>
+              <p className="text-green-700 mb-4">
+                Conecte sua conta do Spotify para adicionar músicas à playlist
+              </p>
+              <Button
+                variant="primary"
+                size="md"
+                onClick={handleConnectSpotify}
+                disabled={connectingSpotify}
+              >
+                {connectingSpotify ? (
+                  <Loader className="animate-spin" size={20} />
+                ) : (
+                  'Conectar Spotify'
+                )}
+              </Button>
             </motion.div>
+          )}
 
-            {/* Song List */}
-            <div className="space-y-3">
-              {filteredPlaylist.map((song, index) => (
-                <motion.div
-                  key={song.id}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={inView ? { opacity: 1, x: 0 } : {}}
-                  transition={{ duration: 0.4, delay: 0.5 + index * 0.05 }}
+          {/* Stats */}
+          {!loading && tracks.length > 0 && (
+            <div className="flex flex-wrap justify-center gap-4 mb-8">
+              <Badge variant="primary">{tracks.length} músicas</Badge>
+              {playlistUrl && (
+                <a
+                  href={playlistUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded-xl hover:bg-green-600 transition-colors"
                 >
-                  <motion.div
-                    whileHover={{ x: 4 }}
-                    className="bg-surface rounded-2xl p-4 shadow-soft-sm hover:shadow-soft-md transition-all duration-300 cursor-pointer group"
-                  >
-                    <div className="flex items-center gap-4">
-                      {/* Album Cover */}
-                      <div
-                        className={`flex-shrink-0 w-14 h-14 rounded-xl bg-gradient-to-br ${song.coverColor} flex items-center justify-center group-hover:scale-110 transition-transform duration-300`}
+                  <ExternalLink size={16} />
+                  Abrir no Spotify
+                </a>
+              )}
+            </div>
+          )}
+
+          {/* Actions */}
+          {spotifyConnected && !loading && (
+            <div className="flex justify-center mb-8">
+              <Button
+                variant="primary"
+                size="md"
+                icon={Plus}
+                onClick={() => setSearchModalOpen(true)}
+              >
+                Adicionar Música
+              </Button>
+            </div>
+          )}
+
+          {/* Loading */}
+          {loading && (
+            <div className="text-center py-20">
+              <Loader className="animate-spin text-primary mx-auto mb-4" size={48} />
+              <p className="text-textSecondary">Carregando playlist...</p>
+            </div>
+          )}
+
+          {/* Empty State */}
+          {!loading && tracks.length === 0 && spotifyConnected && (
+            <div className="text-center py-20">
+              <Music className="mx-auto text-textTertiary mb-6" size={64} />
+              <h3 className="text-2xl font-bold text-textPrimary mb-4">
+                Playlist vazia
+              </h3>
+              <p className="text-textSecondary mb-8 max-w-md mx-auto">
+                Adicione a primeira música à sua trilha sonora especial
+              </p>
+              <Button
+                variant="primary"
+                size="md"
+                icon={Plus}
+                onClick={() => setSearchModalOpen(true)}
+              >
+                Adicionar Primeira Música
+              </Button>
+            </div>
+          )}
+
+          {/* Track List */}
+          {!loading && tracks.length > 0 && (
+            <div className="grid gap-4 max-w-4xl mx-auto">
+              {tracks.map((track, index) => (
+                <motion.div
+                  key={track.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.05 }}
+                  className="flex items-center gap-4 p-4 bg-white rounded-xl shadow-soft-sm hover:shadow-soft-md transition-all"
+                >
+                  {/* Album Cover */}
+                  <div className="flex-shrink-0 w-16 h-16 bg-gray-200 rounded-lg overflow-hidden">
+                    {track.data?.album_cover ? (
+                      <img
+                        src={track.data.album_cover}
+                        alt={track.title}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <Music size={24} className="text-gray-400" />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Track Info */}
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-semibold text-textPrimary truncate">
+                      {track.title}
+                    </h4>
+                    <p className="text-sm text-textSecondary truncate">
+                      {track.description}
+                    </p>
+                    <p className="text-xs text-textTertiary mt-1">
+                      Adicionado por {track.profiles?.full_name || 'Alguém'} • {formatDate(track.created_at)}
+                    </p>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    {/* Preview */}
+                    {track.data?.preview_url && (
+                      <button
+                        onClick={() => handlePlayPreview(track)}
+                        className={`p-2 rounded-full transition-colors ${
+                          playingPreview === track.id
+                            ? 'bg-primary text-white'
+                            : 'bg-gray-100 hover:bg-gray-200 text-gray-600'
+                        }`}
+                        title="Preview"
                       >
-                        <Play className="text-white" size={24} />
-                      </div>
-
-                      {/* Song Info */}
-                      <div className="flex-1 min-w-0">
-                        <h4 className="text-textPrimary font-semibold truncate">
-                          {song.title}
-                        </h4>
-                        <p className="text-textSecondary text-sm truncate">
-                          {song.artist}
-                        </p>
-                        {song.note && (
-                          <p className="text-textTertiary text-xs italic mt-1">
-                            &quot;{song.note}&quot;
-                          </p>
+                        {playingPreview === track.id ? (
+                          <Pause size={18} />
+                        ) : (
+                          <Play size={18} />
                         )}
-                      </div>
+                      </button>
+                    )}
 
-                      {/* Added By */}
-                      <div className="flex-shrink-0 text-right">
-                        <Badge
-                          variant={song.addedBy === 'Você' ? 'accent' : 'lavender'}
-                        >
-                          {song.addedBy}
-                        </Badge>
-                        {song.isFavorite && (
-                          <Heart
-                            size={16}
-                            className="inline-block ml-2 text-primary"
-                            fill="currentColor"
-                          />
-                        )}
-                      </div>
-                    </div>
-                  </motion.div>
+                    {/* Open in Spotify */}
+                    {track.data?.spotify_url && (
+                      <a
+                        href={track.data.spotify_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-2 rounded-full bg-green-100 hover:bg-green-200 text-green-600 transition-colors"
+                        title="Abrir no Spotify"
+                      >
+                        <ExternalLink size={18} />
+                      </a>
+                    )}
+
+                    {/* Delete */}
+                    {track.author_id === user?.id && (
+                      <button
+                        onClick={() => handleRemoveTrack(track.id)}
+                        className="p-2 rounded-full bg-red-100 hover:bg-red-200 text-red-600 transition-colors"
+                        title="Remover"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    )}
+                  </div>
                 </motion.div>
               ))}
             </div>
+          )}
+        </div>
+      </section>
 
-            {/* Add Button */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={inView ? { opacity: 1 } : {}}
-              transition={{ duration: 0.6, delay: 0.8 }}
-              className="mt-6 text-center"
-            >
-              <Button variant="outline" icon={Plus}>
-                Adicionar Música
-              </Button>
-            </motion.div>
-          </div>
-
-          {/* Spotify Player & Info */}
-          <div className="space-y-6">
-            {/* Spotify Embed */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={inView ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.6, delay: 0.5 }}
-              className="bg-surface rounded-3xl p-6 shadow-soft-lg"
-            >
-              <div className="mb-4">
-                <h3 className="text-xl font-heading font-semibold text-textPrimary mb-2">
-                  Player Spotify
-                </h3>
-                <p className="text-sm text-textSecondary">
-                  Ouça nossa playlist completa
-                </p>
-              </div>
-
-              <div className="rounded-2xl overflow-hidden">
-                <iframe
-                  src="https://open.spotify.com/embed/playlist/1AIzrmUSMbyU8vl1rR63mZ?utm_source=generator&theme=0"
-                  width="100%"
-                  height="380"
-                  frameBorder="0"
-                  allowFullScreen
-                  allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-                  loading="lazy"
-                  className="rounded-2xl"
-                />
-              </div>
-            </motion.div>
-
-            {/* Nossa Música */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={inView ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.6, delay: 0.6 }}
-              className="bg-gradient-to-br bg-primary/10 rounded-3xl p-6 border-2 border-primary/20"
-            >
-              <Heart className="text-primary mb-3" size={32} />
-              <h3 className="text-xl font-heading font-semibold text-textPrimary mb-2">
-                Nossa Música
-              </h3>
-              <p className="text-lg font-medium text-textPrimary mb-1">
-                Perfect - Ed Sheeran
-              </p>
-              <p className="text-sm text-textSecondary">
-                A música que define perfeitamente o que sentimos
-              </p>
-            </motion.div>
-
-            {/* Music Stats */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={inView ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.6, delay: 0.7 }}
-              className="bg-surface rounded-3xl p-6 shadow-soft-md"
-            >
-              <h3 className="text-lg font-heading font-semibold text-textPrimary mb-4">
-                Estatísticas Musicais
-              </h3>
-              <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-textSecondary text-sm">Gênero favorito</span>
-                  <span className="text-textPrimary font-semibold">Pop/Rock</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-textSecondary text-sm">Horas ouvidas</span>
-                  <span className="text-textPrimary font-semibold">120+ hrs</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-textSecondary text-sm">Artista mais ouvido</span>
-                  <span className="text-textPrimary font-semibold">Ed Sheeran</span>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-          </div>
-        )}
-
-        {/* Quote */}
-        {!loading && songs.length > 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={inView ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.6, delay: 0.9 }}
-          className="mt-12 text-center bg-surface rounded-3xl p-8 shadow-soft-md"
-        >
-          <Music className="inline-block text-secondary mb-3" size={32} />
-          <p className="font-body text-xl text-textPrimary leading-relaxed">
-            &quot;Música é a trilha sonora da nossa{' '}
-            <span className="text-primary font-bold">história de amor</span>&quot;
-          </p>
-        </motion.div>
-        )}
-      </div>
-    </section>
-  )
+      {/* Search Modal */}
+      <SpotifySearchModal
+        isOpen={searchModalOpen}
+        onClose={() => setSearchModalOpen(false)}
+        onAddTrack={handleAddTrack}
+      />
+    </>
+  );
 }

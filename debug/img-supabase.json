@@ -1,0 +1,17 @@
+[
+  {
+    "idx": 3,
+    "id": "4eea59c6-364d-45ae-9c6d-25c0f4341471",
+    "workspace_id": "99c966b1-98b9-4905-8d0d-80e357336114",
+    "author_id": "50e5a69d-8421-4fc1-a33a-8cb0d125ab50",
+    "type": "photo",
+    "title": "img10",
+    "description": null,
+    "data": "{\"size\": 434823, \"mime_type\": \"image/jpeg\", \"compressed\": true, \"original_name\": \"img10.jpg\"}",
+    "storage_path": "photos/99c966b1-98b9-4905-8d0d-80e357336114/1762370787625-img10.jpg",
+    "category": "momentos",
+    "is_favorite": false,
+    "created_at": "2025-11-05 19:26:28.350286+00",
+    "updated_at": "2025-11-05 19:26:28.350286+00"
+  }
+]
