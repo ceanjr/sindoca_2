@@ -99,6 +99,11 @@ export function useSupabasePhotos() {
 
       // Transform data to include favorites
       const transformedPhotos = data.map((photo) => {
+        console.log('🔍 Processing photo:', photo.id);
+        console.log('  storage_path:', photo.storage_path);
+        console.log('  data type:', typeof photo.data);
+        console.log('  data raw:', photo.data);
+
         const favoritesMap = {};
         photo.reactions?.forEach((reaction) => {
           if (reaction.type === 'favorite') {
@@ -106,16 +111,35 @@ export function useSupabasePhotos() {
           }
         });
 
+        // Parse data field if it's a string
+        let photoData = photo.data;
+        if (typeof photoData === 'string') {
+          try {
+            photoData = JSON.parse(photoData);
+            console.log('  ✅ Parsed data:', photoData);
+          } catch (e) {
+            console.warn('  ❌ Failed to parse photo data:', e);
+            photoData = {};
+          }
+        }
+
         // Get URL from data or generate from storage_path
-        let photoUrl = photo.data?.url || '';
+        let photoUrl = photoData?.url || '';
+        console.log('  photoData.url:', photoData?.url);
+
         if (!photoUrl && photo.storage_path) {
           // Remove 'gallery/' prefix if exists, since bucket is already 'gallery'
           const cleanPath = photo.storage_path.replace(/^gallery\//, '');
+          console.log('  Generating URL from storage_path:', cleanPath);
           const { data: urlData } = supabaseRef.current.storage
             .from('gallery')
             .getPublicUrl(cleanPath);
           photoUrl = urlData?.publicUrl || '';
+
+          console.log('  Generated URL:', photoUrl);
         }
+
+        console.log('  FINAL URL:', photoUrl);
 
         return {
           id: photo.id,
@@ -130,7 +154,7 @@ export function useSupabasePhotos() {
 
       console.log(`✅ Transformed ${transformedPhotos.length} photos`);
       setPhotos([...transformedPhotos]); // Force new array reference
-      setUpdateCounter(prev => prev + 1); // Force re-render
+      setUpdateCounter((prev) => prev + 1); // Force re-render
       setError(null);
       console.log('✅ Photos state updated');
     } catch (err) {
@@ -183,14 +207,14 @@ export function useSupabasePhotos() {
       console.error('❌ Not initialized:', {
         supabase: !!supabaseRef.current,
         user: !!userRef.current,
-        workspace: !!workspaceRef.current
+        workspace: !!workspaceRef.current,
       });
       throw new Error('Not initialized');
     }
 
     console.log('✅ Initialized:', {
       userId: userRef.current.id,
-      workspaceId: workspaceRef.current
+      workspaceId: workspaceRef.current,
     });
 
     const results = [];
@@ -199,12 +223,13 @@ export function useSupabasePhotos() {
     for (const file of files) {
       console.log(`📤 Uploading ${file.name}...`);
       try {
-        const { path, publicUrl, originalName, size, mimeType } = await uploadPhotoToStorage(
-          supabaseRef.current,
-          file,
-          userRef.current.id,
-          workspaceRef.current
-        );
+        const { path, publicUrl, originalName, size, mimeType } =
+          await uploadPhotoToStorage(
+            supabaseRef.current,
+            file,
+            userRef.current.id,
+            workspaceRef.current
+          );
 
         console.log(`  ✅ Uploaded to storage: ${path}`);
         console.log(`  🔗 Public URL: ${publicUrl}`);
@@ -227,7 +252,9 @@ export function useSupabasePhotos() {
       }
     }
 
-    console.log(`🎉 Upload complete: ${results.length} success, ${errors.length} errors`);
+    console.log(
+      `🎉 Upload complete: ${results.length} success, ${errors.length} errors`
+    );
 
     if (results.length > 0) {
       console.log('🔄 Reloading photos...');
@@ -254,7 +281,7 @@ export function useSupabasePhotos() {
 
       console.log('📸 Photo to delete:', {
         id: photo.id,
-        storage_path: photo.storage_path
+        storage_path: photo.storage_path,
       });
 
       if (photo.storage_path) {
@@ -268,7 +295,7 @@ export function useSupabasePhotos() {
       console.log('  ✅ Deleted from database');
 
       setPhotos((prev) => [...prev.filter((p) => p.id !== photoId)]); // Force new array
-      setUpdateCounter(prev => prev + 1); // Force re-render
+      setUpdateCounter((prev) => prev + 1); // Force re-render
       console.log('✅ Photo removed successfully');
     } catch (error) {
       console.error('❌ Error removing photo:', error);
@@ -291,9 +318,9 @@ export function useSupabasePhotos() {
       setPhotos((prev) => [
         ...prev.map((photo) =>
           photo.id === photoId ? { ...photo, favorite: isFavorited } : photo
-        )
+        ),
       ]);
-      setUpdateCounter(prev => prev + 1);
+      setUpdateCounter((prev) => prev + 1);
     } catch (error) {
       throw error;
     }
