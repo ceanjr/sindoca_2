@@ -58,7 +58,7 @@ export default function AdminModal({ isOpen, onClose }) {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <Settings size={24} />
-                    <h2 className="text-2xl font-bold">
+                    <h2 className="text-2xl font-bold text-white">
                       Configuração de Páginas
                     </h2>
                   </div>
@@ -85,7 +85,7 @@ export default function AdminModal({ isOpen, onClose }) {
                     {pageConfig.map((page) => (
                       <div
                         key={page.page_id}
-                        className="flex items-center justify-between p-4 bg-surfaceAlt rounded-xl hover:bg-surface transition-colors"
+                        className="flex items-center justify-between p-4 bg-surfaceAlt rounded-xl  transition-colors"
                       >
                         <div className="flex-1">
                           <h3 className="font-semibold text-textPrimary">

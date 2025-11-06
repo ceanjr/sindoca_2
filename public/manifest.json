@@ -60,22 +60,22 @@
       "name": "Fotos",
       "short_name": "Fotos",
       "description": "Ver nossa galeria de fotos",
-      "url": "/fotos",
-      "icons": [{ "src": "/icon-192x192.svg", "sizes": "192x192" }]
+      "url": "/galeria",
+      "icons": [{"src": "/icon-192x192.svg", "sizes": "192x192"}]
     },
     {
       "name": "Músicas",
       "short_name": "Músicas",
       "description": "Nossa trilha sonora",
       "url": "/musica",
-      "icons": [{ "src": "/icon-192x192.svg", "sizes": "192x192" }]
+      "icons": [{"src": "/icon-192x192.svg", "sizes": "192x192"}]
     },
     {
       "name": "Razões",
       "short_name": "Razões",
       "description": "Por que nos amamos",
       "url": "/razoes",
-      "icons": [{ "src": "/icon-192x192.svg", "sizes": "192x192" }]
+      "icons": [{"src": "/icon-192x192.svg", "sizes": "192x192"}]
     }
   ]
 }

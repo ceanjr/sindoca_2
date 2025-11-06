@@ -237,7 +237,11 @@ export default function ThinkingOfYouWidget({
       // Get the message based on current click count (progressive)
       const messageIndex = Math.min(todayClickCount, MAX_CLICKS_PER_DAY - 1);
       const messageTemplate = PROGRESSIVE_MESSAGES[messageIndex];
-      const message = messageTemplate.replace(/{partnerName}/g, partnerName);
+
+      // Use the sender's name (current user), not the partner's name
+      const senderName =
+        profile?.nickname || profile?.full_name || 'Alguém especial';
+      const message = messageTemplate.replace(/{partnerName}/g, senderName);
       const title = PROGRESSIVE_TITLES[messageIndex];
 
       // Save to database as a notification/message
@@ -438,7 +442,7 @@ export default function ThinkingOfYouWidget({
                   fill="currentColor"
                 />
                 <h3 className="font-bold text-textPrimary">
-                  {partnerName} pensou em você hoje! 💕
+                  {partnerName} pensou em você hoje!
                 </h3>
               </div>
               <div className="bg-pink-100 text-pink-600 px-3 py-1 rounded-full text-xs font-bold">
