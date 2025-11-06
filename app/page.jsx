@@ -85,7 +85,7 @@ function HomeContent() {
             </h1>
 
             <p className="text-lg md:text-xl text-textSecondary max-w-2xl mx-auto">
-              Gratidão!
+              Seja a Maria Bethânia dos meus sonhos mais sacanas.
             </p>
           </motion.div>
 
@@ -125,7 +125,7 @@ function HomeContent() {
                     </svg>
                   </div>
                   <h3 className="text-lg font-semibold text-textPrimary">
-                    Suas Credenciais
+                    Suas Credenciais Extremamente Sigilosas
                   </h3>
                 </div>
 

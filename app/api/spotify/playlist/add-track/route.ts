@@ -47,6 +47,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to get workspace' }, { status: 500 });
     }
 
+    // Check turn - if a turn is set, verify it's this user's turn
+    const currentTurnUserId = workspace.data?.current_music_turn_user_id;
+    if (currentTurnUserId && currentTurnUserId !== user.id) {
+      return NextResponse.json(
+        { error: 'Not your turn to add a track' },
+        { status: 403 }
+      );
+    }
+
     let spotifyPlaylistId = workspace.data?.spotify_playlist_id;
     const accessToken = await getValidAccessToken(user.id);
 
@@ -113,6 +122,27 @@ export async function POST(request: NextRequest) {
     if (saveError) {
       console.error('Failed to save track:', saveError);
       return NextResponse.json({ error: 'Failed to save track' }, { status: 500 });
+    }
+
+    // Get partner ID to alternate turn
+    const { data: members } = await supabase
+      .from('workspace_members')
+      .select('user_id')
+      .eq('workspace_id', workspaceId);
+
+    const partnerId = members?.find(m => m.user_id !== user.id)?.user_id;
+
+    // Update turn to partner (alternate turn)
+    if (partnerId) {
+      await supabase
+        .from('workspaces')
+        .update({
+          data: {
+            ...workspace.data,
+            current_music_turn_user_id: partnerId,
+          },
+        })
+        .eq('id', workspaceId);
     }
 
     return NextResponse.json({ success: true, track: savedTrack });

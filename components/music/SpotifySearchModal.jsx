@@ -37,9 +37,12 @@ export default function SpotifySearchModal({ isOpen, onClose, onAddTrack }) {
     setAddingTrack(track.id);
     try {
       await onAddTrack(track);
+      // Close modal after successful add
+      setTimeout(() => {
+        handleClose();
+      }, 500); // Small delay to show success feedback
     } catch (error) {
       console.error('Failed to add track:', error);
-    } finally {
       setAddingTrack(null);
     }
   };

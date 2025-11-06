@@ -60,7 +60,7 @@ export async function updateSession(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
 
   // Public routes that don't require authentication
-  const publicRoutes = ['/auth/login', '/auth/signup', '/auth/callback', '/auth/join', '/api/auth/verify-invite']
+  const publicRoutes = ['/auth/login', '/auth/signup', '/auth/callback', '/auth/join', '/api/auth/verify-invite', '/api/spotify/callback']
   const isPublicRoute = publicRoutes.some(route => request.nextUrl.pathname.startsWith(route))
 
   // Onboarding is accessible to authenticated users only

@@ -28,6 +28,9 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '@/lib/supabase/client';
 import { getUserWorkspaces } from '@/lib/api/workspace';
+import { useConfirm } from '@/hooks/useConfirm';
+import ConfirmDialog from '../ui/ConfirmDialog';
+import { toast } from 'sonner';
 import AddReasonModal from '@/components/ui/AddReasonModal';
 
 const iconMap = {
@@ -58,6 +61,7 @@ export default function LoveReasonsSection({ id }) {
   const [editingReason, setEditingReason] = useState(null);
   const [workspaceId, setWorkspaceId] = useState(null);
   const { ref, inView } = useInView({ threshold: 0.1, triggerOnce: true });
+  const { isOpen, loading: confirmLoading, config, confirm, handleConfirm, handleCancel } = useConfirm();
 
   const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL;
   const isAdmin = user?.email === ADMIN_EMAIL;
@@ -180,9 +184,15 @@ export default function LoveReasonsSection({ id }) {
   };
 
   const handleDeleteReason = async (reasonId) => {
-    if (!confirm('Tem certeza que deseja apagar esta razão?')) {
-      return;
-    }
+    const confirmed = await confirm({
+      title: 'Apagar razão?',
+      message: 'Tem certeza que deseja apagar esta razão? Esta ação não pode ser desfeita.',
+      confirmText: 'Apagar',
+      cancelText: 'Cancelar',
+      variant: 'danger',
+    });
+
+    if (!confirmed) return;
 
     try {
       const supabase = createClient();
@@ -196,9 +206,10 @@ export default function LoveReasonsSection({ id }) {
 
       // Reload reasons
       await loadReasons();
+      toast.success('Razão apagada com sucesso');
     } catch (error) {
-      // console.error('Error deleting reason:', error);
-      alert('Erro ao apagar razão. Tente novamente.');
+      console.error('Error deleting reason:', error);
+      toast.error('Erro ao apagar razão. Tente novamente.');
     }
   };
 
@@ -449,6 +460,19 @@ export default function LoveReasonsSection({ id }) {
           onClose={handleCloseModal}
           onAdd={handleAddReason}
           editingReason={editingReason}
+        />
+
+        {/* Confirm Dialog */}
+        <ConfirmDialog
+          isOpen={isOpen}
+          onClose={handleCancel}
+          onConfirm={handleConfirm}
+          title={config.title}
+          message={config.message}
+          confirmText={config.confirmText}
+          cancelText={config.cancelText}
+          variant={config.variant}
+          loading={confirmLoading}
         />
       </div>
     </section>

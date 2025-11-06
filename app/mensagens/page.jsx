@@ -2,16 +2,16 @@
 
 import MessagesSection from '@/components/sections/MessagesSection'
 import ErrorBoundary from '@/components/ErrorBoundary'
-import ProtectedRoute from '@/components/auth/ProtectedRoute'
+import PageAccessGuard from '@/components/auth/PageAccessGuard'
 
 export default function MensagensPage() {
   return (
-    <ProtectedRoute>
+    <PageAccessGuard pageId="mensagens">
       <ErrorBoundary>
         <div className="min-h-screen">
           <MessagesSection />
         </div>
       </ErrorBoundary>
-    </ProtectedRoute>
+    </PageAccessGuard>
   )
 }

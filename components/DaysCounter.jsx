@@ -19,7 +19,11 @@ export default function DaysCounter({
     minutes: 0,
     seconds: 0,
   });
-  const [quote, setQuote] = useState(ROMANTIC_QUOTES[0]);
+
+  const [quote, setQuote] = useState({
+    text: ROMANTIC_QUOTES[0],
+    author: 1, // primeira posição (índice 0 + 1)
+  });
 
   // Calculate time difference
   useEffect(() => {
@@ -47,9 +51,11 @@ export default function DaysCounter({
 
   // Random quote on mount
   useEffect(() => {
-    setQuote(
-      ROMANTIC_QUOTES[Math.floor(Math.random() * ROMANTIC_QUOTES.length)]
-    );
+    const randomIndex = Math.floor(Math.random() * ROMANTIC_QUOTES.length);
+    setQuote({
+      text: ROMANTIC_QUOTES[randomIndex],
+      author: randomIndex + 1, // posição no array + 1
+    });
   }, []);
 
   return (
@@ -124,9 +130,16 @@ export default function DaysCounter({
           className="bg-white rounded-3xl p-8 md:p-10 text-center shadow-soft-md border-l-4 border-primary"
         >
           <Sparkles className="inline-block text-primary mb-4" size={28} />
-          <p className="text-lg md:text-xl leading-relaxed text-textPrimary italic">
-            &quot;{quote}&quot;
-          </p>
+          <blockquote className="flex flex-col gap-2">
+            <p className="text-lg md:text-xl leading-relaxed text-textPrimary italic">
+              &quot;{quote.text}&quot;
+            </p>
+            <footer>
+              <cite className="text-sm text-textSecondary">
+                - Frase Genérica #{quote.author}
+              </cite>
+            </footer>
+          </blockquote>
         </motion.div>
       )}
     </div>

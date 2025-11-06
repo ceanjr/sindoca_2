@@ -31,6 +31,7 @@ export function useSupabasePhotos() {
   const supabaseRef = useRef(null);
   const userRef = useRef(null);
   const workspaceRef = useRef(null);
+  const channelRef = useRef(null);
 
   // Log quando photos muda
   useEffect(() => {
@@ -76,6 +77,13 @@ export function useSupabasePhotos() {
     };
 
     initAuth();
+
+    // Cleanup subscription on unmount
+    return () => {
+      if (channelRef.current && supabaseRef.current) {
+        supabaseRef.current.removeChannel(channelRef.current);
+      }
+    };
   }, []);
 
   const loadPhotos = useCallback(async () => {
@@ -194,6 +202,9 @@ export function useSupabasePhotos() {
         }
       )
       .subscribe();
+
+    // Store channel for cleanup
+    channelRef.current = channel;
 
     return () => {
       supabase.removeChannel(channel);

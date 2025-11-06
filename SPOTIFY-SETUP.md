@@ -35,17 +35,17 @@ Execute no SQL Editor do Supabase:
 
 ```sql
 -- Adicionar colunas para Spotify tokens na tabela profiles
-ALTER TABLE profiles 
+ALTER TABLE profiles
 ADD COLUMN IF NOT EXISTS spotify_tokens JSONB,
 ADD COLUMN IF NOT EXISTS spotify_user_id TEXT,
 ADD COLUMN IF NOT EXISTS spotify_display_name TEXT;
 
 -- Adicionar campo data na tabela workspaces para armazenar playlist_id
-ALTER TABLE workspaces 
+ALTER TABLE workspaces
 ADD COLUMN IF NOT EXISTS data JSONB DEFAULT '{}'::jsonb;
 
 -- Criar índice para buscar músicas mais rápido
-CREATE INDEX IF NOT EXISTS idx_content_type_workspace 
+CREATE INDEX IF NOT EXISTS idx_content_type_workspace
 ON content(type, workspace_id);
 ```
 
@@ -62,27 +62,32 @@ ON content(type, workspace_id);
 ## 🎯 Funcionalidades Implementadas
 
 ### ✅ Autenticação OAuth 2.0
+
 - Login com Spotify
 - Refresh automático de tokens
 - Armazenamento seguro no Supabase
 
 ### ✅ Busca de Músicas
+
 - Busca em tempo real com debounce (300ms)
 - Preview de 30 segundos
 - Informações completas (artista, álbum, capa, duração)
 
 ### ✅ Gerenciamento de Playlist
+
 - Criar playlist automaticamente no Spotify
 - Adicionar músicas (salva no DB + Spotify)
 - Remover músicas (remove do DB + Spotify)
 - Link direto para abrir no Spotify
 
 ### ✅ Sincronização Real-time
+
 - Usa Supabase Realtime (não precisa Socket.io!)
 - Quando um usuário adiciona música, o outro vê instantaneamente
 - Atualização automática sem refresh
 
 ### ✅ UI/UX
+
 - Design moderno e responsivo
 - Preview player inline
 - Informações de quem adicionou
@@ -92,6 +97,7 @@ ON content(type, workspace_id);
 ## 📁 Arquivos Criados
 
 ### Backend (API Routes)
+
 ```
 app/api/spotify/
 ├── auth/route.ts              # Inicia OAuth flow
@@ -104,6 +110,7 @@ app/api/spotify/
 ```
 
 ### Library
+
 ```
 lib/spotify/
 ├── config.ts    # Configurações (client_id, scopes)
@@ -112,6 +119,7 @@ lib/spotify/
 ```
 
 ### Frontend (React)
+
 ```
 hooks/
 ├── useSpotify.js              # Hook para conexão Spotify
@@ -147,21 +155,25 @@ components/
 ## 🐛 Troubleshooting
 
 ### Erro: "Spotify not connected"
+
 - Verifique se as credenciais estão corretas no `.env.local`
 - Certifique-se de ter autorizado o app no Spotify
 - Verifique se os tokens foram salvos no banco (tabela `profiles`)
 
 ### Erro: "Invalid redirect URI"
+
 - Verifique se o Redirect URI no Spotify Dashboard está correto
 - Deve ser exatamente: `http://localhost:3000/api/spotify/callback`
 
 ### Músicas não aparecem
+
 - Abra o console do navegador (F12)
 - Verifique se há erros na API
 - Verifique se o workspace existe
 - Verifique se o RLS do Supabase está configurado
 
 ### Token expira muito rápido
+
 - Os tokens do Spotify expiram em 1 hora
 - O refresh é automático - se falhar, reconecte o Spotify
 

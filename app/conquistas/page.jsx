@@ -2,16 +2,16 @@
 
 import AchievementsSection from '@/components/sections/AchievementsSection'
 import ErrorBoundary from '@/components/ErrorBoundary'
-import ProtectedRoute from '@/components/auth/ProtectedRoute'
+import PageAccessGuard from '@/components/auth/PageAccessGuard'
 
 export default function ConquistasPage() {
   return (
-    <ProtectedRoute>
+    <PageAccessGuard pageId="conquistas">
       <ErrorBoundary>
         <div className="min-h-screen">
           <AchievementsSection />
         </div>
       </ErrorBoundary>
-    </ProtectedRoute>
+    </PageAccessGuard>
   )
 }

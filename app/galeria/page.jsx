@@ -1,11 +1,14 @@
 'use client'
 
 import GallerySection from '@/components/sections/GallerySection'
+import PageAccessGuard from '@/components/auth/PageAccessGuard'
 
 export default function GaleriaPage() {
   return (
-    <div className="min-h-screen">
-      <GallerySection />
-    </div>
+    <PageAccessGuard pageId="galeria">
+      <div className="min-h-screen">
+        <GallerySection />
+      </div>
+    </PageAccessGuard>
   )
 }

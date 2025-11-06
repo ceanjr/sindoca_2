@@ -2,36 +2,17 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Settings, Loader2, RefreshCw } from 'lucide-react';
+import { X, Settings, Loader2 } from 'lucide-react';
 import { usePageConfig } from '@/hooks/usePageConfig';
-import { createClient } from '@/lib/supabase/client';
-import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 
 /**
  * Admin Modal for managing page visibility
  * Only visible to admin users
  */
 export default function AdminModal({ isOpen, onClose }) {
-  const { pageConfig, updatePageStatus, loading, user } = usePageConfig();
+  const { pageConfig, updatePageStatus, loading } = usePageConfig();
   const [updating, setUpdating] = useState({});
-  const [switching, setSwitching] = useState(false);
-  const router = useRouter();
-
-  const ACCOUNTS = {
-    admin: {
-      email: 'celiojunior0110@gmail.com',
-      password: 'mozao@2025',
-      label: 'Admin (Célio)',
-    },
-    partner: {
-      email: 'sindyguimaraes.a@gmail.com',
-      password: 'feitopelomozao',
-      label: 'Usuária (Sindy)',
-    },
-  };
-
-  const currentAccount = user?.email === ACCOUNTS.admin.email ? 'admin' : 'partner';
-  const targetAccount = currentAccount === 'admin' ? 'partner' : 'admin';
 
   const handleToggle = async (pageId, currentStatus) => {
     setUpdating((prev) => ({ ...prev, [pageId]: true }));
@@ -39,38 +20,12 @@ export default function AdminModal({ isOpen, onClose }) {
     const success = await updatePageStatus(pageId, !currentStatus);
 
     if (!success) {
-      alert('Erro ao atualizar status da página');
+      toast.error('Erro ao atualizar status da página');
+    } else {
+      toast.success(`Página ${!currentStatus ? 'ativada' : 'desativada'} com sucesso`);
     }
 
     setUpdating((prev) => ({ ...prev, [pageId]: false }));
-  };
-
-  const handleSwitchAccount = async () => {
-    setSwitching(true);
-    const supabase = createClient();
-
-    try {
-      // Logout da conta atual
-      await supabase.auth.signOut();
-
-      // Login na outra conta
-      const targetCreds = ACCOUNTS[targetAccount];
-      const { error } = await supabase.auth.signInWithPassword({
-        email: targetCreds.email,
-        password: targetCreds.password,
-      });
-
-      if (error) throw error;
-
-      // Fecha o modal e recarrega a página
-      onClose();
-      router.refresh();
-    } catch (error) {
-      console.error('Erro ao trocar de conta:', error);
-      alert('Erro ao trocar de conta. Verifique as credenciais.');
-    } finally {
-      setSwitching(false);
-    }
   };
 
   if (!isOpen) return null;
@@ -115,34 +70,6 @@ export default function AdminModal({ isOpen, onClose }) {
                 <p className="text-white/80 text-sm mt-2">
                   Ative ou desative o acesso às páginas do site
                 </p>
-
-                {/* Debug Account Switcher */}
-                <div className="mt-4 p-3 bg-white/10 rounded-xl border border-white/20">
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <p className="text-xs text-white/60 mb-1">🧪 Debug Mode</p>
-                      <p className="text-sm font-medium">
-                        {ACCOUNTS[currentAccount].label}
-                      </p>
-                      <p className="text-xs text-white/80">{user?.email}</p>
-                    </div>
-                    <button
-                      onClick={handleSwitchAccount}
-                      disabled={switching}
-                      className="flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <RefreshCw
-                        size={16}
-                        className={switching ? 'animate-spin' : ''}
-                      />
-                      <span className="text-sm font-medium">
-                        {switching
-                          ? 'Trocando...'
-                          : `Trocar para ${ACCOUNTS[targetAccount].label}`}
-                      </span>
-                    </button>
-                  </div>
-                </div>
               </div>
 
               {/* Content */}

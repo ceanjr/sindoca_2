@@ -2,16 +2,16 @@
 
 import SandboxSection from '@/components/sections/SandboxSection'
 import ErrorBoundary from '@/components/ErrorBoundary'
-import ProtectedRoute from '@/components/auth/ProtectedRoute'
+import PageAccessGuard from '@/components/auth/PageAccessGuard'
 
 export default function SurpresasPage() {
   return (
-    <ProtectedRoute>
+    <PageAccessGuard pageId="surpresas">
       <ErrorBoundary>
         <div className="min-h-screen">
           <SandboxSection />
         </div>
       </ErrorBoundary>
-    </ProtectedRoute>
+    </PageAccessGuard>
   )
 }

@@ -2,16 +2,16 @@
 
 import LoveReasonsSection from '@/components/sections/LoveReasonsSection';
 import ErrorBoundary from '@/components/ErrorBoundary';
-import ProtectedRoute from '@/components/auth/ProtectedRoute';
+import PageAccessGuard from '@/components/auth/PageAccessGuard';
 
 export default function RazoesPage() {
   return (
-    <ProtectedRoute>
+    <PageAccessGuard pageId="razoes">
       <ErrorBoundary>
         <div className="min-h-screen">
           <LoveReasonsSection />
         </div>
       </ErrorBoundary>
-    </ProtectedRoute>
+    </PageAccessGuard>
   );
 }
