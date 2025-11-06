@@ -561,6 +561,36 @@ export function useSupabasePhotos() {
     }
   };
 
+  /**
+   * Update photo caption
+   */
+  const updatePhotoCaption = async (photoId, newCaption) => {
+    if (!supabaseRef.current || !userRef.current) {
+      throw new Error('Supabase client or user not initialized');
+    }
+
+    try {
+      const { error } = await supabaseRef.current
+        .from('content')
+        .update({ description: newCaption })
+        .eq('id', photoId);
+
+      if (error) throw error;
+
+      // Update local state
+      setPhotos((prevPhotos) =>
+        prevPhotos.map((photo) =>
+          photo.id === photoId ? { ...photo, caption: newCaption } : photo
+        )
+      );
+
+      return true;
+    } catch (error) {
+      // console.error('Error updating caption:', error);
+      throw error;
+    }
+  };
+
   return {
     photos,
     loading,
@@ -568,6 +598,7 @@ export function useSupabasePhotos() {
     uploadPhotos,
     removePhoto,
     toggleFavorite,
+    updatePhotoCaption,
     refresh: loadPhotos,
   };
 }

@@ -3,7 +3,15 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useInView } from 'react-intersection-observer';
-import { Image as ImageIcon, Heart, Calendar, Plus, Trash2, X, Check } from 'lucide-react';
+import {
+  Image as ImageIcon,
+  Heart,
+  Calendar,
+  Plus,
+  Trash2,
+  X,
+  Check,
+} from 'lucide-react';
 import Lightbox from '../Lightbox';
 import MasonryGrid from '../ui/MasonryGrid';
 import Button from '../ui/Button';
@@ -17,7 +25,15 @@ const filterOptions = [
 
 export default function GallerySection({ id }) {
   // Use Supabase hook with realtime sync
-  const { photos, loading: isLoadingPhotos, toggleFavorite, uploadPhotos, removePhoto, refresh } = useSupabasePhotos();
+  const {
+    photos,
+    loading: isLoadingPhotos,
+    toggleFavorite,
+    uploadPhotos,
+    removePhoto,
+    updatePhotoCaption,
+    refresh,
+  } = useSupabasePhotos();
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [currentPhoto, setCurrentPhoto] = useState(null);
   const [activeFilter, setActiveFilter] = useState('all');
@@ -36,6 +52,10 @@ export default function GallerySection({ id }) {
   // Estado para controlar o número de colunas responsivamente
   const [columns, setColumns] = useState(3);
 
+  // Estado de paginação
+  const PHOTOS_PER_PAGE = 20;
+  const [displayedCount, setDisplayedCount] = useState(PHOTOS_PER_PAGE);
+
   useEffect(() => {
     const updateColumns = () => {
       if (window.innerWidth < 640) {
@@ -53,11 +73,29 @@ export default function GallerySection({ id }) {
   }, []);
 
   // Filtra as fotos baseado no filtro ativo
-  const filteredPhotos = useMemo(() => {
+  const allFilteredPhotos = useMemo(() => {
     if (activeFilter === 'all') return photos;
     if (activeFilter === 'favorites') return photos.filter((p) => p.favorite);
     return photos.filter((p) => p.category === activeFilter);
   }, [photos, activeFilter]);
+
+  // Aplica paginação
+  const filteredPhotos = useMemo(() => {
+    return allFilteredPhotos.slice(0, displayedCount);
+  }, [allFilteredPhotos, displayedCount]);
+
+  // Verifica se há mais fotos para carregar
+  const hasMore = allFilteredPhotos.length > displayedCount;
+
+  // Função para carregar mais fotos
+  const loadMore = () => {
+    setDisplayedCount((prev) => prev + PHOTOS_PER_PAGE);
+  };
+
+  // Reseta paginação quando filtro muda
+  useEffect(() => {
+    setDisplayedCount(PHOTOS_PER_PAGE);
+  }, [activeFilter]);
 
   // Deletar foto
   const handleDeletePhoto = async (photoId) => {
@@ -70,7 +108,7 @@ export default function GallerySection({ id }) {
         setCurrentPhoto(null);
       }
     } catch (error) {
-      console.error('❌ Erro ao deletar foto:', error);
+      // console.error('❌ Erro ao deletar foto:', error);
       setUploadError('Erro ao remover foto. Tente novamente.');
     }
   };
@@ -114,12 +152,12 @@ export default function GallerySection({ id }) {
     for (const photoId of selectedPhotos) {
       try {
         await removePhoto(photoId);
-        console.log(`✅ Foto ${photoId} deletada`);
+        // console.log(`✅ Foto ${photoId} deletada`);
       } catch (error) {
-        console.error(`❌ Erro ao deletar ${photoId}:`, error);
+        // console.error(`❌ Erro ao deletar ${photoId}:`, error);
       }
     }
-    
+
     // Sai do modo delete
     setIsDeleteMode(false);
     setSelectedPhotos([]);
@@ -135,7 +173,11 @@ export default function GallerySection({ id }) {
     );
     if (invalidFiles.length > 0) {
       setUploadError(
-        `${invalidFiles.length} arquivo(s) não são imagens válidas. Tipo detectado: ${invalidFiles[0]?.type || 'desconhecido'}`
+        `${
+          invalidFiles.length
+        } arquivo(s) não são imagens válidas. Tipo detectado: ${
+          invalidFiles[0]?.type || 'desconhecido'
+        }`
       );
       if (event.target) event.target.value = '';
       return;
@@ -151,8 +193,14 @@ export default function GallerySection({ id }) {
       return;
     }
 
-    console.log(`📤 Starting upload of ${files.length} files`);
-    files.forEach((f, i) => console.log(`  ${i + 1}. ${f.name} (${f.type}, ${(f.size / 1024 / 1024).toFixed(2)}MB)`));
+    // console.log(`📤 Starting upload of ${files.length} files`);
+    files.forEach((f, i) =>
+      console.log(
+        `  ${i + 1}. ${f.name} (${f.type}, ${(f.size / 1024 / 1024).toFixed(
+          2
+        )}MB)`
+      )
+    );
 
     setUploadError(null);
     setIsUploading(true);
@@ -160,9 +208,11 @@ export default function GallerySection({ id }) {
 
     try {
       const result = await uploadPhotos(files);
-      
+
       if (!result) {
-        throw new Error('Upload retornou undefined. Verifique se está autenticado e o workspace existe.');
+        throw new Error(
+          'Upload retornou undefined. Verifique se está autenticado e o workspace existe.'
+        );
       }
 
       const { results, errors } = result;
@@ -170,19 +220,18 @@ export default function GallerySection({ id }) {
       setUploadProgress({ current: results?.length || 0, total: files.length });
 
       if (results && results.length > 0) {
-        console.log(`🎉 ${results.length} foto(s) adicionada(s) à galeria!`);
+        // console.log(`🎉 ${results.length} foto(s) adicionada(s) à galeria!`);
       }
 
       if (errors && errors.length > 0) {
         const errorMsg = errors[0]?.error || errors[0];
-        setUploadError(
-          `Erro ao enviar ${errors.length} foto(s): ${errorMsg}`
-        );
-        console.error('Errors:', errors);
+        setUploadError(`Erro ao enviar ${errors.length} foto(s): ${errorMsg}`);
+        // console.error('Errors:', errors);
       }
     } catch (error) {
-      console.error('❌ Erro no upload:', error);
-      const errorMessage = error.message || 'Erro ao enviar fotos. Tente novamente.';
+      // console.error('❌ Erro no upload:', error);
+      const errorMessage =
+        error.message || 'Erro ao enviar fotos. Tente novamente.';
       setUploadError(errorMessage);
     }
 
@@ -340,16 +389,36 @@ export default function GallerySection({ id }) {
                 </p>
               </div>
             ) : filteredPhotos.length > 0 ? (
-              <MasonryGrid
-                photos={filteredPhotos}
-                columns={columns}
-                onPhotoClick={openLightbox}
-                onToggleFavorite={toggleFavorite}
-                onDeletePhoto={handleDeletePhoto}
-                isDeleteMode={isDeleteMode}
-                selectedPhotos={selectedPhotos}
-                onToggleSelection={handleTogglePhotoSelection}
-              />
+              <>
+                <MasonryGrid
+                  photos={filteredPhotos}
+                  columns={columns}
+                  onPhotoClick={openLightbox}
+                  onToggleFavorite={toggleFavorite}
+                  onDeletePhoto={handleDeletePhoto}
+                  isDeleteMode={isDeleteMode}
+                  selectedPhotos={selectedPhotos}
+                  onToggleSelection={handleTogglePhotoSelection}
+                />
+
+                {/* Load More Button */}
+                {hasMore && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="text-center mt-12"
+                  >
+                    <Button
+                      onClick={loadMore}
+                      variant="outline"
+                      className="px-8 py-3"
+                    >
+                      Carregar mais fotos (
+                      {allFilteredPhotos.length - displayedCount} restantes)
+                    </Button>
+                  </motion.div>
+                )}
+              </>
             ) : (
               <div className="text-center py-20">
                 <ImageIcon
@@ -395,7 +464,8 @@ export default function GallerySection({ id }) {
                 disabled={selectedPhotos.length === 0}
                 className="flex-1 md:flex-initial"
               >
-                Apagar {selectedPhotos.length > 0 ? `(${selectedPhotos.length})` : ''}
+                Apagar{' '}
+                {selectedPhotos.length > 0 ? `(${selectedPhotos.length})` : ''}
               </Button>
             </div>
           </motion.div>
@@ -408,6 +478,7 @@ export default function GallerySection({ id }) {
           isOpen={lightboxOpen}
           onClose={() => setLightboxOpen(false)}
           images={filteredPhotos.map((p) => p.url)}
+          photos={filteredPhotos}
           currentIndex={filteredPhotos.findIndex(
             (p) => p.id === currentPhoto.id
           )}
@@ -424,6 +495,7 @@ export default function GallerySection({ id }) {
               setCurrentPhoto(filteredPhotos[0]);
             }
           }}
+          onUpdateCaption={updatePhotoCaption}
         />
       )}
     </>

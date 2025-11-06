@@ -2,15 +2,18 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
+import Image from 'next/image';
 
 export default function OptimizedImage({
   src,
   alt,
-  width = 800,
-  height = 600,
+  width,
+  height,
   className = '',
   priority = false,
   onClick = null,
+  fill = false,
+  sizes,
   ...props
 }) {
   const [isLoading, setIsLoading] = useState(true);
@@ -37,6 +40,10 @@ export default function OptimizedImage({
       ? Buffer.from(str).toString('base64')
       : window.btoa(str);
 
+  const blurDataURL = `data:image/svg+xml;base64,${toBase64(
+    shimmer(700, 475)
+  )}`;
+
   if (error) {
     return (
       <div
@@ -59,31 +66,23 @@ export default function OptimizedImage({
       onClick={onClick}
       style={{ cursor: onClick ? 'pointer' : 'default' }}
     >
-      {/* Loading skeleton */}
-      {isLoading && (
-        <div
-          className="absolute inset-0 bg-gray-200 animate-pulse"
-          style={{
-            backgroundImage: `url('data:image/svg+xml;base64,${toBase64(
-              shimmer(width, height)
-            )}')`,
-            backgroundSize: 'cover',
-          }}
-        />
-      )}
-
-      {/* Native img tag instead of next/image to avoid config issues */}
-      <img
+      {/* Next.js Image with automatic optimization */}
+      <Image
         src={src}
         alt={alt}
-        loading={priority ? 'eager' : 'lazy'}
+        {...(fill
+          ? { fill: true }
+          : { width: width || 800, height: height || 600 })}
+        sizes={
+          sizes || '(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw'
+        }
+        priority={priority}
+        placeholder="blur"
+        blurDataURL={blurDataURL}
         onLoad={() => {
-          console.log('✅ Image loaded:', src);
           setIsLoading(false);
         }}
         onError={(e) => {
-          console.error('❌ Image failed to load:', src);
-          console.error('Error event:', e);
           setIsLoading(false);
           setError(true);
         }}
@@ -92,9 +91,6 @@ export default function OptimizedImage({
         }`}
         style={{
           objectFit: 'cover',
-          width: '100%',
-          height: '100%',
-          display: 'block',
         }}
         {...props}
       />

@@ -45,27 +45,26 @@ export default function JoinWorkspacePage() {
 
     try {
       const supabase = createClient()
-      
-      // Get the secret word from database (você deve configurar isso)
-      // Por agora, vamos usar uma palavra hardcoded ou via env
-      const SECRET_WORD = process.env.NEXT_PUBLIC_INVITE_SECRET || 'amor'
-      
-      if (answer.toLowerCase().trim() !== SECRET_WORD.toLowerCase()) {
-        throw new Error('Palavra-chave incorreta')
+
+      // Verify invite via server API
+      const response = await fetch('/api/auth/verify-invite', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ answer: answer.trim() }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Palavra-chave incorreta')
       }
 
-      // Get the second user's credentials from environment
-      const partnerEmail = process.env.NEXT_PUBLIC_PARTNER_EMAIL
-      const partnerPassword = process.env.NEXT_PUBLIC_PARTNER_PASSWORD
-
-      if (!partnerEmail || !partnerPassword) {
-        throw new Error('Configuração incompleta. Configure as credenciais do parceiro.')
-      }
-
-      // Sign in with partner credentials
+      // Sign in with partner credentials returned from server
       const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: partnerEmail,
-        password: partnerPassword,
+        email: data.credentials.email,
+        password: data.credentials.password,
       })
 
       if (signInError) throw signInError
@@ -81,7 +80,6 @@ export default function JoinWorkspacePage() {
         router.refresh()
       }, 1500)
     } catch (error: any) {
-      console.error('Join error:', error)
       toast.error('Erro ao entrar', {
         description: error.message || 'Palavra-chave incorreta',
       })

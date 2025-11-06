@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Heart, Maximize2, Trash2, CheckCircle } from 'lucide-react';
+import { Heart, Maximize2, Trash2, CheckCircle, ImageIcon } from 'lucide-react';
+import Image from 'next/image';
 
 /**
  * Componente Masonry Grid (estilo Pinterest)
@@ -18,7 +19,6 @@ export default function MasonryGrid({
   selectedPhotos = [],
   onToggleSelection,
 }) {
-  const [columnedPhotos, setColumnedPhotos] = useState([]);
   const [photoHeights, setPhotoHeights] = useState({});
 
   // Gera alturas aleatórias consistentes para cada foto
@@ -34,9 +34,9 @@ export default function MasonryGrid({
     setPhotoHeights(heights);
   }, [photos]);
 
-  // Distribui fotos nas colunas usando algoritmo masonry
-  useEffect(() => {
-    if (Object.keys(photoHeights).length === 0) return;
+  // Distribui fotos nas colunas usando algoritmo masonry (MEMOIZADO)
+  const columnedPhotos = useMemo(() => {
+    if (Object.keys(photoHeights).length === 0) return [];
 
     const cols = Array.from({ length: columns }, () => []);
     const colHeights = Array(columns).fill(0);
@@ -47,7 +47,7 @@ export default function MasonryGrid({
       colHeights[shortestColIndex] += photoHeights[photo.id] || 300;
     });
 
-    setColumnedPhotos(cols);
+    return cols;
   }, [photos, columns, photoHeights]);
 
   return (
@@ -79,24 +79,25 @@ export default function MasonryGrid({
  * - Mobile: tap rápido = expandir, long press = menu excluir
  * - Desktop: hover = botões
  */
-function MasonryItem({ 
-  photo, 
-  height, 
-  onPhotoClick, 
-  onToggleFavorite, 
-  onDeletePhoto, 
+function MasonryItem({
+  photo,
+  height,
+  onPhotoClick,
+  onToggleFavorite,
+  onDeletePhoto,
   isDeleteMode,
   isSelected,
   onToggleSelection,
-  delay 
+  delay,
 }) {
   const [imageLoaded, setImageLoaded] = useState(false);
+  const [imageError, setImageError] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
-  const imgRef = useRef(null);
   const touchStartTime = useRef(null);
   const touchStartPos = useRef({ x: 0, y: 0 });
   const hasMoved = useRef(false);
   const [isMobile, setIsMobile] = useState(false);
+  const touchHandled = useRef(false);
 
   // Detect if device is mobile
   useEffect(() => {
@@ -111,24 +112,32 @@ function MasonryItem({
   // Touch handlers - distinguish between tap and scroll
   const handleTouchStart = (e) => {
     if (!isMobile) return;
-    
+
     touchStartTime.current = Date.now();
     touchStartPos.current = {
       x: e.touches[0].clientX,
-      y: e.touches[0].clientY
+      y: e.touches[0].clientY,
     };
     hasMoved.current = false;
+    touchHandled.current = false;
   };
 
   const handleTouchEnd = (e) => {
     if (!isMobile) return;
-    
+
     const touchDuration = Date.now() - (touchStartTime.current || 0);
-    }
 
     // In delete mode, toggle selection
     if (isDeleteMode && touchDuration < 600 && !hasMoved.current) {
+      e.preventDefault();
+      e.stopPropagation();
+      touchHandled.current = true;
       onToggleSelection(photo.id);
+
+      // Reset touchHandled after a delay to allow click event to be prevented
+      setTimeout(() => {
+        touchHandled.current = false;
+      }, 100);
       return;
     }
 
@@ -137,7 +146,15 @@ function MasonryItem({
     // 2. Didn't move (not scrolling)
     // 3. Not in delete mode
     if (touchDuration < 600 && !hasMoved.current && !isDeleteMode) {
+      e.preventDefault();
+      e.stopPropagation();
+      touchHandled.current = true;
       onPhotoClick(photo);
+
+      // Reset touchHandled after a delay
+      setTimeout(() => {
+        touchHandled.current = false;
+      }, 100);
     }
   };
 
@@ -146,21 +163,23 @@ function MasonryItem({
     if (touchStartPos.current.x && touchStartPos.current.y) {
       const deltaX = Math.abs(e.touches[0].clientX - touchStartPos.current.x);
       const deltaY = Math.abs(e.touches[0].clientY - touchStartPos.current.y);
-      
+
       // If moved more than 10px, consider it a scroll
       if (deltaX > 10 || deltaY > 10) {
         hasMoved.current = true;
       }
     }
-    
-    // Cancel long press if user moved
-    if (hasMoved.current && longPressTimer.current) {
-      clearTimeout(longPressTimer.current);
-    }
   };
 
   // Handle click/tap in delete mode
-  const handlePhotoInteraction = () => {
+  const handlePhotoInteraction = (e) => {
+    // Prevent click if touch was already handled (mobile)
+    if (touchHandled.current) {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+
     if (isDeleteMode) {
       onToggleSelection(photo.id);
     } else if (!isMobile) {
@@ -189,33 +208,64 @@ function MasonryItem({
           style={{ height: height ? `${height}px` : 'auto' }}
         >
           {/* Skeleton loader */}
-          {!imageLoaded && (
+          {!imageLoaded && !imageError && (
             <div className="absolute inset-0 skeleton animate-pulse bg-gradient-to-r from-surfaceAlt via-surface to-surfaceAlt" />
           )}
 
-          {/* Image */}
-          <img
-            ref={imgRef}
-            src={photo.url}
-            alt={photo.caption || `Foto ${photo.id}`}
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-            loading="lazy"
-            onLoad={() => setImageLoaded(true)}
-          />
+          {/* Error state */}
+          {imageError && (
+            <div className="absolute inset-0 flex items-center justify-center bg-red-50">
+              <div className="text-center p-4">
+                <ImageIcon className="mx-auto mb-2 text-red-400" size={32} />
+                <p className="text-xs text-red-600">Erro ao carregar</p>
+                <p className="text-xs text-red-400 mt-1 break-all">
+                  {photo.url?.substring(0, 50)}...
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Image - Using Next.js Image for optimization */}
+          {photo.url && photo.url.trim() !== '' ? (
+            <Image
+              src={photo.url}
+              alt={photo.caption || `Foto ${photo.id}`}
+              fill={true}
+              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+              className="object-cover transition-transform duration-500 group-hover:scale-105"
+              onLoad={() => {
+                setImageLoaded(true);
+                setImageError(false);
+              }}
+              onError={(e) => {
+                setImageError(true);
+                setImageLoaded(false);
+              }}
+            />
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
+              <div className="text-center p-4">
+                <ImageIcon className="mx-auto mb-2 text-gray-400" size={32} />
+                <p className="text-xs text-gray-600">URL inválida</p>
+              </div>
+            </div>
+          )}
 
           {/* Hover Overlay or Selection Indicator - Desktop only */}
           {!isMobile && (
             <>
               {isDeleteMode && (
-                <div className={`absolute top-3 right-3 z-10 w-10 h-10 rounded-full flex items-center justify-center shadow-lg transition-colors ${
-                  isSelected
-                    ? 'bg-primary text-white'
-                    : 'bg-white/80 border-2 border-gray-300'
-                }`}>
+                <div
+                  className={`absolute top-3 right-3 z-10 w-10 h-10 rounded-full flex items-center justify-center shadow-lg transition-colors ${
+                    isSelected
+                      ? 'bg-primary text-white'
+                      : 'bg-white/80 border-2 border-gray-300'
+                  }`}
+                >
                   {isSelected && <CheckCircle size={28} fill="currentColor" />}
                 </div>
               )}
-              
+
               {!isDeleteMode && (
                 <motion.div
                   initial={{ opacity: 0 }}
@@ -237,7 +287,10 @@ function MasonryItem({
                           : 'bg-white/30 text-white hover:bg-white/50'
                       }`}
                     >
-                      <Heart size={18} fill={photo.favorite ? 'currentColor' : 'none'} />
+                      <Heart
+                        size={18}
+                        fill={photo.favorite ? 'currentColor' : 'none'}
+                      />
                     </motion.button>
 
                     <motion.button
@@ -312,7 +365,10 @@ function MasonryItem({
                       : 'bg-white/80 text-gray-700'
                   }`}
                 >
-                  <Heart size={20} fill={photo.favorite ? 'currentColor' : 'none'} />
+                  <Heart
+                    size={20}
+                    fill={photo.favorite ? 'currentColor' : 'none'}
+                  />
                 </motion.button>
               )}
             </>

@@ -59,7 +59,7 @@ export default function LoveReasonsSection({ id }) {
   const [workspaceId, setWorkspaceId] = useState(null);
   const { ref, inView } = useInView({ threshold: 0.1, triggerOnce: true });
 
-  const ADMIN_EMAIL = 'celiojunior0110@gmail.com';
+  const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL;
   const isAdmin = user?.email === ADMIN_EMAIL;
 
   useEffect(() => {
@@ -104,7 +104,7 @@ export default function LoveReasonsSection({ id }) {
 
       setReasons(formattedReasons);
     } catch (error) {
-      console.error('Error loading love reasons:', error);
+      // console.error('Error loading love reasons:', error);
     } finally {
       setLoading(false);
     }
@@ -169,7 +169,7 @@ export default function LoveReasonsSection({ id }) {
       // Reload reasons to get the new one
       await loadReasons();
     } catch (error) {
-      console.error('Error adding/updating reason:', error);
+      // console.error('Error adding/updating reason:', error);
       throw error;
     }
   };
@@ -197,7 +197,7 @@ export default function LoveReasonsSection({ id }) {
       // Reload reasons
       await loadReasons();
     } catch (error) {
-      console.error('Error deleting reason:', error);
+      // console.error('Error deleting reason:', error);
       alert('Erro ao apagar razão. Tente novamente.');
     }
   };

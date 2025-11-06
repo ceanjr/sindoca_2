@@ -62,7 +62,7 @@ export default function MusicSection({ id }) {
 
       setSongs(formattedSongs)
     } catch (error) {
-      console.error('Error loading songs:', error)
+      // console.error('Error loading songs:', error)
     } finally {
       setLoading(false)
     }

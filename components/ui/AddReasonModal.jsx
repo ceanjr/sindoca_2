@@ -57,7 +57,7 @@ export default function AddReasonModal({
       setDescription('');
       onClose();
     } catch (error) {
-      console.error('Error adding/updating reason:', error);
+      // console.error('Error adding/updating reason:', error);
     } finally {
       setIsSubmitting(false);
     }

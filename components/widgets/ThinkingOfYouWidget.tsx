@@ -6,6 +6,7 @@ import { Heart, Send, Sparkles } from 'lucide-react'
 import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/contexts/AuthContext'
+import { usePushNotifications } from '@/hooks/usePushNotifications'
 
 interface ThinkingOfYouWidgetProps {
   workspaceId: string
@@ -19,6 +20,7 @@ export default function ThinkingOfYouWidget({
   compact = false,
 }: ThinkingOfYouWidgetProps) {
   const { user } = useAuth()
+  const { showLocalNotification, isGranted, requestPermission } = usePushNotifications()
   const [isSending, setIsSending] = useState(false)
   const [lastSentTime, setLastSentTime] = useState<Date | null>(null)
 
@@ -66,9 +68,6 @@ export default function ThinkingOfYouWidget({
     try {
       const randomMessage = messages[Math.floor(Math.random() * messages.length)]
 
-      // TODO: Send actual notification via Supabase Realtime or Push Notification
-      // For now, just show success toast
-
       // Save to database as a notification/message
       const supabase = createClient()
       await supabase.from('content').insert({
@@ -84,6 +83,25 @@ export default function ThinkingOfYouWidget({
       })
 
       setLastSentTime(new Date())
+
+      // Show local notification
+      if (isGranted) {
+        await showLocalNotification('Pensando em Você 💕', {
+          body: randomMessage,
+          icon: '/icon-192x192.png',
+          tag: 'thinking-of-you',
+        })
+      } else {
+        // Request permission if not granted
+        const granted = await requestPermission()
+        if (granted) {
+          await showLocalNotification('Pensando em Você 💕', {
+            body: randomMessage,
+            icon: '/icon-192x192.png',
+            tag: 'thinking-of-you',
+          })
+        }
+      }
 
       toast.success('Mensagem enviada! 💕', {
         description: randomMessage,

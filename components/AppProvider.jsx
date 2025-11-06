@@ -23,7 +23,7 @@ export default function AppProvider({ children }) {
           const savedTheme = await window.storage.get('theme', false)
           if (savedTheme) setTheme(savedTheme)
         } catch (error) {
-          console.log('Storage not available, using default theme')
+          // console.log('Storage not available, using default theme')
         }
       }
     }
@@ -46,7 +46,7 @@ export default function AppProvider({ children }) {
       try {
         await window.storage.set('theme', newTheme, false)
       } catch (error) {
-        console.log('Could not save theme preference')
+        // console.log('Could not save theme preference')
       }
     }
   }

@@ -54,7 +54,7 @@ const withPWA = require('next-pwa')({
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
-    unoptimized: false,
+    unoptimized: true, // Temporarily disabled for Supabase compatibility
     remotePatterns: [
       {
         protocol: 'https',
