@@ -10,8 +10,8 @@ export const metadata = {
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
-    statusBarStyle: 'default',
-    title: 'Lula apoia o Amor',
+    statusBarStyle: 'black-translucent',
+    title: 'Sindoca',
   },
   favicons: {
     icon: '/favicon.ico',
@@ -19,7 +19,7 @@ export const metadata = {
     apple: '/apple-touch-icon.png',
     android: '/android-chrome-192x192.png',
   },
-  applicationName: 'Lula apoia o Amor',
+  applicationName: 'Sindoca',
   formatDetection: {
     telephone: false,
   },
@@ -46,6 +46,12 @@ export default function RootLayout({ children }) {
           href="https://fonts.gstatic.com"
           crossOrigin="anonymous"
         />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta
+          name="apple-mobile-web-app-status-bar-style"
+          content="black-translucent"
+        />
+        <meta name="apple-mobile-web-app-title" content="Sindoca" />
         <link rel="icon" type="image/x-icon" href="/favicon.ico" />
         <link
           rel="icon"
