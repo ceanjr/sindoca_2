@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bell, X } from 'lucide-react';
+import { Bell } from 'lucide-react';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 
 /**
@@ -38,10 +38,10 @@ export default function PushNotificationSetup() {
     }
   };
 
-  const handleDismiss = () => {
-    setShowPrompt(false);
-    localStorage.setItem('push-prompt-seen', 'true');
-  };
+  // const handleDismiss = () => {
+  //   setShowPrompt(false);
+  //   localStorage.setItem('push-prompt-seen', 'true');
+  // };
 
   return (
     <AnimatePresence>
@@ -55,20 +55,20 @@ export default function PushNotificationSetup() {
         >
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 p-4 relative overflow-hidden">
             {/* Gradient accent */}
-            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-pink-500 to-purple-500" />
+            <div className="absolute top-0 left-0 right-0 h-1 bg-primary" />
 
             {/* Close button */}
-            <button
+            {/* <button
               onClick={handleDismiss}
               className="absolute top-3 right-3 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
             >
               <X size={16} className="text-gray-400" />
-            </button>
+            </button> */}
 
             <div className="flex gap-3">
               {/* Icon */}
               <div className="flex-shrink-0">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-pink-500 to-purple-500 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center">
                   <Bell size={20} className="text-white" />
                 </div>
               </div>
@@ -79,22 +79,22 @@ export default function PushNotificationSetup() {
                   Ative as notificações 💕
                 </h3>
                 <p className="text-sm text-textSecondary mb-3">
-                  Receba avisos quando seu macho interagir com você pelo app!
+                  Receba avisos quando seu macho interagir com você pelo app
                 </p>
 
-                <div className="flex gap-2">
+                <div className="flex">
                   <button
                     onClick={handleAccept}
-                    className="flex-1 px-4 py-2 bg-gradient-to-r from-pink-500 to-purple-500 text-white font-semibold rounded-lg hover:shadow-lg transition-all"
+                    className="flex-1 px-4 py-2 bg-primary text-white font-semibold rounded-lg hover:shadow-lg transition-all"
                   >
-                    Ativar
+                    Você é obrigada a aceitar!
                   </button>
-                  <button
+                  {/* <button
                     onClick={handleDismiss}
                     className="px-4 py-2 text-textSecondary hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
                   >
                     Depois
-                  </button>
+                  </button> */}
                 </div>
               </div>
             </div>
