@@ -12,9 +12,11 @@ import {
   Gift,
   Archive,
   Settings,
+  LogOut,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { usePageConfig } from '@/hooks/usePageConfig';
+import { createClient } from '@/lib/supabase/client';
 import AdminModal from './AdminModal';
 
 const navItems = [
@@ -46,6 +48,12 @@ export default function NavigationSidebar() {
       userEmail: user?.email,
     });
   }, [isAdmin, user]);
+
+  const handleLogout = async () => {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.push('/auth/login');
+  };
 
   const handleNavClick = (path, pageId) => {
     console.log('🔍 Click attempt:', {
@@ -127,9 +135,10 @@ export default function NavigationSidebar() {
           })}
         </div>
 
-        {/* Admin Button */}
-        {isAdmin && (
-          <div className="flex flex-col items-center pt-4 border-t border-gray-200">
+        {/* Action Buttons */}
+        <div className="flex flex-col items-center pt-4 border-t border-gray-200 gap-2">
+          {/* Admin Button */}
+          {isAdmin && (
             <motion.button
               onClick={() => setIsAdminModalOpen(true)}
               whileHover={{ scale: 1.1 }}
@@ -145,8 +154,25 @@ export default function NavigationSidebar() {
                 <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-gray-900" />
               </div>
             </motion.button>
-          </div>
-        )}
+          )}
+
+          {/* Logout Button */}
+          <motion.button
+            onClick={handleLogout}
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.95 }}
+            className="group relative flex items-center justify-center w-12 h-12 rounded-xl transition-all duration-300 bg-red-500 text-white shadow-soft-md hover:shadow-soft-lg hover:bg-red-600"
+            title="Sair"
+          >
+            <LogOut size={24} />
+
+            {/* Tooltip */}
+            <div className="absolute left-full ml-2 px-3 py-2 bg-gray-900 text-white text-sm rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-200 z-50">
+              Sair
+              <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-gray-900" />
+            </div>
+          </motion.button>
+        </div>
       </motion.nav>
 
       {/* Admin Modal */}

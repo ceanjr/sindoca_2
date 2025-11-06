@@ -54,6 +54,8 @@ function HomeContent() {
 
   // If user is authenticated, show home page
   if (user) {
+    const isSindy = user.email === 'sindyguimaraes.a@gmail.com';
+
     return (
       <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50">
         <div className="max-w-5xl mx-auto px-4 py-12 md:py-20">
@@ -89,6 +91,70 @@ function HomeContent() {
 
           {/* Days Counter */}
           <DaysCounter showQuote={true} />
+
+          {/* Credentials Card - Only for Sindy */}
+          {isSindy && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.4 }}
+              className="w-full mt-8"
+            >
+              <div className="bg-primary/10 rounded-3xl border border-primary/20 p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-2 bg-primary/20 rounded-lg">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-5 w-5 text-primary"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <rect
+                        x="3"
+                        y="11"
+                        width="18"
+                        height="11"
+                        rx="2"
+                        ry="2"
+                      ></rect>
+                      <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                    </svg>
+                  </div>
+                  <h3 className="text-lg font-semibold text-textPrimary">
+                    Suas Credenciais
+                  </h3>
+                </div>
+
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-medium text-textSecondary mb-1">
+                      Email
+                    </label>
+                    <div className="bg-white/50 rounded-lg px-3 py-2 font-mono text-sm text-textPrimary">
+                      sindyguimaraes.a@gmail.com
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-textSecondary mb-1">
+                      Senha
+                    </label>
+                    <div className="bg-white/50 rounded-lg px-3 py-2 font-mono text-sm text-textPrimary">
+                      feitopelomozao
+                    </div>
+                  </div>
+                </div>
+
+                <p className="text-xs text-textSecondary mt-4 text-center">
+                  💡 Guarde essas informações com carinho (para fazer login)
+                </p>
+              </div>
+            </motion.div>
+          )}
 
           {/* Thinking of You Widget - Floating Button (DESATIVADO) */}
           {/* {workspaceId && user && (

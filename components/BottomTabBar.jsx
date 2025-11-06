@@ -12,10 +12,12 @@ import {
   Gift,
   Archive,
   MoreHorizontal,
+  LogOut,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import BottomSheet from '@/components/ui/BottomSheet';
 import { usePageConfig } from '@/hooks/usePageConfig';
+import { createClient } from '@/lib/supabase/client';
 
 const mainTabs = [
   { id: 'inicio', path: '/', label: 'Início', icon: Home },
@@ -41,6 +43,13 @@ export default function BottomTabBar() {
   const router = useRouter();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { isPageActive, isAdmin } = usePageConfig();
+
+  const handleLogout = async () => {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    setIsMenuOpen(false);
+    router.push('/auth/login');
+  };
 
   const handleTabClick = (path, pageId) => {
     // Admin can access all pages, even disabled ones
@@ -239,6 +248,19 @@ export default function BottomTabBar() {
               </motion.button>
             );
           })}
+
+          {/* Divider */}
+          <div className="border-t border-textPrimary/10 my-2" />
+
+          {/* Logout Button */}
+          <motion.button
+            onClick={handleLogout}
+            whileTap={{ scale: 0.98 }}
+            className="w-full flex items-center gap-4 px-4 py-4 rounded-xl transition-all duration-300 touch-manipulation bg-red-500/10 hover:bg-red-500/20 text-red-600"
+          >
+            <LogOut size={24} className="stroke-[2]" />
+            <span className="text-base font-medium">Sair</span>
+          </motion.button>
         </div>
       </BottomSheet>
     </>

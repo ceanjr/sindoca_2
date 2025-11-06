@@ -1,10 +1,13 @@
 'use client'
 
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion'
 import { X } from 'lucide-react'
 import { useEffect } from 'react'
 
 export default function BottomSheet({ isOpen, onClose, children, title }) {
+  const y = useMotionValue(0)
+  const opacity = useTransform(y, [0, 300], [1, 0.5])
+
   // Prevent body scroll when modal is open
   useEffect(() => {
     if (isOpen) {
@@ -16,6 +19,13 @@ export default function BottomSheet({ isOpen, onClose, children, title }) {
       document.body.style.overflow = 'unset'
     }
   }, [isOpen])
+
+  const handleDragEnd = (event, info) => {
+    // Close if dragged down more than 150px or velocity is high
+    if (info.offset.y > 150 || info.velocity.y > 500) {
+      onClose()
+    }
+  }
 
   return (
     <AnimatePresence>
@@ -36,10 +46,15 @@ export default function BottomSheet({ isOpen, onClose, children, title }) {
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+            drag="y"
+            dragConstraints={{ top: 0, bottom: 0 }}
+            dragElastic={{ top: 0, bottom: 0.5 }}
+            onDragEnd={handleDragEnd}
+            style={{ y, opacity }}
             className="fixed bottom-0 left-0 right-0 z-50 bg-surface rounded-t-3xl shadow-soft-2xl max-h-[80vh] flex flex-col"
           >
             {/* Handle */}
-            <div className="flex justify-center py-3">
+            <div className="flex justify-center py-3 cursor-grab active:cursor-grabbing">
               <div className="w-12 h-1 bg-textSecondary/30 rounded-full" />
             </div>
 
