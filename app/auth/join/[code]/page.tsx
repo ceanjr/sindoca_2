@@ -1,50 +1,61 @@
-'use client'
+'use client';
 
-import { useState, useEffect } from 'react'
-import { useRouter, useParams } from 'next/navigation'
-import { motion } from 'framer-motion'
-import { Key, Heart } from 'lucide-react'
-import { toast } from 'sonner'
-import AuthCard from '@/components/auth/AuthCard'
-import FormInput from '@/components/auth/FormInput'
-import { createClient } from '@/lib/supabase/client'
+import { useState, useEffect } from 'react';
+import { useRouter, useParams } from 'next/navigation';
+import { motion } from 'framer-motion';
+import { Key, Heart } from 'lucide-react';
+import { toast } from 'sonner';
+import AuthCard from '@/components/auth/AuthCard';
+import FormInput from '@/components/auth/FormInput';
+import { createClient } from '@/lib/supabase/client';
 
 export default function JoinWorkspacePage() {
-  const router = useRouter()
-  const params = useParams()
-  const inviteCode = params.code as string
-  
-  const [loading, setLoading] = useState(false)
-  const [answer, setAnswer] = useState('')
-  const [authenticated, setAuthenticated] = useState(false)
+  const router = useRouter();
+  const params = useParams();
+  const inviteCode = params.code as string;
+
+  const [loading, setLoading] = useState(false);
+  const [answer, setAnswer] = useState('');
+  const [error, setError] = useState('');
+  const [authenticated, setAuthenticated] = useState(false);
+
+  useEffect(() => {
+    const handleClickOutside = () => {
+      if (error) setError('');
+    };
+    window.addEventListener('click', handleClickOutside);
+    return () => window.removeEventListener('click', handleClickOutside);
+  }, [error]);
 
   // Check if user is already authenticated
   useEffect(() => {
     const checkAuth = async () => {
-      const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
       if (user) {
-        // User is already logged in, redirect to home
-        router.push('/')
+        router.push('/');
       }
-    }
-    
-    checkAuth()
-  }, [router])
+    };
+
+    checkAuth();
+  }, [router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
 
     if (!answer.trim()) {
-      toast.error('Digite a palavra-chave')
-      return
+      setError('Digite a palavra-chave');
+      return;
     }
 
-    setLoading(true)
+    setError('');
+    setLoading(true);
 
     try {
-      const supabase = createClient()
+      const supabase = createClient();
 
       // Verify invite via server API
       const response = await fetch('/api/auth/verify-invite', {
@@ -53,40 +64,48 @@ export default function JoinWorkspacePage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ answer: answer.trim() }),
-      })
+      });
 
-      const data = await response.json()
+      const data = await response.json();
+
+      console.log('🔍 API Response:', { status: response.status, data });
 
       if (!response.ok) {
-        throw new Error(data.error || 'Palavra-chave incorreta')
+        console.error('❌ API Error:', data.error);
+        throw new Error(data.error || 'Palavra-chave incorreta');
       }
+
+      console.log('✅ Credentials received, attempting sign in...');
 
       // Sign in with partner credentials returned from server
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email: data.credentials.email,
         password: data.credentials.password,
-      })
+      });
 
-      if (signInError) throw signInError
+      if (signInError) {
+        console.error('❌ Sign in error:', signInError);
+        throw signInError;
+      }
 
-      setAuthenticated(true)
+      console.log('✅ Sign in successful!');
+
+      setAuthenticated(true);
       toast.success('Bem-vinda! 💕', {
-        description: 'Redirecionando para home...',
-      })
+        description: 'Acertou! Redirecionando...',
+      });
 
-      // Redirect to home
       setTimeout(() => {
-        router.push('/')
-        router.refresh()
-      }, 1500)
+        router.push('/');
+        router.refresh();
+      }, 1500);
     } catch (error: any) {
-      toast.error('Erro ao entrar', {
-        description: error.message || 'Palavra-chave incorreta',
-      })
+      console.error('❌ Full error:', error);
+      setError('Dica: você deve estar fazendo essa cara agora...');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   if (authenticated) {
     return (
@@ -100,33 +119,32 @@ export default function JoinWorkspacePage() {
           >
             <Heart size={64} className="text-primary" fill="currentColor" />
           </motion.div>
-          <p className="text-gray-600">
-            Redirecionando para a home...
-          </p>
+          <p className="text-gray-600">Redirecionando para a home...</p>
         </div>
       </AuthCard>
-    )
+    );
   }
 
   return (
     <AuthCard
-      title="Convite Especial"
-      subtitle="Digite a palavra-chave para entrar"
+      title="Bem-vinda ao Sindoca!"
+      subtitle="Acerte a resposta para entrar"
     >
       <div className="mb-6 p-4 bg-primary/10 rounded-xl border border-primary/20">
         <p className="text-center text-gray-700">
-          💕 Digite a palavra mágica que só você sabe 💕
+          Vamos lá, para a pergunta que vale 2 mil reais!
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-4 flex flex-col gap-4">
         <FormInput
-          label="Palavra-chave"
-          type="password"
-          placeholder="Digite a palavra secreta..."
+          label="Qual é a sua cara favorita?"
+          type="text"
+          placeholder="Se errar seu IP será bloquado..."
           icon={<Key size={20} />}
           value={answer}
           onChange={(e) => setAnswer(e.target.value)}
+          error={error}
           disabled={loading}
         />
 
@@ -140,17 +158,6 @@ export default function JoinWorkspacePage() {
           {loading ? 'Verificando...' : 'Entrar'}
         </motion.button>
       </form>
-
-      <div className="mt-6 text-center">
-        <p className="text-gray-600 text-sm">
-          <button
-            onClick={() => router.push('/auth/login')}
-            className="text-primary font-semibold hover:underline"
-          >
-            ← Voltar para login
-          </button>
-        </p>
-      </div>
     </AuthCard>
-  )
+  );
 }

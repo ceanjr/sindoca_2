@@ -1,18 +1,18 @@
-'use client'
+'use client';
 
-import { InputHTMLAttributes, forwardRef } from 'react'
-import { motion } from 'framer-motion'
+import { InputHTMLAttributes, forwardRef } from 'react';
+import { motion } from 'framer-motion';
 
 interface FormInputProps extends InputHTMLAttributes<HTMLInputElement> {
-  label: string
-  error?: string
-  icon?: React.ReactNode
+  label: string;
+  error?: string;
+  icon?: React.ReactNode;
 }
 
 const FormInput = forwardRef<HTMLInputElement, FormInputProps>(
   ({ label, error, icon, ...props }, ref) => {
     return (
-      <div className="mb-4">
+      <div className="mb-4 relative">
         <label className="block text-sm font-medium text-gray-900 mb-2">
           {label}
         </label>
@@ -33,22 +33,29 @@ const FormInput = forwardRef<HTMLInputElement, FormInputProps>(
             }`}
             {...props}
           />
+
+          {/* Tooltip de erro */}
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, y: -4 }}
+              animate={{ opacity: 0.9, y: 0 }}
+              className="absolute left-0 top-full mt-2 bg-primary/10 border border-primary/20 text-gray-700 text-sm px-3 py-1 rounded-lg shadow-md"
+            >
+              {error}
+              <div
+                className="absolute top-0 left-4 w-0 h-0 border-l-4 border-r-4 border-b-4"
+                style={{
+                  borderColor: 'transparent transparent #ffd7e4 transparent',
+                  transform: 'translateY(-100%)',
+                }}
+              ></div>
+            </motion.div>
+          )}
         </div>
-
-        {error && (
-          <motion.p
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-red-500 text-sm mt-2"
-          >
-            {error}
-          </motion.p>
-        )}
       </div>
-    )
+    );
   }
-)
+);
 
-FormInput.displayName = 'FormInput'
-
-export default FormInput
+FormInput.displayName = 'FormInput';
+export default FormInput;

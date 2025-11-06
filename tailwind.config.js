@@ -72,6 +72,7 @@ module.exports = {
         'pulse-glow': 'pulseGlow 2s ease-in-out infinite',
         'shimmer': 'shimmer 2s infinite',
         'bounce-subtle': 'bounceSubtle 2s ease-in-out infinite',
+        'spin-slow': 'spin 3s linear infinite',
       },
 
       keyframes: {

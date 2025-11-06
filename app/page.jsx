@@ -7,13 +7,13 @@ import { motion } from 'framer-motion';
 import { Heart } from 'lucide-react';
 import DaysCounter from '@/components/DaysCounter';
 import ErrorBoundary from '@/components/ErrorBoundary';
-import ThinkingOfYouWidget from '@/components/widgets/ThinkingOfYouWidget';
-import { getUserWorkspaces } from '@/lib/api/workspace';
+// import ThinkingOfYouWidget from '@/components/widgets/ThinkingOfYouWidget'; // DESATIVADO
+// import { getUserWorkspaces } from '@/lib/api/workspace'; // DESATIVADO
 
 function HomeContent() {
   const router = useRouter();
   const { user, loading, profile } = useAuth();
-  const [workspaceId, setWorkspaceId] = useState(null);
+  // const [workspaceId, setWorkspaceId] = useState(null); // DESATIVADO
 
   useEffect(() => {
     // Only redirect if not loading and no user
@@ -22,22 +22,22 @@ function HomeContent() {
     }
   }, [user, loading, router]);
 
-  // Load workspace
-  useEffect(() => {
-    const loadWorkspace = async () => {
-      if (user) {
-        try {
-          const workspaces = await getUserWorkspaces(user.id);
-          if (workspaces && workspaces.length > 0) {
-            setWorkspaceId(workspaces[0].workspaces.id);
-          }
-        } catch (error) {
-          // console.error('Error loading workspace:', error);
-        }
-      }
-    };
-    loadWorkspace();
-  }, [user]);
+  // Load workspace - DESATIVADO
+  // useEffect(() => {
+  //   const loadWorkspace = async () => {
+  //     if (user) {
+  //       try {
+  //         const workspaces = await getUserWorkspaces(user.id);
+  //         if (workspaces && workspaces.length > 0) {
+  //           setWorkspaceId(workspaces[0].workspaces.id);
+  //         }
+  //       } catch (error) {
+  //         // console.error('Error loading workspace:', error);
+  //       }
+  //     }
+  //   };
+  //   loadWorkspace();
+  // }, [user]);
 
   // Show loading while checking auth
   if (loading) {
@@ -90,14 +90,14 @@ function HomeContent() {
           {/* Days Counter */}
           <DaysCounter showQuote={true} />
 
-          {/* Thinking of You Widget - Floating Button */}
-          {workspaceId && user && (
+          {/* Thinking of You Widget - Floating Button (DESATIVADO) */}
+          {/* {workspaceId && user && (
             <ThinkingOfYouWidget
               workspaceId={workspaceId}
               partnerId={user.id}
               compact={true}
             />
-          )}
+          )} */}
         </div>
       </div>
     );

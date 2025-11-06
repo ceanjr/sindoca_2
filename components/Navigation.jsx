@@ -14,6 +14,7 @@ import {
   Archive,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { usePageConfig } from '@/hooks/usePageConfig';
 
 const navItems = [
   { id: 'inicio', label: 'Início', icon: Home },
@@ -29,6 +30,7 @@ const navItems = [
 export default function Navigation({ activeSection, onSectionChange }) {
   const [isOpen, setIsOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const { isPageActive } = usePageConfig();
 
   useEffect(() => {
     const checkMobile = () => {
@@ -41,6 +43,11 @@ export default function Navigation({ activeSection, onSectionChange }) {
   }, []);
 
   const handleNavClick = (id) => {
+    // Check if page is active
+    if (!isPageActive(id)) {
+      return; // Don't scroll if page is disabled
+    }
+
     onSectionChange(id);
     setIsOpen(false);
 
@@ -91,6 +98,7 @@ export default function Navigation({ activeSection, onSectionChange }) {
                   {navItems.map((item, index) => {
                     const Icon = item.icon;
                     const isActive = activeSection === item.id;
+                    const pageIsActive = isPageActive(item.id);
 
                     return (
                       <motion.button
@@ -99,8 +107,11 @@ export default function Navigation({ activeSection, onSectionChange }) {
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: index * 0.05 }}
                         onClick={() => handleNavClick(item.id)}
+                        disabled={!pageIsActive}
                         className={`w-full flex items-center gap-4 px-6 py-4 rounded-2xl transition-all duration-300 touch-manipulation min-h-[44px] ${
-                          isActive
+                          !pageIsActive
+                            ? 'opacity-40 cursor-not-allowed text-gray-400'
+                            : isActive
                             ? 'bg-primary text-white shadow-soft-md'
                             : 'text-textPrimary hover:bg-surfaceAlt'
                         }`}
@@ -108,6 +119,9 @@ export default function Navigation({ activeSection, onSectionChange }) {
                         <Icon size={24} />
                         <span className="text-lg font-medium">
                           {item.label}
+                          {!pageIsActive && (
+                            <span className="text-xs ml-2">(Desativada)</span>
+                          )}
                         </span>
                       </motion.button>
                     );
@@ -132,26 +146,33 @@ export default function Navigation({ activeSection, onSectionChange }) {
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeSection === item.id;
+          const pageIsActive = isPageActive(item.id);
 
           return (
             <motion.button
               key={item.id}
               onClick={() => handleNavClick(item.id)}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
+              whileHover={pageIsActive ? { scale: 1.05 } : {}}
+              whileTap={pageIsActive ? { scale: 0.95 } : {}}
+              disabled={!pageIsActive}
               className={`group relative flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 ${
-                isActive
+                !pageIsActive
+                  ? 'opacity-40 cursor-not-allowed text-gray-400'
+                  : isActive
                   ? 'bg-primary text-white shadow-soft-md'
                   : 'text-textSecondary hover:bg-surfaceAlt hover:text-textPrimary'
               }`}
-              title={item.label}
+              title={pageIsActive ? item.label : `${item.label} (Desativada)`}
             >
               <Icon size={20} />
-              <span className="text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap">
-                {item.label}
-              </span>
+              {/* Only show text on hover if page is active */}
+              {pageIsActive && (
+                <span className="text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap">
+                  {item.label}
+                </span>
+              )}
 
-              {isActive && (
+              {isActive && pageIsActive && (
                 <motion.div
                   layoutId="activeIndicator"
                   className="absolute inset-0 rounded-xl border-2 border-primary/20"

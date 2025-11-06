@@ -12,12 +12,7 @@ export async function updateSession(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
-      global: {
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        },
-      },
+      // NOTE: Do NOT set global Content-Type header as it breaks file uploads
       cookies: {
         get(name: string) {
           return request.cookies.get(name)?.value
@@ -65,7 +60,7 @@ export async function updateSession(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
 
   // Public routes that don't require authentication
-  const publicRoutes = ['/auth/login', '/auth/signup', '/auth/callback', '/auth/join']
+  const publicRoutes = ['/auth/login', '/auth/signup', '/auth/callback', '/auth/join', '/api/auth/verify-invite']
   const isPublicRoute = publicRoutes.some(route => request.nextUrl.pathname.startsWith(route))
 
   // Onboarding is accessible to authenticated users only
