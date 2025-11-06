@@ -32,6 +32,8 @@ export function useSupabasePhotos() {
   const userRef = useRef(null);
   const workspaceRef = useRef(null);
   const channelRef = useRef(null);
+  const initializingRef = useRef(false);
+  const initializedRef = useRef(false);
 
   // Log quando photos muda
   useEffect(() => {
@@ -39,6 +41,13 @@ export function useSupabasePhotos() {
   }, [photos]);
 
   useEffect(() => {
+    // Prevent multiple initializations
+    if (initializingRef.current || initializedRef.current) {
+      return;
+    }
+
+    initializingRef.current = true;
+
     const initAuth = async () => {
       try {
         const supabase = createClient();
@@ -69,10 +78,17 @@ export function useSupabasePhotos() {
 
         workspaceRef.current = members.workspace_id;
         await loadPhotos();
-        setupRealtimeSubscription(supabase, members.workspace_id);
+
+        // Only setup subscriptions if not already setup
+        if (!channelRef.current) {
+          setupRealtimeSubscription(supabase, members.workspace_id);
+        }
+
+        initializedRef.current = true;
       } catch (err) {
         setError(err.message);
         setLoading(false);
+        initializingRef.current = false;
       }
     };
 

@@ -22,7 +22,9 @@ export default function AdminModal({ isOpen, onClose }) {
     if (!success) {
       toast.error('Erro ao atualizar status da página');
     } else {
-      toast.success(`Página ${!currentStatus ? 'ativada' : 'desativada'} com sucesso`);
+      toast.success(
+        `Página ${!currentStatus ? 'ativada' : 'desativada'} com sucesso`
+      );
     }
 
     setUpdating((prev) => ({ ...prev, [pageId]: false }));
@@ -52,7 +54,7 @@ export default function AdminModal({ isOpen, onClose }) {
               className="bg-white rounded-3xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-hidden"
             >
               {/* Header */}
-              <div className="bg-gradient-to-r from-primary to-accent p-6 text-white">
+              <div className="bg-primary/90 p-6 text-white">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <Settings size={24} />
@@ -100,14 +102,14 @@ export default function AdminModal({ isOpen, onClose }) {
                           }
                           disabled={updating[page.page_id]}
                           className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${
-                            page.is_active
-                              ? 'bg-primary'
-                              : 'bg-gray-300'
-                          } ${updating[page.page_id] ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            page.is_active ? 'bg-primary' : 'bg-gray-300'
+                          } ${
+                            updating[page.page_id]
+                              ? 'opacity-50 cursor-not-allowed'
+                              : ''
+                          }`}
                         >
-                          <span className="sr-only">
-                            Ativar {page.label}
-                          </span>
+                          <span className="sr-only">Ativar {page.label}</span>
                           {updating[page.page_id] ? (
                             <div className="absolute inset-0 flex items-center justify-center">
                               <Loader2

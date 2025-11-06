@@ -24,15 +24,15 @@ const navItems = [
   { id: 'galeria', path: '/galeria', label: 'Galeria', icon: Image },
   { id: 'razoes', path: '/razoes', label: 'Razões', icon: Heart },
   { id: 'musica', path: '/musica', label: 'Música', icon: Music },
-  { id: 'conquistas', path: '/conquistas', label: 'Conquistas', icon: Trophy },
-  {
-    id: 'mensagens',
-    path: '/mensagens',
-    label: 'Mensagens',
-    icon: MessageCircle,
-  },
-  { id: 'surpresas', path: '/surpresas', label: 'Surpresas', icon: Gift },
-  { id: 'legado', path: '/legado', label: 'Legado', icon: Archive },
+  // { id: 'conquistas', path: '/conquistas', label: 'Conquistas', icon: Trophy },
+  // {
+  //   id: 'mensagens',
+  //   path: '/mensagens',
+  //   label: 'Mensagens',
+  //   icon: MessageCircle,
+  // },
+  // { id: 'surpresas', path: '/surpresas', label: 'Surpresas', icon: Gift },
+  // { id: 'legado', path: '/legado', label: 'Legado', icon: Archive },
 ];
 
 export default function NavigationSidebar() {
@@ -60,7 +60,7 @@ export default function NavigationSidebar() {
       path,
       pageId,
       isAdmin,
-      isPageActive: isPageActive(pageId)
+      isPageActive: isPageActive(pageId),
     });
 
     // Admin can access all pages, even disabled ones
@@ -143,10 +143,10 @@ export default function NavigationSidebar() {
               onClick={() => setIsAdminModalOpen(true)}
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.95 }}
-              className="group relative flex items-center justify-center w-12 h-12 rounded-xl transition-all duration-300 bg-gradient-to-br from-primary to-accent text-white shadow-soft-md hover:shadow-soft-lg"
+              className="group relative flex items-center justify-center w-12 h-12 rounded-xl text-white hover:bg-surfaceAlt hover:text-textPrimary"
               title="Configurações Admin"
             >
-              <Settings size={24} className="animate-spin-slow" />
+              <Settings size={24} className=" text-textSecondary" />
 
               {/* Tooltip */}
               <div className="absolute left-full ml-2 px-3 py-2 bg-gray-900 text-white text-sm rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-200 z-50">
@@ -161,10 +161,10 @@ export default function NavigationSidebar() {
             onClick={handleLogout}
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.95 }}
-            className="group relative flex items-center justify-center w-12 h-12 rounded-xl transition-all duration-300 bg-red-500 text-white shadow-soft-md hover:shadow-soft-lg hover:bg-red-600"
+            className="group relative flex items-center justify-center w-12 h-12 rounded-xl transition-all duration-300 text-white hover:bg-surfaceAlt hover:text-textPrimary"
             title="Sair"
           >
-            <LogOut size={24} />
+            <LogOut className="text-red-600" size={24} />
 
             {/* Tooltip */}
             <div className="absolute left-full ml-2 px-3 py-2 bg-gray-900 text-white text-sm rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-200 z-50">

@@ -27,15 +27,15 @@ const mainTabs = [
 
 const moreTabs = [
   { id: 'musica', path: '/musica', label: 'Música', icon: Music },
-  { id: 'conquistas', path: '/conquistas', label: 'Conquistas', icon: Trophy },
-  {
-    id: 'mensagens',
-    path: '/mensagens',
-    label: 'Mensagens',
-    icon: MessageCircle,
-  },
-  { id: 'surpresas', path: '/surpresas', label: 'Surpresas', icon: Gift },
-  { id: 'legado', path: '/legado', label: 'Legado', icon: Archive },
+  // { id: 'conquistas', path: '/conquistas', label: 'Conquistas', icon: Trophy },
+  // {
+  //   id: 'mensagens',
+  //   path: '/mensagens',
+  //   label: 'Mensagens',
+  //   icon: MessageCircle,
+  // },
+  // { id: 'surpresas', path: '/surpresas', label: 'Surpresas', icon: Gift },
+  // { id: 'legado', path: '/legado', label: 'Legado', icon: Archive },
 ];
 
 export default function BottomTabBar() {
@@ -137,7 +137,9 @@ export default function BottomTabBar() {
                   >
                     {tab.label}
                     {isAdmin && !pageIsActive && canAccess && (
-                      <span className="ml-1 text-yellow-300 text-[10px]">⚠️</span>
+                      <span className="ml-1 text-yellow-300 text-[10px]">
+                        ⚠️
+                      </span>
                     )}
                   </span>
 

@@ -7,13 +7,13 @@ import { motion } from 'framer-motion';
 import { Heart } from 'lucide-react';
 import DaysCounter from '@/components/DaysCounter';
 import ErrorBoundary from '@/components/ErrorBoundary';
-// import ThinkingOfYouWidget from '@/components/widgets/ThinkingOfYouWidget'; // DESATIVADO
-// import { getUserWorkspaces } from '@/lib/api/workspace'; // DESATIVADO
+import ThinkingOfYouWidget from '@/components/widgets/ThinkingOfYouWidget';
+import { createClient } from '@/lib/supabase/client';
 
 function HomeContent() {
   const router = useRouter();
   const { user, loading, profile } = useAuth();
-  // const [workspaceId, setWorkspaceId] = useState(null); // DESATIVADO
+  const [workspaceData, setWorkspaceData] = useState(null);
 
   useEffect(() => {
     // Only redirect if not loading and no user
@@ -22,22 +22,56 @@ function HomeContent() {
     }
   }, [user, loading, router]);
 
-  // Load workspace - DESATIVADO
-  // useEffect(() => {
-  //   const loadWorkspace = async () => {
-  //     if (user) {
-  //       try {
-  //         const workspaces = await getUserWorkspaces(user.id);
-  //         if (workspaces && workspaces.length > 0) {
-  //           setWorkspaceId(workspaces[0].workspaces.id);
-  //         }
-  //       } catch (error) {
-  //         // console.error('Error loading workspace:', error);
-  //       }
-  //     }
-  //   };
-  //   loadWorkspace();
-  // }, [user]);
+  // Load workspace and partner info
+  useEffect(() => {
+    const loadWorkspace = async () => {
+      if (user) {
+        try {
+          const supabase = createClient();
+
+          // Get workspace
+          const { data: members, error: membersError } = await supabase
+            .from('workspace_members')
+            .select('workspace_id')
+            .eq('user_id', user.id)
+            .single();
+
+          if (membersError || !members) return;
+
+          // Get all members to find partner
+          const { data: allMembers, error: allMembersError } = await supabase
+            .from('workspace_members')
+            .select('user_id')
+            .eq('workspace_id', members.workspace_id);
+
+          if (allMembersError || !allMembers) return;
+
+          // Find partner
+          const partnerId = allMembers?.find(m => m.user_id !== user.id)?.user_id;
+
+          if (partnerId) {
+            // Get partner profile
+            const { data: partnerProfile, error: profileError } = await supabase
+              .from('profiles')
+              .select('full_name, nickname')
+              .eq('id', partnerId)
+              .single();
+
+            if (!profileError && partnerProfile) {
+              setWorkspaceData({
+                workspaceId: members.workspace_id,
+                partnerId: partnerId,
+                partnerName: partnerProfile.nickname || partnerProfile.full_name,
+              });
+            }
+          }
+        } catch (error) {
+          console.error('Error loading workspace:', error);
+        }
+      }
+    };
+    loadWorkspace();
+  }, [user]);
 
   // Show loading while checking auth
   if (loading) {
@@ -156,14 +190,22 @@ function HomeContent() {
             </motion.div>
           )}
 
-          {/* Thinking of You Widget - Floating Button (DESATIVADO) */}
-          {/* {workspaceId && user && (
-            <ThinkingOfYouWidget
-              workspaceId={workspaceId}
-              partnerId={user.id}
-              compact={true}
-            />
-          )} */}
+          {/* Thinking of You Widget */}
+          {workspaceData && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.5 }}
+              className="w-full mt-8"
+            >
+              <ThinkingOfYouWidget
+                workspaceId={workspaceData.workspaceId}
+                partnerId={workspaceData.partnerId}
+                partnerName={workspaceData.partnerName}
+                compact={false}
+              />
+            </motion.div>
+          )}
         </div>
       </div>
     );

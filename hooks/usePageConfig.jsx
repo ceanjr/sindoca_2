@@ -12,8 +12,14 @@ export function usePageConfig() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(null);
+  const [initialized, setInitialized] = useState(false);
 
   useEffect(() => {
+    // Prevent multiple initializations
+    if (initialized) {
+      return;
+    }
+
     const supabase = createClient();
 
     const initializePageConfig = async () => {
@@ -35,6 +41,7 @@ export function usePageConfig() {
         if (error) throw error;
 
         setPageConfig(data || []);
+        setInitialized(true);
       } catch (error) {
         console.error('Error loading page config:', error);
       } finally {

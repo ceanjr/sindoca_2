@@ -19,8 +19,17 @@ export function useRealtimePlaylist() {
   const workspaceRef = useRef(null);
   const channelRef = useRef(null);
   const workspaceChannelRef = useRef(null);
+  const initializingRef = useRef(false);
+  const initializedRef = useRef(false);
 
   useEffect(() => {
+    // Prevent multiple initializations
+    if (initializingRef.current || initializedRef.current) {
+      return;
+    }
+
+    initializingRef.current = true;
+
     const initPlaylist = async () => {
       try {
         const supabase = createClient();
@@ -54,11 +63,20 @@ export function useRealtimePlaylist() {
         await loadPlaylistUrl();
         await loadTurnInfo();
         await loadPartnerName();
-        setupRealtimeSubscription(supabase, members.workspace_id);
-        setupWorkspaceSubscription(supabase, members.workspace_id);
+
+        // Only setup subscriptions if not already setup
+        if (!channelRef.current) {
+          setupRealtimeSubscription(supabase, members.workspace_id);
+        }
+        if (!workspaceChannelRef.current) {
+          setupWorkspaceSubscription(supabase, members.workspace_id);
+        }
+
+        initializedRef.current = true;
       } catch (err) {
         setError(err.message);
         setLoading(false);
+        initializingRef.current = false;
       }
     };
 
@@ -132,15 +150,21 @@ export function useRealtimePlaylist() {
         .eq('id', workspaceRef.current)
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error loading playlist URL:', error);
+        return;
+      }
 
-      setPlaylistUrl(data?.data?.spotify_playlist_url || null);
+      // Handle case where data column might not exist or be null
+      if (data && typeof data.data === 'object' && data.data !== null) {
+        setPlaylistUrl(data.data.spotify_playlist_url || null);
+      }
     } catch (err) {
       console.error('Failed to load playlist URL:', err);
     }
   }, []);
 
-  const loadTurnInfo = useCallback(async () => {
+  const loadTurnInfo = async () => {
     if (!supabaseRef.current || !workspaceRef.current || !userRef.current) return;
 
     try {
@@ -150,9 +174,21 @@ export function useRealtimePlaylist() {
         .eq('id', workspaceRef.current)
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error loading turn info:', error);
+        // Default to allowing user to add (backward compatibility)
+        setIsMyTurn(true);
+        return;
+      }
 
-      const turnUserId = data?.data?.current_music_turn_user_id;
+      // Handle case where data column might not exist or be null
+      if (!data || typeof data.data !== 'object' || data.data === null) {
+        // Default to allowing user to add (backward compatibility)
+        setIsMyTurn(true);
+        return;
+      }
+
+      const turnUserId = data.data.current_music_turn_user_id;
       setCurrentTurnUserId(turnUserId);
 
       // If no turn is set, it's the first person's turn (whoever adds first)
@@ -163,10 +199,12 @@ export function useRealtimePlaylist() {
       }
     } catch (err) {
       console.error('Failed to load turn info:', err);
+      // Default to allowing user to add (backward compatibility)
+      setIsMyTurn(true);
     }
-  }, []);
+  };
 
-  const loadPartnerName = useCallback(async () => {
+  const loadPartnerName = async () => {
     if (!supabaseRef.current || !workspaceRef.current || !userRef.current) return;
 
     try {
@@ -176,7 +214,11 @@ export function useRealtimePlaylist() {
         .select('user_id')
         .eq('workspace_id', workspaceRef.current);
 
-      if (membersError) throw membersError;
+      if (membersError) {
+        console.error('Error loading partner:', membersError);
+        setPartnerName('seu parceiro');
+        return;
+      }
 
       // Find the partner (the other user)
       const partnerId = members?.find(m => m.user_id !== userRef.current.id)?.user_id;
@@ -189,14 +231,21 @@ export function useRealtimePlaylist() {
           .eq('id', partnerId)
           .single();
 
-        if (profileError) throw profileError;
+        if (profileError) {
+          console.error('Error loading partner profile:', profileError);
+          setPartnerName('seu parceiro');
+          return;
+        }
 
-        setPartnerName(profile?.nickname || profile?.full_name || 'Seu parceiro');
+        setPartnerName(profile?.nickname || profile?.full_name || 'seu parceiro');
+      } else {
+        setPartnerName('seu parceiro');
       }
     } catch (err) {
       console.error('Failed to load partner name:', err);
+      setPartnerName('seu parceiro');
     }
-  }, []);
+  };
 
   const setupWorkspaceSubscription = (supabase, workspaceId) => {
     const channel = supabase
@@ -210,20 +259,27 @@ export function useRealtimePlaylist() {
           filter: `id=eq.${workspaceId}`,
         },
         (payload) => {
-          // Update turn info when workspace data changes
-          const turnUserId = payload.new?.data?.current_music_turn_user_id;
-          setCurrentTurnUserId(turnUserId);
+          try {
+            // Only process if data field exists and is valid
+            if (payload.new && typeof payload.new.data === 'object' && payload.new.data !== null) {
+              // Update turn info when workspace data changes
+              const turnUserId = payload.new.data.current_music_turn_user_id;
+              setCurrentTurnUserId(turnUserId);
 
-          if (!turnUserId) {
-            setIsMyTurn(true);
-          } else {
-            setIsMyTurn(turnUserId === userRef.current?.id);
-          }
+              if (!turnUserId) {
+                setIsMyTurn(true);
+              } else {
+                setIsMyTurn(turnUserId === userRef.current?.id);
+              }
 
-          // Update playlist URL if changed
-          const playlistUrl = payload.new?.data?.spotify_playlist_url;
-          if (playlistUrl) {
-            setPlaylistUrl(playlistUrl);
+              // Update playlist URL if changed
+              const playlistUrl = payload.new.data.spotify_playlist_url;
+              if (playlistUrl) {
+                setPlaylistUrl(playlistUrl);
+              }
+            }
+          } catch (err) {
+            console.error('Error processing workspace update:', err);
           }
         }
       )

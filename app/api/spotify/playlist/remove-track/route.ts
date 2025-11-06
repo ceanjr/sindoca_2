@@ -26,13 +26,21 @@ export async function DELETE(request: NextRequest) {
     // Get track from database
     const { data: track, error: trackError } = await supabase
       .from('content')
-      .select('*, workspace_id, data')
+      .select('*, workspace_id, data, author_id, created_at')
       .eq('id', trackId)
       .eq('type', 'music')
       .single();
 
     if (trackError || !track) {
       return NextResponse.json({ error: 'Track not found' }, { status: 404 });
+    }
+
+    // Verify user is the author of the track
+    if (track.author_id !== user.id) {
+      return NextResponse.json(
+        { error: 'You can only delete your own tracks' },
+        { status: 403 }
+      );
     }
 
     // Get workspace Spotify playlist ID
@@ -58,6 +66,18 @@ export async function DELETE(request: NextRequest) {
       console.warn('Failed to remove from Spotify, continuing with DB removal:', error);
     }
 
+    // Check if this is the user's most recent track
+    const { data: userTracks, error: userTracksError } = await supabase
+      .from('content')
+      .select('id, created_at')
+      .eq('workspace_id', track.workspace_id)
+      .eq('type', 'music')
+      .eq('author_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(1);
+
+    const isLastTrack = userTracks && userTracks.length > 0 && userTracks[0].id === trackId;
+
     // Remove from database
     const { error: deleteError } = await supabase
       .from('content')
@@ -66,6 +86,24 @@ export async function DELETE(request: NextRequest) {
 
     if (deleteError) {
       return NextResponse.json({ error: 'Failed to delete track' }, { status: 500 });
+    }
+
+    // If this was the user's most recent track, revert the turn back to them
+    if (isLastTrack && workspace.data && typeof workspace.data === 'object') {
+      const currentTurnUserId = workspace.data.current_music_turn_user_id;
+
+      // Only revert turn if it was the partner's turn (meaning this user had just added)
+      if (currentTurnUserId && currentTurnUserId !== user.id) {
+        await supabase
+          .from('workspaces')
+          .update({
+            data: {
+              ...workspace.data,
+              current_music_turn_user_id: user.id,
+            },
+          })
+          .eq('id', track.workspace_id);
+      }
     }
 
     return NextResponse.json({ success: true });

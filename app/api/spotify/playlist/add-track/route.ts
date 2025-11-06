@@ -48,12 +48,15 @@ export async function POST(request: NextRequest) {
     }
 
     // Check turn - if a turn is set, verify it's this user's turn
-    const currentTurnUserId = workspace.data?.current_music_turn_user_id;
-    if (currentTurnUserId && currentTurnUserId !== user.id) {
-      return NextResponse.json(
-        { error: 'Not your turn to add a track' },
-        { status: 403 }
-      );
+    // Only enforce turns if data field exists and has turn info
+    if (workspace.data && typeof workspace.data === 'object' && workspace.data !== null) {
+      const currentTurnUserId = workspace.data.current_music_turn_user_id;
+      if (currentTurnUserId && currentTurnUserId !== user.id) {
+        return NextResponse.json(
+          { error: 'Not your turn to add a track' },
+          { status: 403 }
+        );
+      }
     }
 
     let spotifyPlaylistId = workspace.data?.spotify_playlist_id;
