@@ -6,12 +6,20 @@
   "background_color": "#ffffff",
   "display": "standalone",
   "display_override": ["window-controls-overlay", "standalone"],
-  "orientation": "portrait",
+  "orientation": "portrait-primary",
   "scope": "/",
   "start_url": "/",
   "lang": "pt-BR",
+  "dir": "ltr",
+  "version": "1.0.0",
   "prefer_related_applications": false,
   "icons": [
+    {
+      "src": "/icon-512x512.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
     {
       "src": "/icon-72x72.png",
       "sizes": "72x72",

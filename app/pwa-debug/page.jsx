@@ -32,15 +32,15 @@ export default function PWADebugPage() {
         errors: [],
       }
 
-      // Check if service-worker.js file exists
+      // Check if sw.js file exists
       try {
-        const swResponse = await fetch('/service-worker.js', { method: 'HEAD' })
+        const swResponse = await fetch('/sw.js', { method: 'HEAD' })
         results.swFileExists = swResponse.ok
         if (!swResponse.ok) {
-          results.errors.push(`Arquivo service-worker.js não encontrado (status ${swResponse.status})`)
+          results.errors.push(`Arquivo sw.js não encontrado (status ${swResponse.status})`)
         }
       } catch (error) {
-        results.errors.push(`Erro ao verificar service-worker.js: ${error.message}`)
+        results.errors.push(`Erro ao verificar sw.js: ${error.message}`)
       }
 
       // Check Service Worker
@@ -58,7 +58,7 @@ export default function PWADebugPage() {
           } else {
             // Try to register manually to get error
             try {
-              await navigator.serviceWorker.register('/service-worker.js')
+              await navigator.serviceWorker.register('/sw.js')
               results.errors.push('SW registrado agora, recarregue a página')
             } catch (regError) {
               results.registrationError = regError.message
@@ -149,7 +149,7 @@ export default function PWADebugPage() {
           </h2>
           <div className="space-y-2">
             <StatusItem label="Service Worker Suportado" value={diagnostics.hasServiceWorker} />
-            <StatusItem label="Arquivo service-worker.js Existe" value={diagnostics.swFileExists} />
+            <StatusItem label="Arquivo sw.js Existe" value={diagnostics.swFileExists} />
             <StatusItem label="Manifest Acessível" value={diagnostics.hasManifest} />
             <StatusItem label="Contexto Seguro (HTTPS)" value={diagnostics.isSecureContext} />
           </div>

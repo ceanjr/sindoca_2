@@ -1,103 +1,209 @@
-/**
- * Copyright 2018 Google Inc. All Rights Reserved.
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *     http://www.apache.org/licenses/LICENSE-2.0
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// Service Worker para Sindoca da Maloka
+// Baseado em Workbox e boas práticas de PWA
 
-// Import push notification handlers
-importScripts('/sw-push-notifications.js');
+const CACHE_NAME = 'sindoca-v1.0.0';
+const RUNTIME_CACHE = 'sindoca-runtime';
 
-// If the loader is already loaded, just stop.
-if (!self.define) {
-  let registry = {};
+// Assets essenciais para precache
+const PRECACHE_ASSETS = [
+  '/',
+  '/manifest.json',
+  '/icon-192x192.png',
+  '/icon-512x512.png',
+];
 
-  // Used for `eval` and `importScripts` where we can't get script URL by other means.
-  // In both cases, it's safe to use a global var because those functions are synchronous.
-  let nextDefineUri;
+// Install: Precache de assets essenciais
+self.addEventListener('install', (event) => {
+  console.log('[SW] Installing...');
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => {
+      console.log('[SW] Precaching assets');
+      return cache.addAll(PRECACHE_ASSETS);
+    }).then(() => {
+      console.log('[SW] Install complete, skip waiting');
+      return self.skipWaiting();
+    })
+  );
+});
 
-  const singleRequire = (uri, parentUri) => {
-    uri = new URL(uri + ".js", parentUri).href;
-    return registry[uri] || (
-      
-        new Promise(resolve => {
-          if ("document" in self) {
-            const script = document.createElement("script");
-            script.src = uri;
-            script.onload = resolve;
-            document.head.appendChild(script);
-          } else {
-            nextDefineUri = uri;
-            importScripts(uri);
-            resolve();
-          }
-        })
-      
-      .then(() => {
-        let promise = registry[uri];
-        if (!promise) {
-          throw new Error(`Module ${uri} didn’t register its module`);
-        }
-        return promise;
-      })
-    );
-  };
+// Activate: Cleanup de caches antigos
+self.addEventListener('activate', (event) => {
+  console.log('[SW] Activating...');
+  event.waitUntil(
+    caches.keys().then((cacheNames) => {
+      return Promise.all(
+        cacheNames
+          .filter((name) => name.startsWith('sindoca-') && name !== CACHE_NAME && name !== RUNTIME_CACHE)
+          .map((name) => {
+            console.log('[SW] Deleting old cache:', name);
+            return caches.delete(name);
+          })
+      );
+    }).then(() => {
+      console.log('[SW] Activation complete, claiming clients');
+      return self.clients.claim();
+    })
+  );
+});
 
-  self.define = (depsNames, factory) => {
-    const uri = nextDefineUri || ("document" in self ? document.currentScript.src : "") || location.href;
-    if (registry[uri]) {
-      // Module is already loading or loaded.
-      return;
+// Fetch: Estratégias de cache
+self.addEventListener('fetch', (event) => {
+  const { request } = event;
+  const url = new URL(request.url);
+
+  // Ignora requisições não-GET
+  if (request.method !== 'GET') return;
+
+  // Estratégia para diferentes tipos de recursos
+  if (url.pathname === '/') {
+    // Página inicial: Network First com timeout
+    event.respondWith(networkFirstWithTimeout(request, 3000));
+  } else if (url.pathname.match(/\.(png|jpg|jpeg|svg|gif|webp|avif|ico)$/i)) {
+    // Imagens: Cache First
+    event.respondWith(cacheFirst(request));
+  } else if (url.pathname.match(/\.(js|css)$/i)) {
+    // JS/CSS: Cache First
+    event.respondWith(cacheFirst(request));
+  } else if (url.origin.includes('supabase.co') && url.pathname.includes('/storage/')) {
+    // Supabase Storage: Cache First
+    event.respondWith(cacheFirst(request));
+  } else if (url.origin.includes('supabase.co') && url.pathname.includes('/rest/')) {
+    // Supabase REST API: Network First
+    event.respondWith(networkFirst(request));
+  } else if (url.origin.includes('googleapis.com') || url.origin.includes('gstatic.com')) {
+    // Google Fonts: Cache First
+    event.respondWith(cacheFirst(request));
+  } else {
+    // Default: Network First
+    event.respondWith(networkFirst(request));
+  }
+});
+
+// Estratégia: Cache First
+async function cacheFirst(request) {
+  try {
+    const cached = await caches.match(request);
+    if (cached) {
+      console.log('[SW] Cache hit:', request.url);
+      return cached;
     }
-    let exports = {};
-    const require = depUri => singleRequire(depUri, uri);
-    const specialDeps = {
-      module: { uri },
-      exports,
-      require
-    };
-    registry[uri] = Promise.all(depsNames.map(
-      depName => specialDeps[depName] || require(depName)
-    )).then(deps => {
-      factory(...deps);
-      return exports;
-    });
-  };
+
+    const response = await fetch(request);
+    if (response && response.status === 200) {
+      const cache = await caches.open(RUNTIME_CACHE);
+      cache.put(request, response.clone());
+    }
+    return response;
+  } catch (error) {
+    console.error('[SW] Cache First failed:', error);
+    const cached = await caches.match(request);
+    if (cached) return cached;
+    throw error;
+  }
 }
-define(['./workbox-e43f5367'], (function (workbox) { 'use strict';
 
-  importScripts();
-  self.skipWaiting();
-  workbox.clientsClaim();
-  workbox.registerRoute("/", new workbox.NetworkFirst({
-    "cacheName": "start-url",
-    plugins: [{
-      cacheWillUpdate: async ({
-        request,
-        response,
-        event,
-        state
-      }) => {
-        if (response && response.type === 'opaqueredirect') {
-          return new Response(response.body, {
-            status: 200,
-            statusText: 'OK',
-            headers: response.headers
-          });
+// Estratégia: Network First
+async function networkFirst(request) {
+  try {
+    const response = await fetch(request);
+    if (response && response.status === 200) {
+      const cache = await caches.open(RUNTIME_CACHE);
+      cache.put(request, response.clone());
+    }
+    return response;
+  } catch (error) {
+    console.log('[SW] Network failed, trying cache:', request.url);
+    const cached = await caches.match(request);
+    if (cached) return cached;
+    throw error;
+  }
+}
+
+// Estratégia: Network First com Timeout
+async function networkFirstWithTimeout(request, timeout = 3000) {
+  try {
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Network timeout')), timeout)
+    );
+
+    const response = await Promise.race([fetch(request), timeoutPromise]);
+
+    if (response && response.status === 200) {
+      const cache = await caches.open(RUNTIME_CACHE);
+      cache.put(request, response.clone());
+    }
+    return response;
+  } catch (error) {
+    console.log('[SW] Network timeout/failed, using cache:', request.url);
+    const cached = await caches.match(request);
+    if (cached) return cached;
+
+    // Fallback para página inicial
+    const fallback = await caches.match('/');
+    if (fallback) return fallback;
+
+    throw error;
+  }
+}
+
+// Push Notifications
+self.addEventListener('push', (event) => {
+  console.log('[SW] Push notification received');
+
+  let data = {
+    title: 'Sindoca da Maloka',
+    body: 'Você tem uma nova notificação',
+    icon: '/icon-192x192.png',
+    badge: '/icon-192x192.png',
+    vibrate: [200, 100, 200],
+  };
+
+  if (event.data) {
+    try {
+      data = { ...data, ...event.data.json() };
+    } catch (e) {
+      data.body = event.data.text();
+    }
+  }
+
+  event.waitUntil(
+    self.registration.showNotification(data.title, {
+      body: data.body,
+      icon: data.icon,
+      badge: data.badge,
+      vibrate: data.vibrate,
+      tag: data.tag || 'notification',
+      data: data.data || {},
+    })
+  );
+});
+
+// Notification Click
+self.addEventListener('notificationclick', (event) => {
+  console.log('[SW] Notification clicked');
+  event.notification.close();
+
+  const urlToOpen = event.notification.data?.url || '/';
+
+  event.waitUntil(
+    clients
+      .matchAll({ type: 'window', includeUncontrolled: true })
+      .then((clientList) => {
+        for (const client of clientList) {
+          if (client.url.includes(urlToOpen) && 'focus' in client) {
+            return client.focus();
+          }
         }
-        return response;
-      }
-    }]
-  }), 'GET');
-  workbox.registerRoute(/.*/i, new workbox.NetworkOnly({
-    "cacheName": "dev",
-    plugins: []
-  }), 'GET');
+        if (clients.openWindow) {
+          return clients.openWindow(urlToOpen);
+        }
+      })
+  );
+});
 
-}));
+// Notification Close
+self.addEventListener('notificationclose', (event) => {
+  console.log('[SW] Notification closed');
+});
+
+console.log('[SW] Service Worker v1.0.0 loaded');
