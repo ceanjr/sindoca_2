@@ -16,35 +16,42 @@ export function usePWAInstall() {
     if (typeof window === 'undefined') return
 
     // Verifica se o app já está instalado
-    if (window.matchMedia('(display-mode: standalone)').matches) {
-      setIsInstalled(true)
-      setIsInstallable(false)
-      return
+    try {
+      if (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) {
+        setIsInstalled(true)
+        setIsInstallable(false)
+        return
+      }
+    } catch (error) {
+      console.log('PWA: Erro ao verificar display-mode:', error.message)
     }
 
     // Verifica instalabilidade de forma alternativa (sem depender só do evento)
     const checkInstallability = async () => {
       try {
-        // Verifica se tem service worker
-        const registration = await navigator.serviceWorker?.getRegistration()
-        const hasServiceWorker = !!registration?.active
+        // Verifica se tem service worker (com timeout)
+        if ('serviceWorker' in navigator) {
+          const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve(null), 3000))
+          const registrationPromise = navigator.serviceWorker.getRegistration()
+          const registration = await Promise.race([registrationPromise, timeoutPromise])
+          const hasServiceWorker = !!registration?.active
 
-        // Verifica se tem manifest
-        const manifestLink = document.querySelector('link[rel="manifest"]')
-        const hasManifest = !!manifestLink
+          // Verifica se tem manifest
+          const manifestLink = document.querySelector('link[rel="manifest"]')
+          const hasManifest = !!manifestLink
 
-        // Se tem SW e manifest, considera potencialmente instalável
-        if (hasServiceWorker && hasManifest) {
-          console.log('PWA: Critérios básicos atendidos (SW + Manifest)')
-          // Não define isInstallable aqui, apenas logga
-          // O evento beforeinstallprompt é quem realmente determina
+          // Se tem SW e manifest, considera potencialmente instalável
+          if (hasServiceWorker && hasManifest) {
+            console.log('PWA: Critérios básicos atendidos (SW + Manifest)')
+          }
         }
       } catch (error) {
-        console.error('PWA: Erro ao verificar instalabilidade:', error)
+        console.log('PWA: Erro ao verificar instalabilidade:', error.message)
       }
     }
 
-    checkInstallability()
+    // Não deixar o check bloquear o resto
+    checkInstallability().catch(() => {})
 
     // Captura o evento beforeinstallprompt
     const handleBeforeInstallPrompt = (e) => {

@@ -126,7 +126,7 @@ export default function PWAActions() {
       </AnimatePresence>
 
       {/* Floating Action Button */}
-      <div className="fixed bottom-24 right-4 z-[100] lg:bottom-6 flex flex-col items-end relative">
+      <div className="fixed bottom-24 right-4 z-[100] lg:bottom-6">
         {/* Options Menu */}
         <AnimatePresence>
           {isOpen && (
@@ -137,7 +137,7 @@ export default function PWAActions() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 20 }}
-                  className="absolute bottom-full right-0 flex flex-col gap-3 mb-4"
+                  className="flex flex-col gap-3 mb-4"
                 >
                   {showInstallOption && (
                     <motion.button
@@ -183,7 +183,7 @@ export default function PWAActions() {
                   initial={{ opacity: 0, x: -20, scale: 0.9 }}
                   animate={{ opacity: 1, x: 0, scale: 1 }}
                   exit={{ opacity: 0, x: -20, scale: 0.9 }}
-                  className="absolute bottom-full right-0 mb-4 bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 p-3 min-w-[240px] origin-bottom-right"
+                  className="absolute bottom-full right-0 mb-4 bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 p-3 min-w-[240px]"
                 >
                   <div className="space-y-2">
                     {showInstallOption && (

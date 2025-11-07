@@ -13,9 +13,17 @@ export function usePushNotifications() {
 
   useEffect(() => {
     // Check if Push API is supported
-    if ('Notification' in window && 'serviceWorker' in navigator && 'PushManager' in window) {
-      setIsSupported(true)
-      setPermission(Notification.permission)
+    try {
+      if (typeof window !== 'undefined' &&
+          'Notification' in window &&
+          'serviceWorker' in navigator &&
+          'PushManager' in window) {
+        setIsSupported(true)
+        setPermission(Notification.permission)
+      }
+    } catch (error) {
+      console.log('Push: Erro ao verificar suporte:', error.message)
+      setIsSupported(false)
     }
   }, [])
 
@@ -54,7 +62,14 @@ export function usePushNotifications() {
     if (!isSupported) return
 
     try {
-      const registration = await navigator.serviceWorker.ready
+      // Add timeout to prevent hanging
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Service Worker timeout')), 5000)
+      )
+      const registration = await Promise.race([
+        navigator.serviceWorker.ready,
+        timeoutPromise
+      ])
 
       // Check if already subscribed
       let sub = await registration.pushManager.getSubscription()
@@ -121,7 +136,13 @@ export function usePushNotifications() {
     }
 
     try {
-      const registration = await navigator.serviceWorker.ready
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Notification timeout')), 3000)
+      )
+      const registration = await Promise.race([
+        navigator.serviceWorker.ready,
+        timeoutPromise
+      ])
       await registration.showNotification(title, {
         body: options.body || '',
         icon: options.icon || '/icon-192x192.png',
@@ -132,7 +153,7 @@ export function usePushNotifications() {
         ...options,
       })
     } catch (error) {
-      console.error('Error showing notification:', error)
+      console.log('Erro ao mostrar notificação:', error.message)
       // Fallback to toast
       toast.info(title, { description: options.body })
     }
