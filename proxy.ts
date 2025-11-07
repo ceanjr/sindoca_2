@@ -83,7 +83,9 @@ export async function proxy(request: NextRequest) {
     '/auth/callback',
     '/auth/join',
     '/api/auth/verify-invite',
-    '/api/spotify/callback'
+    '/api/spotify/callback',
+    '/clear-cache',
+    '/pwa-debug'
   ]
   const isPublicRoute = publicRoutes.some(route => request.nextUrl.pathname.startsWith(route))
 
