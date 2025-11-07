@@ -140,16 +140,8 @@ export default function MusicSection({ id }) {
     try {
       await addTrack(track);
       toast.success('Música adicionada à playlist');
-
-      // Show push notification
-      if (isGranted) {
-        await showLocalNotification('🎵 Chama! Toma!', {
-          body: `${track.name} - ${track.artists}`,
-          icon: track.album_art || '/icon-192x192.png',
-          tag: 'new-music',
-          data: { url: '/musica' },
-        });
-      }
+      // Note: Push notification to partner is sent by the API route
+      // Local notification will be shown to partner via realtime subscription
     } catch (error) {
       console.error('Failed to add track:', error);
       toast.error('Erro ao adicionar música. Tente novamente.');

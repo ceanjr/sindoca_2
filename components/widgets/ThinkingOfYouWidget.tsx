@@ -280,25 +280,7 @@ export default function ThinkingOfYouWidget({
         console.error('Error sending push notification:', error);
       }
 
-      // Show local notification
-      if (isGranted) {
-        await showLocalNotification(title, {
-          body: message,
-          icon: '/icon-192x192.png',
-          tag: 'thinking-of-you',
-        });
-      } else {
-        // Request permission if not granted
-        const granted = await requestPermission();
-        if (granted) {
-          await showLocalNotification(title, {
-            body: message,
-            icon: '/icon-192x192.png',
-            tag: 'thinking-of-you',
-          });
-        }
-      }
-
+      // Show success toast (no local notification for sender)
       toast.success('Mensagem enviada! 💕', {
         description: message,
         duration: 5000,
