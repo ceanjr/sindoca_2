@@ -156,7 +156,7 @@ export default function AddReasonModal({
             type="text"
             value={reason}
             onChange={(e) => setReason(e.target.value)}
-            placeholder="Um breve texto sobre o que você ama"
+            placeholder="O jeitinho sexy dele de morder o lábio..."
             className="w-full px-4 py-3 bg-background border-2 border-gray-300 dark:border-gray-700 rounded-xl focus:border-primary focus:outline-none transition-colors text-textPrimary placeholder:text-textTertiary"
             required
           />
@@ -175,7 +175,7 @@ export default function AddReasonModal({
             id="description"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="Descreva os motivos..."
+            placeholder="Porque fico com a pepeka batendo palma..."
             rows={4}
             className="w-full px-4 py-3 bg-background border-2 border-gray-300 dark:border-gray-700 rounded-xl focus:border-primary focus:outline-none transition-colors text-textPrimary placeholder:text-textTertiary resize-none"
           />

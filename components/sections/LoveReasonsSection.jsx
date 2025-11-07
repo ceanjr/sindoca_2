@@ -1,29 +1,16 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useInView } from 'react-intersection-observer';
-import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import {
-  Smile,
-  Music,
-  Sparkles,
-  MessageCircle,
-  Star,
   Heart,
-  Coffee,
-  Book,
-  Sun,
-  Moon,
-  Zap,
-  Award,
-  Target,
-  Users,
-  Laugh,
   Plus,
   Pencil,
   Trash2,
+  Shuffle,
+  Sparkles,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '@/lib/supabase/client';
@@ -34,26 +21,10 @@ import { toast } from 'sonner';
 import AddReasonModal from '@/components/ui/AddReasonModal';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 
-const iconMap = {
-  Smile,
-  Music,
-  Sparkles,
-  MessageCircle,
-  Star,
-  Heart,
-  Coffee,
-  Book,
-  Sun,
-  Moon,
-  Zap,
-  Award,
-  Target,
-  Users,
-  Laugh,
-};
+const REASONS_PER_PAGE = 9;
+const MIN_REASONS_FOR_RANDOM = 7;
 
 export default function LoveReasonsSection({ id }) {
-  const router = useRouter();
   const { user } = useAuth();
   const [reasons, setReasons] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -62,7 +33,15 @@ export default function LoveReasonsSection({ id }) {
   const [editingReason, setEditingReason] = useState(null);
   const [workspaceId, setWorkspaceId] = useState(null);
   const [partnerId, setPartnerId] = useState(null);
+  const [partnerProfile, setPartnerProfile] = useState(null);
   const { ref, inView } = useInView({ threshold: 0.1, triggerOnce: true });
+
+  // New state for tabs and pagination
+  const [activeTab, setActiveTab] = useState('all');
+  const [visibleCount, setVisibleCount] = useState(REASONS_PER_PAGE);
+  const [randomReason, setRandomReason] = useState(null);
+  const [showRandomModal, setShowRandomModal] = useState(false);
+
   const {
     isOpen,
     loading: confirmLoading,
@@ -96,12 +75,6 @@ export default function LoveReasonsSection({ id }) {
       const wId = workspacesData[0].workspace_id;
       setWorkspaceId(wId);
 
-      const { data: partnerProfile, error: profileError } = await supabase
-        .from('profiles')
-        .select('full_name, nickname')
-        .eq('id', partnerId)
-        .single();
-
       // Get partner ID
       const { data: members } = await supabase
         .from('workspace_members')
@@ -111,6 +84,15 @@ export default function LoveReasonsSection({ id }) {
       const partner = members?.find((m) => m.user_id !== user.id);
       if (partner) {
         setPartnerId(partner.user_id);
+
+        // Get partner profile
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('full_name, nickname')
+          .eq('id', partner.user_id)
+          .single();
+
+        setPartnerProfile(profile);
       }
 
       // Load love reasons from content table
@@ -135,11 +117,31 @@ export default function LoveReasonsSection({ id }) {
 
       setReasons(formattedReasons);
     } catch (error) {
-      // console.error('Error loading love reasons:', error);
+      console.error('Error loading love reasons:', error);
     } finally {
       setLoading(false);
     }
   };
+
+  // Filter reasons by active tab
+  const filteredReasons = useMemo(() => {
+    if (activeTab === 'all') return reasons;
+    return reasons.filter((r) => r.subject === activeTab);
+  }, [reasons, activeTab]);
+
+  // Visible reasons with pagination
+  const visibleReasons = useMemo(() => {
+    return filteredReasons.slice(0, visibleCount);
+  }, [filteredReasons, visibleCount]);
+
+  // Count reasons per subject
+  const reasonCounts = useMemo(() => {
+    return {
+      all: reasons.length,
+      sindy: reasons.filter((r) => r.subject === 'sindy').length,
+      junior: reasons.filter((r) => r.subject === 'junior').length,
+    };
+  }, [reasons]);
 
   const toggleSecret = (index) => {
     setRevealedSecrets((prev) => {
@@ -173,6 +175,7 @@ export default function LoveReasonsSection({ id }) {
           .eq('id', editingReason.id);
 
         if (error) throw error;
+        toast.success('Razão atualizada!');
         setEditingReason(null);
       } else {
         // Insert new reason
@@ -195,49 +198,36 @@ export default function LoveReasonsSection({ id }) {
           .select();
 
         if (error) throw error;
+        toast.success('Nova razão adicionada!');
 
-        // Send server-side push notification to partner
-        if (partnerId) {
+        // Send push notification to partner
+        if (partnerId && partnerProfile) {
           try {
             await fetch('/api/push/send', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 recipientUserId: partnerId,
-                title: `${partnerProfile?.full_name} adicionou uma nova razão para te aguentar!`,
+                title: `${partnerProfile.full_name} adicionou uma nova razão para te aguentar!`,
                 body: `Corre antes que ${
-                  partnerProfile?.full_name === 'Sindy' ? 'ela' : 'ele'
+                  partnerProfile.full_name === 'Sindy' ? 'ela' : 'ele'
                 } mude de ideia!`,
                 icon: '/icon-192x192.png',
                 tag: 'new-reason',
-                data: { url: '/fotos#razoes' },
+                data: { url: '/razoes' },
               }),
             });
           } catch (error) {
             console.error('Error sending push notification:', error);
           }
         }
-
-        // Show local notification for self
-        if (isGranted) {
-          await showLocalNotification(
-            `${partnerProfile?.full_name} adicionou uma nova razão para te aguentar!`,
-            {
-              body: `Corre antes que ${
-                partnerProfile?.full_name === 'Sindy' ? 'ela' : 'ele'
-              } mude de ideia!`,
-              icon: '/icon-192x192.png',
-              tag: 'new-reason',
-              data: { url: '/fotos#razoes' },
-            }
-          );
-        }
       }
 
-      // Reload reasons to get the new one
+      // Reload reasons
       await loadReasons();
     } catch (error) {
-      // console.error('Error adding/updating reason:', error);
+      console.error('Error adding/updating reason:', error);
+      toast.error('Erro ao salvar razão. Tente novamente.');
       throw error;
     }
   };
@@ -269,7 +259,6 @@ export default function LoveReasonsSection({ id }) {
 
       if (error) throw error;
 
-      // Reload reasons
       await loadReasons();
       toast.success('Razão apagada com sucesso');
     } catch (error) {
@@ -287,6 +276,21 @@ export default function LoveReasonsSection({ id }) {
     setEditingReason(null);
   };
 
+  const handleLoadMore = () => {
+    setVisibleCount((prev) => prev + REASONS_PER_PAGE);
+  };
+
+  const handleRandomReason = () => {
+    if (filteredReasons.length === 0) return;
+
+    const random = filteredReasons[Math.floor(Math.random() * filteredReasons.length)];
+    setRandomReason(random);
+    setShowRandomModal(true);
+  };
+
+  const hasMoreReasons = visibleCount < filteredReasons.length;
+  const showRandomButton = filteredReasons.length >= MIN_REASONS_FOR_RANDOM;
+
   return (
     <section id={id} className="min-h-screen px-4 py-20" ref={ref}>
       <div className="max-w-4xl mx-auto">
@@ -295,7 +299,7 @@ export default function LoveReasonsSection({ id }) {
           initial={{ opacity: 0, y: 30 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.6 }}
-          className="text-center mb-16"
+          className="text-center mb-12"
         >
           <motion.div
             initial={{ scale: 0 }}
@@ -303,13 +307,13 @@ export default function LoveReasonsSection({ id }) {
             transition={{ duration: 0.5, delay: 0.2 }}
             className="inline-block mb-4"
           >
-            <Heart className="text-primary" size={48} />
+            <Heart className="text-primary" size={48} fill="currentColor" />
           </motion.div>
           <h2 className="font-heading text-4xl md:text-6xl font-bold text-textPrimary mb-4">
             O Que Eu <span className="text-primary">Amo</span> em Você
           </h2>
           <p className="text-lg text-textSecondary">
-            Entre razões e emoções sem saídas, como você, como você{' '}
+            Entre razões e emoções sem saídas, como você, como você
           </p>
         </motion.div>
 
@@ -321,7 +325,7 @@ export default function LoveReasonsSection({ id }) {
               transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
               className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full mx-auto"
             />
-            <p className="text-textSecondary mt-4">Carregando...</p>
+            <p className="text-textSecondary mt-4">Carregando razões...</p>
           </div>
         )}
 
@@ -347,11 +351,11 @@ export default function LoveReasonsSection({ id }) {
           </div>
         )}
 
-        {/* Lista Minimalista */}
+        {/* Content */}
         {!loading && reasons.length > 0 && (
           <>
-            {/* Add Button */}
-            <div className="mb-8 flex justify-center">
+            {/* Action Buttons Row */}
+            <div className="mb-8 flex flex-col sm:flex-row justify-center items-center gap-4">
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
@@ -361,163 +365,334 @@ export default function LoveReasonsSection({ id }) {
                 <Plus size={20} />
                 Adicionar Razão
               </motion.button>
+
+              {/* Random Reason Button - Emergency Emotional Support */}
+              {showRandomButton && (
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={handleRandomReason}
+                  className="px-6 py-3 bg-gradient-to-r from-pink-500 to-purple-500 text-white font-semibold rounded-xl shadow-soft-md inline-flex items-center gap-2 relative overflow-hidden group"
+                >
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
+                  >
+                    <Shuffle size={20} />
+                  </motion.div>
+                  <span>Razão Aleatória 🆘❤️</span>
+                  <Sparkles
+                    size={16}
+                    className="absolute top-1 right-1 text-yellow-300 opacity-80"
+                  />
+                </motion.button>
+              )}
             </div>
 
+            {/* Tabs */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={inView ? { opacity: 1, y: 0 } : {}}
+              transition={{ duration: 0.5, delay: 0.2 }}
+              className="flex gap-2 justify-center mb-8 flex-wrap"
+            >
+              <TabButton
+                active={activeTab === 'all'}
+                onClick={() => {
+                  setActiveTab('all');
+                  setVisibleCount(REASONS_PER_PAGE);
+                }}
+                count={reasonCounts.all}
+              >
+                Todas
+              </TabButton>
+              <TabButton
+                active={activeTab === 'sindy'}
+                onClick={() => {
+                  setActiveTab('sindy');
+                  setVisibleCount(REASONS_PER_PAGE);
+                }}
+                count={reasonCounts.sindy}
+              >
+                Sindy
+              </TabButton>
+              <TabButton
+                active={activeTab === 'junior'}
+                onClick={() => {
+                  setActiveTab('junior');
+                  setVisibleCount(REASONS_PER_PAGE);
+                }}
+                count={reasonCounts.junior}
+              >
+                Júnior
+              </TabButton>
+            </motion.div>
+
+            {/* Reasons List */}
             <div className="space-y-4">
-              {reasons.map((item, index) => {
-                const Icon = iconMap[item.icon] || Heart;
-                const isRevealed = revealedSecrets.has(index);
-                const subjectImage =
-                  item.subject === 'junior'
-                    ? '/images/eu.png'
-                    : '/images/sindy.png';
-                const subjectName =
-                  item.subject === 'junior' ? 'Júnior' : 'Sindy';
+              <AnimatePresence mode="popLayout">
+                {visibleReasons.map((item, index) => {
+                  const isRevealed = revealedSecrets.has(item.id);
+                  const subjectImage =
+                    item.subject === 'junior'
+                      ? '/images/eu.png'
+                      : '/images/sindy.png';
+                  const subjectName =
+                    item.subject === 'junior' ? 'Júnior' : 'Sindy';
 
-                return (
-                  <motion.div
-                    key={item.id}
-                    initial={{ opacity: 0, x: -30 }}
-                    animate={inView ? { opacity: 1, x: 0 } : {}}
-                    transition={{ duration: 0.4, delay: index * 0.05 }}
-                    className="group"
-                  >
+                  return (
                     <motion.div
-                      whileHover={{ x: 8 }}
-                      onClick={() => toggleSecret(index)}
-                      className="bg-surface rounded-2xl p-6 shadow-soft-sm hover:shadow-soft-md transition-all duration-300 cursor-pointer border-l-4 border-primary"
+                      key={item.id}
+                      layout
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.9 }}
+                      transition={{ duration: 0.3 }}
+                      className="group"
                     >
-                      <div className="flex items-start gap-4 relative">
-                        <div className="flex flex-col gap-4">
-                          {/* Subject Avatar */}
-                          <div className="flex-shrink-0 w-12 h-12 rounded-full overflow-hidden border-2 border-primary">
-                            <Image
-                              src={subjectImage}
-                              alt={subjectName}
-                              width={48}
-                              height={48}
-                              className="object-cover"
-                            />
-                          </div>
-                          {isRevealed && canEditOrDelete(item) && (
-                            <div
-                              className={`flex flex-col gap-2 items-center `}
-                            >
-                              <motion.button
-                                whileHover={{ scale: 1.1 }}
-                                whileTap={{ scale: 0.9 }}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleEditReason(item);
-                                }}
-                                className="w-8 h-8 flex items-center justify-center rounded-lg bg-blue-500/20 hover:bg-blue-500/30 text-blue-600 dark:text-blue-400 transition-colors"
-                                title="Editar"
-                              >
-                                <Pencil size={16} />
-                              </motion.button>
-
-                              <motion.button
-                                whileHover={{ scale: 1.1 }}
-                                whileTap={{ scale: 0.9 }}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleDeleteReason(item.id);
-                                }}
-                                className="w-8 h-8 flex items-center justify-center rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-600 dark:text-red-400 transition-colors"
-                                title="Apagar"
-                              >
-                                <Trash2 size={16} />
-                              </motion.button>
+                      <motion.div
+                        whileHover={{ x: 8 }}
+                        onClick={() => toggleSecret(item.id)}
+                        className="bg-surface rounded-2xl p-6 shadow-soft-sm hover:shadow-soft-md transition-all duration-300 cursor-pointer border-l-4 border-primary"
+                      >
+                        <div className="flex items-start gap-4 relative">
+                          <div className="flex flex-col gap-4">
+                            {/* Subject Avatar - Optimized with priority */}
+                            <div className="flex-shrink-0 w-12 h-12 rounded-full overflow-hidden border-2 border-primary">
+                              <Image
+                                src={subjectImage}
+                                alt={subjectName}
+                                width={48}
+                                height={48}
+                                className="object-cover"
+                                loading="lazy"
+                                placeholder="blur"
+                                blurDataURL="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDgiIGhlaWdodD0iNDgiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjQ4IiBoZWlnaHQ9IjQ4IiBmaWxsPSIjZjBmMGYwIi8+PC9zdmc+"
+                              />
                             </div>
-                          )}
-                        </div>
 
-                        {/* Content */}
-                        <div className="flex-1 min-w-0">
-                          {/* Main text */}
-                          <p className="text-textPrimary text-lg font-medium mb-1">
-                            {item.reason}
-                          </p>
+                            {/* Edit/Delete buttons */}
+                            {isRevealed && canEditOrDelete(item) && (
+                              <div className="flex flex-col gap-2 items-center">
+                                <motion.button
+                                  whileHover={{ scale: 1.1 }}
+                                  whileTap={{ scale: 0.9 }}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleEditReason(item);
+                                  }}
+                                  className="w-8 h-8 flex items-center justify-center rounded-lg bg-blue-500/20 hover:bg-blue-500/30 text-blue-600 dark:text-blue-400 transition-colors"
+                                  title="Editar"
+                                >
+                                  <Pencil size={16} />
+                                </motion.button>
 
-                          {/* Subject name badge */}
-                          <span className="inline-block text-xs text-textTertiary font-semibold uppercase tracking-wider">
-                            {subjectName}
-                          </span>
+                                <motion.button
+                                  whileHover={{ scale: 1.1 }}
+                                  whileTap={{ scale: 0.9 }}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteReason(item.id);
+                                  }}
+                                  className="w-8 h-8 flex items-center justify-center rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-600 dark:text-red-400 transition-colors"
+                                  title="Apagar"
+                                >
+                                  <Trash2 size={16} />
+                                </motion.button>
+                              </div>
+                            )}
+                          </div>
 
-                          {/* Description message or actions for cards without description */}
-                          <AnimatePresence>
-                            {isRevealed && (
-                              <motion.div
-                                initial={{
-                                  opacity: 0,
-                                  height: 0,
-                                  marginTop: 0,
-                                }}
-                                animate={{
-                                  opacity: 1,
-                                  height: 'auto',
-                                  marginTop: 12,
-                                }}
-                                exit={{ opacity: 0, height: 0, marginTop: 0 }}
-                                transition={{ duration: 0.3 }}
-                                className="overflow-hidden"
-                              >
-                                <div className="bg-gradient-to-r bg-primary/10 rounded-xl p-4 border-l-2 border-primary">
-                                  {item.description && (
-                                    <p className="text-textSecondary italic text-sm mb-3">
+                          {/* Content */}
+                          <div className="flex-1 min-w-0">
+                            {/* Main text */}
+                            <p className="text-textPrimary text-lg font-medium mb-1">
+                              {item.reason}
+                            </p>
+
+                            {/* Subject name badge */}
+                            <span className="inline-block text-xs text-textTertiary font-semibold uppercase tracking-wider">
+                              {subjectName}
+                            </span>
+
+                            {/* Description */}
+                            <AnimatePresence>
+                              {isRevealed && item.description && (
+                                <motion.div
+                                  initial={{
+                                    opacity: 0,
+                                    height: 0,
+                                    marginTop: 0,
+                                  }}
+                                  animate={{
+                                    opacity: 1,
+                                    height: 'auto',
+                                    marginTop: 12,
+                                  }}
+                                  exit={{ opacity: 0, height: 0, marginTop: 0 }}
+                                  transition={{ duration: 0.3 }}
+                                  className="overflow-hidden"
+                                >
+                                  <div className="bg-gradient-to-r bg-primary/10 rounded-xl p-4 border-l-2 border-primary">
+                                    <p className="text-textSecondary italic text-sm">
                                       {item.description}
                                     </p>
-                                  )}
-                                </div>
-                              </motion.div>
-                            )}
-                          </AnimatePresence>
-                        </div>
+                                  </div>
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
+                          </div>
 
-                        {/* Indicator */}
-                        <motion.div
-                          animate={{ rotate: isRevealed ? 90 : 0 }}
-                          transition={{ duration: 0.3 }}
-                          className="flex-shrink-0 text-textTertiary group-hover:text-primary transition-colors"
-                        >
-                          <svg
-                            width="20"
-                            height="20"
-                            viewBox="0 0 20 20"
-                            fill="none"
-                            xmlns="http://www.w3.org/2000/svg"
+                          {/* Indicator */}
+                          <motion.div
+                            animate={{ rotate: isRevealed ? 90 : 0 }}
+                            transition={{ duration: 0.3 }}
+                            className="flex-shrink-0 text-textTertiary group-hover:text-primary transition-colors"
                           >
-                            <path
-                              d="M7.5 5L12.5 10L7.5 15"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                          </svg>
-                        </motion.div>
-                      </div>
+                            <svg
+                              width="20"
+                              height="20"
+                              viewBox="0 0 20 20"
+                              fill="none"
+                              xmlns="http://www.w3.org/2000/svg"
+                            >
+                              <path
+                                d="M7.5 5L12.5 10L7.5 15"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                            </svg>
+                          </motion.div>
+                        </div>
+                      </motion.div>
                     </motion.div>
-                  </motion.div>
-                );
-              })}
+                  );
+                })}
+              </AnimatePresence>
             </div>
+
+            {/* Load More Button */}
+            {hasMoreReasons && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+                className="mt-8 text-center"
+              >
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={handleLoadMore}
+                  className="px-8 py-4 bg-surface hover:bg-surfaceAlt text-textPrimary font-semibold rounded-xl shadow-soft-md transition-all duration-300 inline-flex items-center gap-2 border-2 border-primary/20"
+                >
+                  <Heart size={20} className="text-primary" />
+                  Ver mais {filteredReasons.length - visibleCount} razões
+                </motion.button>
+              </motion.div>
+            )}
+
+            {/* Hint */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={inView ? { opacity: 1 } : {}}
+              transition={{ duration: 0.6, delay: 0.5 }}
+              className="mt-8 text-center"
+            >
+              <p className="text-textTertiary text-sm">
+                💡 Clique em cada item com descrição para revelar mais detalhes
+              </p>
+            </motion.div>
           </>
         )}
 
-        {/* Hint */}
-        {!loading && reasons.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={inView ? { opacity: 1 } : {}}
-            transition={{ duration: 0.6, delay: 1 }}
-            className="mt-8 text-center"
-          >
-            <p className="text-textTertiary text-sm">
-              💡 Clique em cada item com descrição para revelar mais detalhes
-            </p>
-          </motion.div>
-        )}
+        {/* Random Reason Modal */}
+        <AnimatePresence>
+          {showRandomModal && randomReason && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+              onClick={() => setShowRandomModal(false)}
+            >
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                transition={{ type: 'spring', damping: 20 }}
+                className="bg-gradient-to-br from-pink-50 to-purple-50 dark:from-gray-800 dark:to-gray-900 rounded-3xl p-8 max-w-lg w-full shadow-2xl border-4 border-primary relative"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="absolute -top-6 left-1/2 -translate-x-1/2">
+                  <motion.div
+                    animate={{
+                      scale: [1, 1.2, 1],
+                      rotate: [0, 10, -10, 0],
+                    }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                    className="bg-primary rounded-full p-4 shadow-lg"
+                  >
+                    <Heart size={32} className="text-white" fill="currentColor" />
+                  </motion.div>
+                </div>
+
+                <div className="text-center mt-8">
+                  <h3 className="text-2xl font-bold text-textPrimary mb-4">
+                    🆘 Suporte Emocional Ativado
+                  </h3>
+
+                  <div className="mb-6">
+                    <div className="flex justify-center mb-4">
+                      <div className="w-16 h-16 rounded-full overflow-hidden border-4 border-primary">
+                        <Image
+                          src={
+                            randomReason.subject === 'junior'
+                              ? '/images/eu.png'
+                              : '/images/sindy.png'
+                          }
+                          alt={randomReason.subject === 'junior' ? 'Júnior' : 'Sindy'}
+                          width={64}
+                          height={64}
+                          className="object-cover"
+                        />
+                      </div>
+                    </div>
+                    <p className="text-xl font-medium text-textPrimary mb-2">
+                      {randomReason.reason}
+                    </p>
+                    {randomReason.description && (
+                      <p className="text-textSecondary italic">
+                        "{randomReason.description}"
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="flex gap-3 justify-center">
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={handleRandomReason}
+                      className="px-6 py-3 bg-primary text-white font-semibold rounded-xl shadow-soft-md inline-flex items-center gap-2"
+                    >
+                      <Shuffle size={18} />
+                      Outra Razão
+                    </motion.button>
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => setShowRandomModal(false)}
+                      className="px-6 py-3 bg-surface text-textPrimary font-semibold rounded-xl shadow-soft-md"
+                    >
+                      Fechar
+                    </motion.button>
+                  </div>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Add Reason Modal */}
         <AddReasonModal
@@ -541,5 +716,23 @@ export default function LoveReasonsSection({ id }) {
         />
       </div>
     </section>
+  );
+}
+
+// Tab Button Component
+function TabButton({ active, onClick, count, children }) {
+  return (
+    <motion.button
+      whileHover={{ scale: 1.05 }}
+      whileTap={{ scale: 0.95 }}
+      onClick={onClick}
+      className={`px-6 py-3 rounded-xl font-semibold transition-all duration-300 ${
+        active
+          ? 'bg-primary text-white shadow-soft-md'
+          : 'bg-surface text-textSecondary hover:bg-surfaceAlt hover:text-textPrimary'
+      }`}
+    >
+      {children} <span className="ml-1">({count})</span>
+    </motion.button>
   );
 }
