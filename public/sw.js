@@ -11,6 +11,9 @@
  * limitations under the License.
  */
 
+// Import push notification handlers
+importScripts('/sw-push-notifications.js');
+
 // If the loader is already loaded, just stop.
 if (!self.define) {
   let registry = {};

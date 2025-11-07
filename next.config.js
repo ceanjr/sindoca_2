@@ -3,8 +3,9 @@ const withPWA = require('next-pwa')({
   register: true,
   skipWaiting: true,
   disable: process.env.NODE_ENV === 'development',
-  // Custom service worker source for push notifications
-  swSrc: 'service-worker.js',
+  buildExcludes: [/middleware-manifest\.json$/],
+  // Custom service worker with push notification support
+  sw: 'sw.js',
   runtimeCaching: [
     {
       urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,

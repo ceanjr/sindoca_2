@@ -39,6 +39,30 @@ export default function AppProvider({ children }) {
     }
   }, [theme])
 
+  // Register Service Worker
+  useEffect(() => {
+    if (
+      typeof window !== 'undefined' &&
+      'serviceWorker' in navigator &&
+      window.workbox !== undefined
+    ) {
+      const wb = window.workbox
+
+      // Add event listener to detect when service worker becomes active
+      const promptNewVersionAvailable = () => {
+        console.log('Nova versão do service worker disponível')
+      }
+
+      wb.addEventListener('waiting', promptNewVersionAvailable)
+      wb.addEventListener('controlling', () => {
+        window.location.reload()
+      })
+
+      // Register service worker
+      wb.register()
+    }
+  }, [])
+
   // Save theme to storage
   const handleThemeChange = async (newTheme) => {
     setTheme(newTheme)
