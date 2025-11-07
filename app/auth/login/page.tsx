@@ -75,30 +75,36 @@ function LoginForm() {
         toast.success('Link mágico enviado! ✨', {
           description: 'Verifique seu email para fazer login.',
         });
+        setLoading(false);
       } else {
         // Regular password login
+        console.log('Iniciando login...');
         const result = await signIn(formData.email, formData.password);
+        console.log('Login result:', result);
 
         if (result) {
+          console.log('Login bem-sucedido, redirecionando...');
           toast.success('Bem-vindo de volta! 💕');
 
-          // Small delay to ensure auth state is updated
-          await new Promise(resolve => setTimeout(resolve, 100));
-
-          // Redirect to home
-          router.push('/');
+          // Redirect immediately - the middleware will handle auth
+          window.location.href = '/';
+        } else {
+          console.error('Login falhou - sem resultado');
+          setLoading(false);
+          toast.error('Erro ao fazer login', {
+            description: 'Tente novamente',
+          });
         }
       }
     } catch (error: any) {
       console.error('Login error:', error);
+      setLoading(false);
       toast.error(
         useMagicLink ? 'Erro ao enviar link' : 'Erro ao fazer login',
         {
           description: error.message || 'Verifique suas credenciais',
         }
       );
-    } finally {
-      setLoading(false);
     }
   };
 
