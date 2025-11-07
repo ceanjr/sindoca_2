@@ -86,8 +86,11 @@ function LoginForm() {
           console.log('Login bem-sucedido, redirecionando...');
           toast.success('Bem-vindo de volta! 💕');
 
-          // Redirect immediately - the middleware will handle auth
-          window.location.href = '/';
+          // Use Next.js router for client-side navigation
+          // This preserves the AuthContext state instead of forcing a reload
+          setTimeout(() => {
+            router.push('/');
+          }, 100); // Small delay to ensure auth state is updated
         } else {
           console.error('Login falhou - sem resultado');
           setLoading(false);
