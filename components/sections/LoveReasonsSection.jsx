@@ -4,14 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useInView } from 'react-intersection-observer';
 import Image from 'next/image';
-import {
-  Heart,
-  Plus,
-  Pencil,
-  Trash2,
-  Shuffle,
-  Sparkles,
-} from 'lucide-react';
+import { Heart, Plus, Pencil, Trash2, Shuffle, Sparkles } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '@/lib/supabase/client';
 import { getUserWorkspaces } from '@/lib/api/workspace';
@@ -283,7 +276,8 @@ export default function LoveReasonsSection({ id }) {
   const handleRandomReason = () => {
     if (filteredReasons.length === 0) return;
 
-    const random = filteredReasons[Math.floor(Math.random() * filteredReasons.length)];
+    const random =
+      filteredReasons[Math.floor(Math.random() * filteredReasons.length)];
     setRandomReason(random);
     setShowRandomModal(true);
   };
@@ -355,7 +349,18 @@ export default function LoveReasonsSection({ id }) {
         {!loading && reasons.length > 0 && (
           <>
             {/* Action Buttons Row */}
-            <div className="mb-8 flex flex-col sm:flex-row justify-center items-center gap-4">
+            <div className="mb-8 flex flex-col justify-center items-center gap-4">
+              {/* Random Reason Button - Emergency Emotional Support */}
+              {showRandomButton && (
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={handleRandomReason}
+                  className="px-6 py-3 bg-red-500 text-white font-semibold rounded-xl shadow-soft-md inline-flex items-center gap-2 relative overflow-hidden group"
+                >
+                  <span>Botão de Emergência Emocional 🆘</span>
+                </motion.button>
+              )}
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
@@ -365,28 +370,6 @@ export default function LoveReasonsSection({ id }) {
                 <Plus size={20} />
                 Adicionar Razão
               </motion.button>
-
-              {/* Random Reason Button - Emergency Emotional Support */}
-              {showRandomButton && (
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={handleRandomReason}
-                  className="px-6 py-3 bg-gradient-to-r from-pink-500 to-purple-500 text-white font-semibold rounded-xl shadow-soft-md inline-flex items-center gap-2 relative overflow-hidden group"
-                >
-                  <motion.div
-                    animate={{ rotate: 360 }}
-                    transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
-                  >
-                    <Shuffle size={20} />
-                  </motion.div>
-                  <span>Razão Aleatória 🆘❤️</span>
-                  <Sparkles
-                    size={16}
-                    className="absolute top-1 right-1 text-yellow-300 opacity-80"
-                  />
-                </motion.button>
-              )}
             </div>
 
             {/* Tabs */}
@@ -634,7 +617,11 @@ export default function LoveReasonsSection({ id }) {
                     transition={{ duration: 2, repeat: Infinity }}
                     className="bg-primary rounded-full p-4 shadow-lg"
                   >
-                    <Heart size={32} className="text-white" fill="currentColor" />
+                    <Heart
+                      size={32}
+                      className="text-white"
+                      fill="currentColor"
+                    />
                   </motion.div>
                 </div>
 
@@ -652,7 +639,11 @@ export default function LoveReasonsSection({ id }) {
                               ? '/images/eu.png'
                               : '/images/sindy.png'
                           }
-                          alt={randomReason.subject === 'junior' ? 'Júnior' : 'Sindy'}
+                          alt={
+                            randomReason.subject === 'junior'
+                              ? 'Júnior'
+                              : 'Sindy'
+                          }
                           width={64}
                           height={64}
                           className="object-cover"
