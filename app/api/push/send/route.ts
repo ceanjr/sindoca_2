@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
       title,
       body,
       icon: icon || '/icon-192x192.png',
-      badge: badge || '/icon-192x192.png',
+      // badge removed to prevent "from Sindoca" text on Android notifications
       tag: tag || 'notification',
       data: notificationData || {},
     });

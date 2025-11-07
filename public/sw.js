@@ -1,7 +1,7 @@
 // Service Worker para Sindoca da Maloka
-// Versão v4 - Fix de navegação após login
+// Versão v5 - Fix de notificações e navegação
 
-const CACHE_VERSION = 'v4';
+const CACHE_VERSION = 'v5';
 const CACHE_NAME = `sindoca-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `sindoca-runtime-${CACHE_VERSION}`;
 
@@ -13,7 +13,7 @@ const PRECACHE_URLS = [
 
 // Install: Cachear apenas ícones, skipWaiting imediato
 self.addEventListener('install', (event) => {
-  console.log('[SW] Install event - v4');
+  console.log('[SW] Install event - v5');
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
@@ -29,11 +29,11 @@ self.addEventListener('install', (event) => {
 
 // Activate: LIMPAR TODOS OS CACHES ANTIGOS e tomar controle imediato
 self.addEventListener('activate', (event) => {
-  console.log('[SW] Activate event - v4 cleaning ALL old caches');
+  console.log('[SW] Activate event - v5 cleaning ALL old caches');
   event.waitUntil(
     caches.keys().then(cacheNames => {
       console.log('[SW] Found caches:', cacheNames);
-      // Deletar TODOS os caches que não são v4
+      // Deletar TODOS os caches que não são v5
       return Promise.all(
         cacheNames.map(cacheName => {
           if (cacheName !== CACHE_NAME && cacheName !== RUNTIME_CACHE) {
@@ -46,13 +46,13 @@ self.addEventListener('activate', (event) => {
       console.log('[SW] Claiming all clients immediately');
       return self.clients.claim();
     }).then(() => {
-      console.log('[SW] ✅ All clients now controlled by v4');
+      console.log('[SW] ✅ All clients now controlled by v5');
       // Notificar todos os clientes para recarregar
       return self.clients.matchAll().then(clients => {
         clients.forEach(client => {
           client.postMessage({
             type: 'SW_UPDATED',
-            version: 'v4',
+            version: 'v5',
             message: 'Service Worker atualizado - recarregando página'
           });
         });
@@ -154,9 +154,9 @@ self.addEventListener('push', (event) => {
   const title = data.title || 'Sindoca da Maloka';
   const options = {
     body: data.body || 'Nova notificação',
-    icon: '/icon-192x192.png',
-    badge: '/icon-72x72.png',
-    data: data.url || '/',
+    icon: data.icon || '/icon-192x192.png',
+    // badge removed to prevent "from Sindoca" text on Android notifications
+    data: data.data || data.url || '/',
     tag: data.tag || 'default',
     requireInteraction: false,
   };
@@ -168,22 +168,43 @@ self.addEventListener('push', (event) => {
 
 // Notification Click Handler
 self.addEventListener('notificationclick', (event) => {
-  console.log('[SW] Notification click');
+  console.log('[SW] Notification click', event.notification.data);
   event.notification.close();
 
-  const urlToOpen = event.notification.data || '/';
+  // Get URL from notification data
+  // data can be either a string URL or an object with url property
+  let urlToOpen = '/';
+  if (event.notification.data) {
+    if (typeof event.notification.data === 'string') {
+      urlToOpen = event.notification.data;
+    } else if (event.notification.data.url) {
+      urlToOpen = event.notification.data.url;
+    }
+  }
+
+  console.log('[SW] Opening URL:', urlToOpen);
 
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true })
       .then((clientList) => {
-        // Se já existe uma janela aberta, focar nela
-        for (let i = 0; i < clientList.length; i++) {
-          const client = clientList[i];
-          if (client.url === urlToOpen && 'focus' in client) {
+        // Se já existe uma janela aberta do app, navegar nela
+        if (clientList.length > 0) {
+          const client = clientList[0];
+          if ('navigate' in client) {
+            client.navigate(urlToOpen);
             return client.focus();
+          } else if ('focus' in client) {
+            // Se não pode navegar, apenas focar e esperar que o app atualize
+            client.focus();
+            // Enviar mensagem para o client navegar
+            client.postMessage({
+              type: 'NAVIGATE',
+              url: urlToOpen
+            });
+            return client;
           }
         }
-        // Se não, abrir nova janela
+        // Se não existe janela aberta, abrir nova
         if (clients.openWindow) {
           return clients.openWindow(urlToOpen);
         }

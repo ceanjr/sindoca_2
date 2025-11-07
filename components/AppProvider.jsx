@@ -58,6 +58,12 @@ export default function AppProvider({ children }) {
           window.location.reload()
         }, 1000)
       }
+
+      // Navigate when notification is clicked
+      if (event.data && event.data.type === 'NAVIGATE') {
+        console.log('Navegando para:', event.data.url)
+        window.location.href = event.data.url
+      }
     }
 
     navigator.serviceWorker.addEventListener('message', handleSWMessage)
