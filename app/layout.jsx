@@ -3,7 +3,6 @@ import AppProvider from '@/components/AppProvider';
 import { AuthProvider } from '@/contexts/AuthContext';
 import ConditionalLayout from '@/components/ConditionalLayout';
 import { Toaster } from 'sonner';
-import PWAInstallPrompt from '@/components/PWAInstallPrompt';
 
 export const metadata = {
   title: 'Uma Sindoca para a Todos Governar',
@@ -97,9 +96,6 @@ export default function RootLayout({ children }) {
 
             {/* Conditional Layout - hides sidebar/footer on auth pages */}
             <ConditionalLayout>{children}</ConditionalLayout>
-
-            {/* PWA Install Prompt */}
-            <PWAInstallPrompt />
           </AppProvider>
         </AuthProvider>
       </body>

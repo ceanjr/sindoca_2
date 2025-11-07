@@ -14,13 +14,17 @@ export default function PushNotificationSetup() {
   const { permission, isSupported, requestPermission } = usePushNotifications();
 
   useEffect(() => {
+    // Verificar localStorage primeiro - se já viu, não mostrar
+    const hasSeenPrompt = localStorage.getItem('push-prompt-seen');
+    if (hasSeenPrompt === 'true') {
+      return;
+    }
+
     // Only show prompt if:
     // 1. Push is supported
     // 2. Permission is default (not granted or denied)
     // 3. User hasn't dismissed the prompt before
-    const hasSeenPrompt = localStorage.getItem('push-prompt-seen');
-
-    if (isSupported && permission === 'default' && !hasSeenPrompt) {
+    if (isSupported && permission === 'default') {
       // Wait 2 seconds after page load to show prompt (less intrusive)
       const timeout = setTimeout(() => {
         setShowPrompt(true);

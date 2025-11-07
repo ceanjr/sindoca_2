@@ -1,14 +1,13 @@
 // Service Worker para Sindoca da Maloka
 // Versão simplificada mas funcional para PWA
 
-const CACHE_VERSION = 'v1';
+const CACHE_VERSION = 'v2';
 const CACHE_NAME = `sindoca-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `sindoca-runtime-${CACHE_VERSION}`;
 
-// Assets essenciais para cache inicial
+// Assets essenciais para cache inicial (SEM manifest.json)
 const PRECACHE_URLS = [
   '/',
-  '/manifest.json',
   '/icon-192x192.png',
   '/icon-512x512.png',
 ];
@@ -50,6 +49,12 @@ self.addEventListener('fetch', (event) => {
 
   // Ignorar requests que não são GET
   if (request.method !== 'GET') {
+    return;
+  }
+
+  // NUNCA cachear manifest.json - sempre buscar do servidor
+  if (url.pathname === '/manifest.json') {
+    event.respondWith(fetch(request));
     return;
   }
 
