@@ -1,5 +1,5 @@
 {
-  "name": "Sindoca da Maloka",
+  "name": "Sindoca",
   "short_name": "Sindoca",
   "description": "Nosso cantinho amarelinho",
   "theme_color": "#ff6b9d",
@@ -63,21 +63,27 @@
       "short_name": "Fotos",
       "description": "Ver nossa galeria de fotos",
       "url": "/galeria",
-      "icons": [{"src": "/icon-192x192.png", "sizes": "192x192", "type": "image/png"}]
+      "icons": [
+        { "src": "/icon-192x192.png", "sizes": "192x192", "type": "image/png" }
+      ]
     },
     {
       "name": "Músicas",
       "short_name": "Músicas",
       "description": "Nossa trilha sonora",
       "url": "/musica",
-      "icons": [{"src": "/icon-192x192.png", "sizes": "192x192", "type": "image/png"}]
+      "icons": [
+        { "src": "/icon-192x192.png", "sizes": "192x192", "type": "image/png" }
+      ]
     },
     {
       "name": "Razões",
       "short_name": "Razões",
       "description": "Por que nos amamos",
       "url": "/razoes",
-      "icons": [{"src": "/icon-192x192.png", "sizes": "192x192", "type": "image/png"}]
+      "icons": [
+        { "src": "/icon-192x192.png", "sizes": "192x192", "type": "image/png" }
+      ]
     }
   ]
 }

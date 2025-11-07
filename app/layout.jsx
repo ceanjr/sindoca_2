@@ -1,6 +1,7 @@
 import './globals.css';
 import AppProvider from '@/components/AppProvider';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { PageConfigProvider } from '@/contexts/PageConfigContext';
 import ConditionalLayout from '@/components/ConditionalLayout';
 import { Toaster } from 'sonner';
 
@@ -78,25 +79,27 @@ export default function RootLayout({ children }) {
       </head>
       <body className="antialiased" suppressHydrationWarning>
         <AuthProvider>
-          <AppProvider>
-            {/* Toast Notifications */}
-            <Toaster
-              position="top-center"
-              richColors
-              closeButton
-              toastOptions={{
-                style: {
-                  background: 'var(--surface)',
-                  color: 'var(--textPrimary)',
-                  border: '1px solid rgba(255, 107, 157, 0.2)',
-                },
-                className: 'glass-strong',
-              }}
-            />
+          <PageConfigProvider>
+            <AppProvider>
+              {/* Toast Notifications */}
+              <Toaster
+                position="top-center"
+                richColors
+                closeButton
+                toastOptions={{
+                  style: {
+                    background: 'var(--surface)',
+                    color: 'var(--textPrimary)',
+                    border: '1px solid rgba(255, 107, 157, 0.2)',
+                  },
+                  className: 'glass-strong',
+                }}
+              />
 
-            {/* Conditional Layout - hides sidebar/footer on auth pages */}
-            <ConditionalLayout>{children}</ConditionalLayout>
-          </AppProvider>
+              {/* Conditional Layout - hides sidebar/footer on auth pages */}
+              <ConditionalLayout>{children}</ConditionalLayout>
+            </AppProvider>
+          </PageConfigProvider>
         </AuthProvider>
       </body>
     </html>
