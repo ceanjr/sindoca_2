@@ -18,18 +18,57 @@ export function usePWAInstall() {
     // Verifica se o app já está instalado
     if (window.matchMedia('(display-mode: standalone)').matches) {
       setIsInstalled(true)
+      setIsInstallable(false)
       return
     }
 
+    // Verifica instalabilidade de forma alternativa (sem depender só do evento)
+    const checkInstallability = async () => {
+      try {
+        // Verifica se tem service worker
+        const registration = await navigator.serviceWorker?.getRegistration()
+        const hasServiceWorker = !!registration?.active
+
+        // Verifica se tem manifest
+        const manifestLink = document.querySelector('link[rel="manifest"]')
+        const hasManifest = !!manifestLink
+
+        // Se tem SW e manifest, considera potencialmente instalável
+        if (hasServiceWorker && hasManifest) {
+          console.log('PWA: Critérios básicos atendidos (SW + Manifest)')
+          // Não define isInstallable aqui, apenas logga
+          // O evento beforeinstallprompt é quem realmente determina
+        }
+      } catch (error) {
+        console.error('PWA: Erro ao verificar instalabilidade:', error)
+      }
+    }
+
+    checkInstallability()
+
     // Captura o evento beforeinstallprompt
     const handleBeforeInstallPrompt = (e) => {
-      console.log('PWA: beforeinstallprompt event captured')
+      console.log('✅ PWA: beforeinstallprompt event captured!')
+      console.log('PWA: userChoice will be prompted')
       // Previne o mini-infobar do Chrome no mobile
       e.preventDefault()
       // Guarda o evento para usar depois
       setDeferredPrompt(e)
       setIsInstallable(true)
     }
+
+    // Timeout para detectar se o evento não foi disparado
+    const timeoutId = setTimeout(() => {
+      if (!deferredPrompt) {
+        console.log('⚠️ PWA: beforeinstallprompt NÃO foi disparado após 5 segundos')
+        console.log('Possíveis motivos:')
+        console.log('1. Já foi instalado anteriormente (mesmo que desinstalado)')
+        console.log('2. Cooldown do navegador (tente novamente em 24h)')
+        console.log('3. Falta engajamento (interaja mais com o app)')
+        console.log('4. Modo anônimo/incógnito')
+        console.log('💡 Solução: Use o menu do navegador → "Instalar app"')
+      }
+    }, 5000)
 
     // Detecta quando o app foi instalado
     const handleAppInstalled = () => {
@@ -43,6 +82,7 @@ export function usePWAInstall() {
     window.addEventListener('appinstalled', handleAppInstalled)
 
     return () => {
+      clearTimeout(timeoutId)
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
       window.removeEventListener('appinstalled', handleAppInstalled)
     }

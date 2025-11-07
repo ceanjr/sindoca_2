@@ -112,11 +112,11 @@ export default function PWADebugPage() {
             Status de Instalação
           </h2>
           <div className="space-y-2">
-            <StatusItem label="Instalável" value={isInstallable} />
+            <StatusItem label="Instalável (via evento)" value={isInstallable} />
             <StatusItem label="Instalado" value={isInstalled} />
             <StatusItem label="Modo Standalone" value={isStandalone} />
           </div>
-          {isInstallable && (
+          {isInstallable ? (
             <button
               onClick={handleInstall}
               className="mt-4 px-6 py-3 rounded-xl text-white font-medium"
@@ -124,6 +124,21 @@ export default function PWADebugPage() {
             >
               Instalar Agora
             </button>
+          ) : !isInstalled && (
+            <div className="mt-4 p-4 rounded-xl bg-blue-500/10 border border-blue-500/30">
+              <h3 className="text-sm font-semibold text-blue-400 mb-2">
+                Como Instalar Manualmente
+              </h3>
+              <ul className="text-xs space-y-1" style={{ color: 'var(--textSecondary)' }}>
+                <li>• <strong>Chrome/Edge (Desktop):</strong> Ícone ⊕ na barra de endereço ou Menu → "Instalar Sindoca"</li>
+                <li>• <strong>Chrome (Android):</strong> Menu (⋮) → "Instalar app" ou "Adicionar à tela inicial"</li>
+                <li>• <strong>Safari (iOS):</strong> Botão Compartilhar → "Adicionar à Tela de Início"</li>
+                <li>• <strong>Firefox:</strong> Menu → "Instalar"</li>
+              </ul>
+              <p className="text-xs mt-3 text-yellow-400">
+                ⚠️ O evento de instalação automática pode não disparar se você já instalou antes ou não interagiu o suficiente com o app
+              </p>
+            </div>
           )}
         </div>
 
