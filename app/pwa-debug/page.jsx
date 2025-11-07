@@ -14,6 +14,8 @@ export default function PWADebugPage() {
     isSecureContext: false,
     manifestData: null,
     serviceWorkerState: null,
+    swFileExists: false,
+    registrationError: null,
     errors: [],
   })
 
@@ -30,6 +32,17 @@ export default function PWADebugPage() {
         errors: [],
       }
 
+      // Check if service-worker.js file exists
+      try {
+        const swResponse = await fetch('/service-worker.js', { method: 'HEAD' })
+        results.swFileExists = swResponse.ok
+        if (!swResponse.ok) {
+          results.errors.push(`Arquivo service-worker.js não encontrado (status ${swResponse.status})`)
+        }
+      } catch (error) {
+        results.errors.push(`Erro ao verificar service-worker.js: ${error.message}`)
+      }
+
       // Check Service Worker
       if ('serviceWorker' in navigator) {
         try {
@@ -39,9 +52,18 @@ export default function PWADebugPage() {
               state: registration.active?.state || 'not active',
               scope: registration.scope,
               updateViaCache: registration.updateViaCache,
+              installing: registration.installing?.state,
+              waiting: registration.waiting?.state,
             }
           } else {
-            results.errors.push('Service Worker não registrado')
+            // Try to register manually to get error
+            try {
+              await navigator.serviceWorker.register('/service-worker.js')
+              results.errors.push('SW registrado agora, recarregue a página')
+            } catch (regError) {
+              results.registrationError = regError.message
+              results.errors.push(`Erro ao registrar SW: ${regError.message}`)
+            }
           }
         } catch (error) {
           results.errors.push(`Erro ao verificar Service Worker: ${error.message}`)
@@ -112,9 +134,17 @@ export default function PWADebugPage() {
           </h2>
           <div className="space-y-2">
             <StatusItem label="Service Worker Suportado" value={diagnostics.hasServiceWorker} />
+            <StatusItem label="Arquivo service-worker.js Existe" value={diagnostics.swFileExists} />
             <StatusItem label="Manifest Acessível" value={diagnostics.hasManifest} />
             <StatusItem label="Contexto Seguro (HTTPS)" value={diagnostics.isSecureContext} />
           </div>
+          {diagnostics.registrationError && (
+            <div className="mt-4 p-3 rounded-lg bg-red-500/10 border border-red-500/30">
+              <p className="text-sm text-red-400">
+                <strong>Erro de registro:</strong> {diagnostics.registrationError}
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Service Worker Status */}

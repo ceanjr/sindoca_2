@@ -41,28 +41,50 @@ export default function AppProvider({ children }) {
 
   // Register Service Worker
   useEffect(() => {
-    if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
-      // Register SW - will only work in production build
-      navigator.serviceWorker
-        .register('/sw.js')
-        .then((registration) => {
-          console.log('✅ Service Worker registrado com sucesso:', registration.scope)
+    console.log('🔍 AppProvider mounted - checking SW support')
+    console.log('Window available:', typeof window !== 'undefined')
+    console.log('ServiceWorker in navigator:', typeof window !== 'undefined' && 'serviceWorker' in navigator)
 
-          // Check for updates
+    if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+      console.log('🚀 Tentando registrar Service Worker...')
+
+      // Register custom service worker
+      navigator.serviceWorker
+        .register('/service-worker.js', { scope: '/' })
+        .then((registration) => {
+          console.log('✅ Service Worker registrado com sucesso!')
+          console.log('📍 Scope:', registration.scope)
+          console.log('📦 Active:', registration.active?.state)
+          console.log('⏳ Installing:', registration.installing?.state)
+          console.log('⏸️ Waiting:', registration.waiting?.state)
+
+          // Check for updates periodically
           registration.addEventListener('updatefound', () => {
             const newWorker = registration.installing
             console.log('🔄 Nova versão do service worker encontrada')
 
             newWorker?.addEventListener('statechange', () => {
+              console.log('📡 SW state changed:', newWorker.state)
               if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
                 console.log('✨ Nova versão disponível - recarregue a página')
+                // Opcional: mostrar uma mensagem ao usuário para recarregar
               }
             })
           })
+
+          // Check for updates every hour
+          setInterval(() => {
+            registration.update()
+          }, 60 * 60 * 1000)
         })
         .catch((error) => {
-          console.log('ℹ️ Service Worker não disponível (desenvolvimento):', error.message)
+          console.error('❌ Erro ao registrar Service Worker:', error)
+          console.error('📄 Error name:', error.name)
+          console.error('💬 Error message:', error.message)
+          console.error('🔗 Error stack:', error.stack)
         })
+    } else {
+      console.log('⚠️ Service Worker não suportado neste ambiente')
     }
   }, [])
 
