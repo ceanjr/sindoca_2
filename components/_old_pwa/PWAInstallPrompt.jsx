@@ -1,37 +1,37 @@
-'use client'
+'use client';
 
-import { usePWAInstall } from '@/hooks/usePWAInstall'
-import { useState } from 'react'
-import { toast } from 'sonner'
+import { usePWAInstall } from '@/hooks/usePWAInstall';
+import { useState } from 'react';
+import { toast } from 'sonner';
 
 /**
  * Componente que mostra um banner/botão para instalar o PWA
  */
 export default function PWAInstallPrompt() {
-  const { isInstallable, isInstalled, promptInstall, isStandalone } = usePWAInstall()
-  const [isDismissed, setIsDismissed] = useState(false)
+  const { isInstallable, isInstalled, promptInstall, isStandalone } =
+    usePWAInstall();
+  const [isDismissed, setIsDismissed] = useState(false);
 
   // Não mostra se já está instalado, não é instalável ou foi descartado
   if (!isInstallable || isInstalled || isStandalone || isDismissed) {
-    return null
+    return null;
   }
 
   const handleInstall = async () => {
-    const accepted = await promptInstall()
+    const accepted = await promptInstall();
     if (accepted) {
-      toast.success('App instalado com sucesso!')
+      toast.success('App instalado com sucesso!');
     }
-  }
+  };
 
   const handleDismiss = () => {
-    setIsDismissed(true)
-  }
+    setIsDismissed(true);
+  };
 
   return (
     <div
-      className="fixed bottom-20 left-4 right-4 z-50 glass-strong rounded-2xl p-4 shadow-lg"
+      className="fixed bottom-20 left-4 right-4 z-50 glass-strong rounded-2xl p-4 shadow-lg bg-primary/30 backdrop-blur-md"
       style={{
-        background: 'var(--surface)',
         border: '1px solid rgba(255, 107, 157, 0.3)',
       }}
     >
@@ -41,11 +41,7 @@ export default function PWAInstallPrompt() {
             className="w-12 h-12 rounded-xl flex items-center justify-center"
             style={{ background: 'var(--primary)' }}
           >
-            <svg
-              className="w-6 h-6"
-              fill="white"
-              viewBox="0 0 24 24"
-            >
+            <svg className="w-6 h-6" fill="white" viewBox="0 0 24 24">
               <path d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z" />
             </svg>
           </div>
@@ -58,11 +54,9 @@ export default function PWAInstallPrompt() {
           >
             Instalar Sindoca
           </h3>
-          <p
-            className="text-xs"
-            style={{ color: 'var(--textSecondary)' }}
-          >
-            Instale o app na sua tela inicial para acesso rápido e experiência melhor!
+          <p className="text-xs" style={{ color: 'var(--textSecondary)' }}>
+            Instale o app na sua tela inicial para acesso rápido e experiência
+            melhor!
           </p>
         </div>
 
@@ -87,7 +81,8 @@ export default function PWAInstallPrompt() {
           onClick={handleInstall}
           className="flex-1 py-2 px-4 rounded-xl font-medium text-sm text-white transition-all hover:scale-105 active:scale-95"
           style={{
-            background: 'linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%)'
+            background:
+              'linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%)',
           }}
         >
           Instalar
@@ -101,5 +96,5 @@ export default function PWAInstallPrompt() {
         </button>
       </div>
     </div>
-  )
+  );
 }

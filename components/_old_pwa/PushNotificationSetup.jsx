@@ -68,12 +68,12 @@ export default function PushNotificationSetup() {
             <div className="absolute top-0 left-0 right-0 h-1 bg-primary" />
 
             {/* Close button */}
-            {/* <button
+            <button
               onClick={handleDismiss}
               className="absolute top-3 right-3 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
             >
               <X size={16} className="text-gray-400" />
-            </button> */}
+            </button>
 
             <div className="flex gap-3">
               {/* Icon */}
