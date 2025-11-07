@@ -86,11 +86,25 @@ function LoginForm() {
           console.log('Login bem-sucedido, redirecionando...');
           toast.success('Bem-vindo de volta! 💕');
 
-          // Use Next.js router for client-side navigation
-          // This preserves the AuthContext state instead of forcing a reload
-          setTimeout(() => {
-            router.push('/');
-          }, 100); // Small delay to ensure auth state is updated
+          // Check if we should force reload (for Edge or after cache clear)
+          const forceReload = searchParams.get('force_reload') === 'true';
+          const isEdge = /Edg/.test(navigator.userAgent);
+
+          console.log('Navigation info:', { forceReload, isEdge, userAgent: navigator.userAgent });
+
+          if (forceReload || isEdge) {
+            // Force hard reload for Edge or when explicitly requested
+            console.log('Usando hard reload (Edge ou após limpeza de cache)');
+            setTimeout(() => {
+              window.location.href = '/';
+            }, 500);
+          } else {
+            // Use Next.js router for client-side navigation
+            console.log('Usando router.push (navegação client-side)');
+            setTimeout(() => {
+              router.push('/');
+            }, 100);
+          }
         } else {
           console.error('Login falhou - sem resultado');
           setLoading(false);

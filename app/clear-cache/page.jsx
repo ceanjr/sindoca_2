@@ -37,9 +37,16 @@ export default function ClearCachePage() {
         addResult(`✅ Cache deletado: ${cacheName}`);
       }
 
-      // 3. Limpar LocalStorage
+      // 3. Limpar LocalStorage (incluindo dados do Supabase)
       addResult('🔄 Limpando LocalStorage...');
       const localStorageKeys = Object.keys(localStorage);
+
+      // Log chaves específicas do Supabase para debug
+      const supabaseKeys = localStorageKeys.filter(k => k.includes('supabase'));
+      if (supabaseKeys.length > 0) {
+        addResult(`  📋 Encontradas ${supabaseKeys.length} chaves do Supabase`);
+      }
+
       localStorage.clear();
       addResult(`✅ LocalStorage limpo (${localStorageKeys.length} itens removidos)`);
 
@@ -49,26 +56,39 @@ export default function ClearCachePage() {
       sessionStorage.clear();
       addResult(`✅ SessionStorage limpo (${sessionStorageKeys.length} itens removidos)`);
 
-      // 5. Limpar IndexedDB
+      // 5. Limpar IndexedDB (incluindo databases do Supabase)
       addResult('🔄 Limpando IndexedDB...');
+      const knownDatabases = [
+        'supabase-cache',
+        'supabase-auth',
+        'supabase-db',
+        'keyval-store',
+        'firebaseLocalStorageDb',
+        'workbox-expiration',
+        'workbox-precache-v2'
+      ];
+
       if (window.indexedDB && window.indexedDB.databases) {
-        const databases = await window.indexedDB.databases();
-        for (let db of databases) {
-          if (db.name) {
-            window.indexedDB.deleteDatabase(db.name);
-            addResult(`✅ IndexedDB deletado: ${db.name}`);
+        try {
+          const databases = await window.indexedDB.databases();
+          for (let db of databases) {
+            if (db.name) {
+              window.indexedDB.deleteDatabase(db.name);
+              addResult(`✅ IndexedDB deletado: ${db.name}`);
+            }
+          }
+        } catch (e) {
+          // Se databases() falhar, usar lista conhecida
+          for (let dbName of knownDatabases) {
+            window.indexedDB.deleteDatabase(dbName);
+            addResult(`✅ IndexedDB deletado (fallback): ${dbName}`);
           }
         }
       } else {
-        // Fallback: tentar deletar databases conhecidos do Supabase
-        const knownDatabases = ['supabase-cache', 'supabase-auth'];
+        // Fallback para navegadores que não suportam databases()
         for (let dbName of knownDatabases) {
-          try {
-            window.indexedDB.deleteDatabase(dbName);
-            addResult(`✅ IndexedDB deletado (tentativa): ${dbName}`);
-          } catch (e) {
-            // Ignora erros
-          }
+          window.indexedDB.deleteDatabase(dbName);
+          addResult(`✅ IndexedDB deletado (tentativa): ${dbName}`);
         }
       }
 
@@ -89,7 +109,8 @@ export default function ClearCachePage() {
       setTimeout(() => {
         addResult('🔄 Recarregando página em 2 segundos...', true);
         setTimeout(() => {
-          window.location.href = '/auth/login';
+          // Redirect with force_reload flag to ensure hard reload after login
+          window.location.href = '/auth/login?force_reload=true';
         }, 2000);
       }, 1000);
 
@@ -135,9 +156,12 @@ export default function ClearCachePage() {
                   <h3 className="font-semibold text-yellow-800 mb-1">
                     Atenção!
                   </h3>
-                  <p className="text-sm text-yellow-700">
+                  <p className="text-sm text-yellow-700 mb-2">
                     Isso irá remover: Service Workers, Cache, LocalStorage, SessionStorage,
-                    IndexedDB, Cookies. Você será deslogado e redirecionado para a página de login.
+                    IndexedDB (incluindo dados do Supabase), Cookies. Você será deslogado e redirecionado para a página de login.
+                  </p>
+                  <p className="text-xs text-yellow-600 font-medium">
+                    💡 Recomendado especialmente para usuários do Microsoft Edge com problemas de login
                   </p>
                 </div>
               </div>
