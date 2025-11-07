@@ -15,17 +15,37 @@ export default function PageAccessGuard({ pageId, children }) {
 
   useEffect(() => {
     // Wait for loading to complete
-    if (loading) return;
+    if (loading) {
+      console.log('🔄 PageAccessGuard waiting for loading...', pageId);
+      return;
+    }
+
+    console.log('🔐 PageAccessGuard checking access:', {
+      pageId,
+      isAdmin,
+      loading
+    });
 
     // Admin can access everything
-    if (isAdmin) return;
+    if (isAdmin) {
+      console.log('✅ Admin access granted to:', pageId);
+      return;
+    }
 
     // Check if page is active
     const canAccess = isPageActive(pageId);
 
+    console.log('🔍 Page access check:', {
+      pageId,
+      canAccess,
+      isAdmin
+    });
+
     if (!canAccess) {
-      console.log('🚫 Access denied to page:', pageId);
+      console.log('🚫 Access denied to page:', pageId, '- redirecting to home');
       router.push('/');
+    } else {
+      console.log('✅ Access granted to page:', pageId);
     }
   }, [pageId, isAdmin, isPageActive, loading, router]);
 

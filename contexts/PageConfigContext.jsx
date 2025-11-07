@@ -2,27 +2,25 @@
 
 import { createContext, useContext, useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { useAuth } from './AuthContext';
 
 const PageConfigContext = createContext(undefined);
 
 export function PageConfigProvider({ children }) {
   const [pageConfig, setPageConfig] = useState([]);
-  const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState(null);
+  const { user } = useAuth(); // Use user from AuthContext
+
+  // Derive isAdmin from user
+  const isAdmin = user?.email === 'celiojunior0110@gmail.com';
 
   useEffect(() => {
     const supabase = createClient();
 
     const initializePageConfig = async () => {
       try {
-        // Get current user
-        const {
-          data: { user: currentUser },
-        } = await supabase.auth.getUser();
-
-        setUser(currentUser);
-        setIsAdmin(currentUser?.email === 'celiojunior0110@gmail.com');
+        console.log('🔧 PageConfig: Initializing with user:', user?.email);
+        console.log('🔧 PageConfig: isAdmin:', isAdmin);
 
         // Fetch page config
         const { data, error } = await supabase
@@ -69,7 +67,7 @@ export function PageConfigProvider({ children }) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [user, isAdmin]); // Re-run when user changes
 
   /**
    * Update page active status
@@ -115,6 +113,16 @@ export function PageConfigProvider({ children }) {
     const page = pageConfig.find((p) => p.page_id === pageId);
     return page ? page.is_active : true; // Default to true if not found
   };
+
+  // Log current state for debugging
+  useEffect(() => {
+    console.log('📊 PageConfig State:', {
+      user: user?.email,
+      isAdmin,
+      loading,
+      pageConfigCount: pageConfig.length
+    });
+  }, [user, isAdmin, loading, pageConfig]);
 
   return (
     <PageConfigContext.Provider
