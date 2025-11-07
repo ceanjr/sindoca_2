@@ -49,6 +49,19 @@ export default function AppProvider({ children }) {
     let retryCount = 0
     const maxRetries = 3
 
+    // Listener para mensagens do Service Worker
+    const handleSWMessage = (event) => {
+      if (event.data && event.data.type === 'SW_UPDATED') {
+        console.log('Service Worker atualizado:', event.data.version)
+        console.log('Recarregando página em 1 segundo...')
+        setTimeout(() => {
+          window.location.reload()
+        }, 1000)
+      }
+    }
+
+    navigator.serviceWorker.addEventListener('message', handleSWMessage)
+
     const registerServiceWorker = async () => {
       try {
         console.log('Registrando Service Worker...')
@@ -67,21 +80,26 @@ export default function AppProvider({ children }) {
 
           newWorker?.addEventListener('statechange', () => {
             if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-              console.log('Nova versão disponível')
-              // Aqui pode adicionar lógica para notificar o usuário
+              console.log('Nova versão disponível - aguardando ativação')
+            }
+            if (newWorker.state === 'activated') {
+              console.log('Nova versão ativada!')
             }
           })
         })
 
-        // Verificar atualizações a cada 5 minutos
+        // Verificar atualizações a cada 1 minuto (mais frequente)
         const updateInterval = setInterval(() => {
           registration.update().catch(err => {
             console.log('Erro ao verificar atualização:', err.message)
           })
-        }, 5 * 60 * 1000)
+        }, 60 * 1000)
 
         // Limpar interval quando componente desmontar
-        return () => clearInterval(updateInterval)
+        return () => {
+          clearInterval(updateInterval)
+          navigator.serviceWorker.removeEventListener('message', handleSWMessage)
+        }
 
       } catch (error) {
         console.error('Erro ao registrar Service Worker:', {

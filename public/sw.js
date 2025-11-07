@@ -1,44 +1,63 @@
 // Service Worker para Sindoca da Maloka
-// Versão simplificada mas funcional para PWA
+// Versão v3 - FORCE UPDATE e limpeza total
 
-const CACHE_VERSION = 'v2';
+const CACHE_VERSION = 'v3';
 const CACHE_NAME = `sindoca-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `sindoca-runtime-${CACHE_VERSION}`;
 
-// Assets essenciais para cache inicial (SEM manifest.json)
+// Assets essenciais para cache inicial (SEM manifest.json e SEM homepage)
 const PRECACHE_URLS = [
-  '/',
   '/icon-192x192.png',
   '/icon-512x512.png',
 ];
 
-// Install: Cachear assets essenciais
+// Install: Cachear apenas ícones, skipWaiting imediato
 self.addEventListener('install', (event) => {
-  console.log('[SW] Install event');
+  console.log('[SW] Install event - v3');
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
-        console.log('[SW] Caching essential assets');
+        console.log('[SW] Caching essential assets (icons only)');
         return cache.addAll(PRECACHE_URLS);
       })
-      .then(() => self.skipWaiting())
+      .then(() => {
+        console.log('[SW] Skip waiting - force activation');
+        return self.skipWaiting();
+      })
   );
 });
 
-// Activate: Limpar caches antigos
+// Activate: LIMPAR TODOS OS CACHES ANTIGOS e tomar controle imediato
 self.addEventListener('activate', (event) => {
-  console.log('[SW] Activate event');
+  console.log('[SW] Activate event - v3 cleaning ALL old caches');
   event.waitUntil(
     caches.keys().then(cacheNames => {
+      console.log('[SW] Found caches:', cacheNames);
+      // Deletar TODOS os caches que não são v3
       return Promise.all(
         cacheNames.map(cacheName => {
           if (cacheName !== CACHE_NAME && cacheName !== RUNTIME_CACHE) {
-            console.log('[SW] Deleting old cache:', cacheName);
+            console.log('[SW] 🗑️ Deleting old cache:', cacheName);
             return caches.delete(cacheName);
           }
         })
       );
-    }).then(() => self.clients.claim())
+    }).then(() => {
+      console.log('[SW] Claiming all clients immediately');
+      return self.clients.claim();
+    }).then(() => {
+      console.log('[SW] ✅ All clients now controlled by v3');
+      // Notificar todos os clientes para recarregar
+      return self.clients.matchAll().then(clients => {
+        clients.forEach(client => {
+          client.postMessage({
+            type: 'SW_UPDATED',
+            version: 'v3',
+            message: 'Service Worker atualizado - recarregando página'
+          });
+        });
+      });
+    })
   );
 });
 
@@ -52,8 +71,8 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // NUNCA cachear manifest.json - sempre buscar do servidor
-  if (url.pathname === '/manifest.json') {
+  // NUNCA cachear manifest.json ou homepage - sempre buscar do servidor
+  if (url.pathname === '/manifest.json' || url.pathname === '/' || url.pathname.match(/^\/(_next|api)/)) {
     event.respondWith(fetch(request));
     return;
   }
