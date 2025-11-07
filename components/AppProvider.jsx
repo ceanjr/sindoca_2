@@ -44,22 +44,28 @@ export default function AppProvider({ children }) {
     if (
       typeof window !== 'undefined' &&
       'serviceWorker' in navigator &&
-      window.workbox !== undefined
+      process.env.NODE_ENV === 'production'
     ) {
-      const wb = window.workbox
+      navigator.serviceWorker
+        .register('/sw.js')
+        .then((registration) => {
+          console.log('Service Worker registrado com sucesso:', registration.scope)
 
-      // Add event listener to detect when service worker becomes active
-      const promptNewVersionAvailable = () => {
-        console.log('Nova versão do service worker disponível')
-      }
+          // Check for updates
+          registration.addEventListener('updatefound', () => {
+            const newWorker = registration.installing
+            console.log('Nova versão do service worker encontrada')
 
-      wb.addEventListener('waiting', promptNewVersionAvailable)
-      wb.addEventListener('controlling', () => {
-        window.location.reload()
-      })
-
-      // Register service worker
-      wb.register()
+            newWorker?.addEventListener('statechange', () => {
+              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                console.log('Nova versão disponível - recarregue a página')
+              }
+            })
+          })
+        })
+        .catch((error) => {
+          console.error('Erro ao registrar Service Worker:', error)
+        })
     }
   }, [])
 
