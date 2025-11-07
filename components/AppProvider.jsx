@@ -41,30 +41,27 @@ export default function AppProvider({ children }) {
 
   // Register Service Worker
   useEffect(() => {
-    if (
-      typeof window !== 'undefined' &&
-      'serviceWorker' in navigator &&
-      process.env.NODE_ENV === 'production'
-    ) {
+    if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+      // Register SW - will only work in production build
       navigator.serviceWorker
         .register('/sw.js')
         .then((registration) => {
-          console.log('Service Worker registrado com sucesso:', registration.scope)
+          console.log('✅ Service Worker registrado com sucesso:', registration.scope)
 
           // Check for updates
           registration.addEventListener('updatefound', () => {
             const newWorker = registration.installing
-            console.log('Nova versão do service worker encontrada')
+            console.log('🔄 Nova versão do service worker encontrada')
 
             newWorker?.addEventListener('statechange', () => {
               if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                console.log('Nova versão disponível - recarregue a página')
+                console.log('✨ Nova versão disponível - recarregue a página')
               }
             })
           })
         })
         .catch((error) => {
-          console.error('Erro ao registrar Service Worker:', error)
+          console.log('ℹ️ Service Worker não disponível (desenvolvimento):', error.message)
         })
     }
   }, [])
