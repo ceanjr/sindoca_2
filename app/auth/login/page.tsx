@@ -216,6 +216,16 @@ function LoginForm() {
             : 'Entrar'}
         </motion.button>
       </form>
+
+      {/* Link para limpar cache em caso de problemas */}
+      <div className="mt-6 text-center">
+        <Link
+          href="/clear-cache"
+          className="text-xs text-textSecondary hover:text-primary transition-colors underline"
+        >
+          Problemas ao entrar? Limpar cache e tentar novamente
+        </Link>
+      </div>
     </AuthCard>
   );
 }

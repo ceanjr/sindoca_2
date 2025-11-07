@@ -1,7 +1,7 @@
 // Service Worker para Sindoca da Maloka
-// Versão v3 - FORCE UPDATE e limpeza total
+// Versão v4 - Fix de navegação após login
 
-const CACHE_VERSION = 'v3';
+const CACHE_VERSION = 'v4';
 const CACHE_NAME = `sindoca-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `sindoca-runtime-${CACHE_VERSION}`;
 
@@ -13,7 +13,7 @@ const PRECACHE_URLS = [
 
 // Install: Cachear apenas ícones, skipWaiting imediato
 self.addEventListener('install', (event) => {
-  console.log('[SW] Install event - v3');
+  console.log('[SW] Install event - v4');
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
@@ -29,11 +29,11 @@ self.addEventListener('install', (event) => {
 
 // Activate: LIMPAR TODOS OS CACHES ANTIGOS e tomar controle imediato
 self.addEventListener('activate', (event) => {
-  console.log('[SW] Activate event - v3 cleaning ALL old caches');
+  console.log('[SW] Activate event - v4 cleaning ALL old caches');
   event.waitUntil(
     caches.keys().then(cacheNames => {
       console.log('[SW] Found caches:', cacheNames);
-      // Deletar TODOS os caches que não são v3
+      // Deletar TODOS os caches que não são v4
       return Promise.all(
         cacheNames.map(cacheName => {
           if (cacheName !== CACHE_NAME && cacheName !== RUNTIME_CACHE) {
@@ -46,13 +46,13 @@ self.addEventListener('activate', (event) => {
       console.log('[SW] Claiming all clients immediately');
       return self.clients.claim();
     }).then(() => {
-      console.log('[SW] ✅ All clients now controlled by v3');
+      console.log('[SW] ✅ All clients now controlled by v4');
       // Notificar todos os clientes para recarregar
       return self.clients.matchAll().then(clients => {
         clients.forEach(client => {
           client.postMessage({
             type: 'SW_UPDATED',
-            version: 'v3',
+            version: 'v4',
             message: 'Service Worker atualizado - recarregando página'
           });
         });
