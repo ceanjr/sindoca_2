@@ -77,13 +77,17 @@ function LoginForm() {
         });
       } else {
         // Regular password login
-        await signIn(formData.email, formData.password);
+        const result = await signIn(formData.email, formData.password);
 
-        toast.success('Bem-vindo de volta! 💕');
+        if (result) {
+          toast.success('Bem-vindo de volta! 💕');
 
-        // Redirect to home
-        router.push('/');
-        router.refresh();
+          // Small delay to ensure auth state is updated
+          await new Promise(resolve => setTimeout(resolve, 100));
+
+          // Redirect to home
+          router.push('/');
+        }
       }
     } catch (error: any) {
       console.error('Login error:', error);
