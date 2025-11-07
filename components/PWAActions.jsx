@@ -37,19 +37,23 @@ export default function PWAActions() {
   // Determine which options to show
   useEffect(() => {
     // Check localStorage for dismissed actions
-    const installDismissed = localStorage.getItem('pwa-install-dismissed') === 'true';
-    const notificationDismissed = localStorage.getItem('pwa-notification-dismissed') === 'true';
+    const installDismissed =
+      localStorage.getItem('pwa-install-dismissed') === 'true';
+    const notificationDismissed =
+      localStorage.getItem('pwa-notification-dismissed') === 'true';
 
     // Show install option if:
     // - Not dismissed before
     // - Is installable OR not installed yet
-    const shouldShowInstall = !installDismissed && (isInstallable || !isInstalled);
+    const shouldShowInstall =
+      !installDismissed && (isInstallable || !isInstalled);
 
     // Show notification option if:
     // - Not dismissed before
     // - Notifications are supported
     // - Permission is not granted yet
-    const shouldShowNotification = !notificationDismissed && isSupported && permission !== 'granted';
+    const shouldShowNotification =
+      !notificationDismissed && isSupported && permission !== 'granted';
 
     setShowInstallOption(shouldShowInstall);
     setShowNotificationOption(shouldShowNotification);
@@ -122,7 +126,7 @@ export default function PWAActions() {
       </AnimatePresence>
 
       {/* Floating Action Button */}
-      <div className="fixed bottom-24 left-4 z-[100] lg:bottom-6">
+      <div className="fixed bottom-24 right-4 z-[100] lg:bottom-6">
         {/* Options Menu */}
         <AnimatePresence>
           {isOpen && (
