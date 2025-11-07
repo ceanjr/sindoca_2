@@ -9,19 +9,25 @@ const PageConfigContext = createContext(undefined);
 export function PageConfigProvider({ children }) {
   const [pageConfig, setPageConfig] = useState([]);
   const [loading, setLoading] = useState(true);
-  const { user } = useAuth(); // Use user from AuthContext
+  const { user, loading: authLoading } = useAuth(); // Use user from AuthContext
 
   // Derive isAdmin from user
   const isAdmin = user?.email === 'celiojunior0110@gmail.com';
 
   useEffect(() => {
+    // Wait for auth to finish loading
+    if (authLoading) {
+      console.log('🔄 PageConfig: Waiting for auth to load...');
+      return;
+    }
+
+    console.log('🔧 PageConfig: Initializing once with user:', user?.email);
+    console.log('🔧 PageConfig: isAdmin:', isAdmin);
+
     const supabase = createClient();
 
     const initializePageConfig = async () => {
       try {
-        console.log('🔧 PageConfig: Initializing with user:', user?.email);
-        console.log('🔧 PageConfig: isAdmin:', isAdmin);
-
         // Fetch page config
         const { data, error } = await supabase
           .from('page_config')
@@ -40,7 +46,7 @@ export function PageConfigProvider({ children }) {
 
     initializePageConfig();
 
-    // Subscribe to changes
+    // Subscribe to changes (only once)
     const channel = supabase
       .channel('page_config_changes')
       .on(
@@ -65,9 +71,10 @@ export function PageConfigProvider({ children }) {
       .subscribe();
 
     return () => {
+      console.log('🧹 PageConfig: Cleaning up channel subscription');
       supabase.removeChannel(channel);
     };
-  }, [user, isAdmin]); // Re-run when user changes
+  }, [authLoading]); // Only re-run when authLoading changes (once)
 
   /**
    * Update page active status
@@ -113,16 +120,6 @@ export function PageConfigProvider({ children }) {
     const page = pageConfig.find((p) => p.page_id === pageId);
     return page ? page.is_active : true; // Default to true if not found
   };
-
-  // Log current state for debugging
-  useEffect(() => {
-    console.log('📊 PageConfig State:', {
-      user: user?.email,
-      isAdmin,
-      loading,
-      pageConfigCount: pageConfig.length
-    });
-  }, [user, isAdmin, loading, pageConfig]);
 
   return (
     <PageConfigContext.Provider
