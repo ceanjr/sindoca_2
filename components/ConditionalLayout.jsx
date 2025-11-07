@@ -5,7 +5,7 @@ import NavigationSidebar from './NavigationSidebar';
 import BottomTabBar from './BottomTabBar';
 import SwipeableLayout from './SwipeableLayout';
 import PushNotificationSetup from './PushNotificationSetup';
-import InstallPrompt from './InstallPrompt';
+import PWAInstallPrompt from './PWAInstallPrompt';
 
 export default function ConditionalLayout({ children }) {
   const pathname = usePathname();
@@ -34,7 +34,7 @@ export default function ConditionalLayout({ children }) {
       <PushNotificationSetup />
 
       {/* PWA Install Prompt */}
-      <InstallPrompt />
+      <PWAInstallPrompt />
     </>
   );
 }

@@ -1,199 +1,165 @@
 // Service Worker para Sindoca da Maloka
-// Baseado em Workbox e boas práticas de PWA
+// Versão simplificada mas funcional para PWA
 
-const CACHE_NAME = 'sindoca-v1.0.0';
-const RUNTIME_CACHE = 'sindoca-runtime';
+const CACHE_VERSION = 'v1';
+const CACHE_NAME = `sindoca-${CACHE_VERSION}`;
+const RUNTIME_CACHE = `sindoca-runtime-${CACHE_VERSION}`;
 
-// Assets essenciais para precache
-const PRECACHE_ASSETS = [
+// Assets essenciais para cache inicial
+const PRECACHE_URLS = [
   '/',
   '/manifest.json',
   '/icon-192x192.png',
   '/icon-512x512.png',
 ];
 
-// Install: Precache de assets essenciais
+// Install: Cachear assets essenciais
 self.addEventListener('install', (event) => {
-  console.log('[SW] Installing...');
+  console.log('[SW] Install event');
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      console.log('[SW] Precaching assets');
-      return cache.addAll(PRECACHE_ASSETS);
-    }).then(() => {
-      console.log('[SW] Install complete, skip waiting');
-      return self.skipWaiting();
-    })
+    caches.open(CACHE_NAME)
+      .then(cache => {
+        console.log('[SW] Caching essential assets');
+        return cache.addAll(PRECACHE_URLS);
+      })
+      .then(() => self.skipWaiting())
   );
 });
 
-// Activate: Cleanup de caches antigos
+// Activate: Limpar caches antigos
 self.addEventListener('activate', (event) => {
-  console.log('[SW] Activating...');
+  console.log('[SW] Activate event');
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
+    caches.keys().then(cacheNames => {
       return Promise.all(
-        cacheNames
-          .filter((name) => name.startsWith('sindoca-') && name !== CACHE_NAME && name !== RUNTIME_CACHE)
-          .map((name) => {
-            console.log('[SW] Deleting old cache:', name);
-            return caches.delete(name);
-          })
+        cacheNames.map(cacheName => {
+          if (cacheName !== CACHE_NAME && cacheName !== RUNTIME_CACHE) {
+            console.log('[SW] Deleting old cache:', cacheName);
+            return caches.delete(cacheName);
+          }
+        })
       );
-    }).then(() => {
-      console.log('[SW] Activation complete, claiming clients');
-      return self.clients.claim();
-    })
+    }).then(() => self.clients.claim())
   );
 });
 
-// Fetch: Estratégias de cache
+// Fetch: Estratégia de cache
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // Ignora requisições não-GET
-  if (request.method !== 'GET') return;
+  // Ignorar requests que não são GET
+  if (request.method !== 'GET') {
+    return;
+  }
+
+  // Ignorar requests do Chrome extensions e outras origens
+  if (!url.origin.includes(self.location.origin) && !url.origin.includes('supabase.co') && !url.origin.includes('googleapis.com') && !url.origin.includes('gstatic.com')) {
+    return;
+  }
 
   // Estratégia para diferentes tipos de recursos
-  if (url.pathname === '/') {
-    // Página inicial: Network First com timeout
-    event.respondWith(networkFirstWithTimeout(request, 3000));
-  } else if (url.pathname.match(/\.(png|jpg|jpeg|svg|gif|webp|avif|ico)$/i)) {
+  if (url.pathname.match(/\.(png|jpg|jpeg|svg|gif|webp|ico)$/)) {
     // Imagens: Cache First
     event.respondWith(cacheFirst(request));
-  } else if (url.pathname.match(/\.(js|css)$/i)) {
-    // JS/CSS: Cache First
-    event.respondWith(cacheFirst(request));
-  } else if (url.origin.includes('supabase.co') && url.pathname.includes('/storage/')) {
-    // Supabase Storage: Cache First
-    event.respondWith(cacheFirst(request));
-  } else if (url.origin.includes('supabase.co') && url.pathname.includes('/rest/')) {
-    // Supabase REST API: Network First
-    event.respondWith(networkFirst(request));
   } else if (url.origin.includes('googleapis.com') || url.origin.includes('gstatic.com')) {
-    // Google Fonts: Cache First
+    // Google Fonts: Cache First com fallback
     event.respondWith(cacheFirst(request));
+  } else if (url.origin.includes('supabase.co')) {
+    // Supabase: Network First
+    event.respondWith(networkFirst(request));
   } else {
-    // Default: Network First
+    // Outras requests: Network First com cache fallback
     event.respondWith(networkFirst(request));
   }
 });
 
-// Estratégia: Cache First
+// Cache First: Tenta cache primeiro, depois network
 async function cacheFirst(request) {
+  const cache = await caches.open(RUNTIME_CACHE);
+  const cached = await cache.match(request);
+
+  if (cached) {
+    return cached;
+  }
+
   try {
-    const cached = await caches.match(request);
+    const response = await fetch(request);
+    if (response.ok) {
+      cache.put(request, response.clone());
+    }
+    return response;
+  } catch (error) {
+    console.log('[SW] Fetch failed for:', request.url);
+    throw error;
+  }
+}
+
+// Network First: Tenta network primeiro, depois cache
+async function networkFirst(request) {
+  const cache = await caches.open(RUNTIME_CACHE);
+
+  try {
+    const response = await fetch(request);
+    if (response.ok) {
+      cache.put(request, response.clone());
+    }
+    return response;
+  } catch (error) {
+    const cached = await cache.match(request);
     if (cached) {
-      console.log('[SW] Cache hit:', request.url);
       return cached;
     }
-
-    const response = await fetch(request);
-    if (response && response.status === 200) {
-      const cache = await caches.open(RUNTIME_CACHE);
-      cache.put(request, response.clone());
-    }
-    return response;
-  } catch (error) {
-    console.error('[SW] Cache First failed:', error);
-    const cached = await caches.match(request);
-    if (cached) return cached;
     throw error;
   }
 }
 
-// Estratégia: Network First
-async function networkFirst(request) {
-  try {
-    const response = await fetch(request);
-    if (response && response.status === 200) {
-      const cache = await caches.open(RUNTIME_CACHE);
-      cache.put(request, response.clone());
-    }
-    return response;
-  } catch (error) {
-    console.log('[SW] Network failed, trying cache:', request.url);
-    const cached = await caches.match(request);
-    if (cached) return cached;
-    throw error;
-  }
-}
-
-// Estratégia: Network First com Timeout
-async function networkFirstWithTimeout(request, timeout = 3000) {
-  try {
-    const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('Network timeout')), timeout)
-    );
-
-    const response = await Promise.race([fetch(request), timeoutPromise]);
-
-    if (response && response.status === 200) {
-      const cache = await caches.open(RUNTIME_CACHE);
-      cache.put(request, response.clone());
-    }
-    return response;
-  } catch (error) {
-    console.log('[SW] Network timeout/failed, using cache:', request.url);
-    const cached = await caches.match(request);
-    if (cached) return cached;
-
-    // Fallback para página inicial
-    const fallback = await caches.match('/');
-    if (fallback) return fallback;
-
-    throw error;
-  }
-}
-
-// Push Notifications
+// Push Notification Handler
 self.addEventListener('push', (event) => {
   console.log('[SW] Push notification received');
 
-  let data = {
-    title: 'Sindoca da Maloka',
-    body: 'Você tem uma nova notificação',
-    icon: '/icon-192x192.png',
-    badge: '/icon-192x192.png',
-    vibrate: [200, 100, 200],
-  };
-
+  let data = {};
   if (event.data) {
     try {
-      data = { ...data, ...event.data.json() };
+      data = event.data.json();
     } catch (e) {
-      data.body = event.data.text();
+      data = { title: 'Notificação', body: event.data.text() };
     }
   }
 
+  const title = data.title || 'Sindoca da Maloka';
+  const options = {
+    body: data.body || 'Nova notificação',
+    icon: '/icon-192x192.png',
+    badge: '/icon-72x72.png',
+    data: data.url || '/',
+    tag: data.tag || 'default',
+    requireInteraction: false,
+  };
+
   event.waitUntil(
-    self.registration.showNotification(data.title, {
-      body: data.body,
-      icon: data.icon,
-      badge: data.badge,
-      vibrate: data.vibrate,
-      tag: data.tag || 'notification',
-      data: data.data || {},
-    })
+    self.registration.showNotification(title, options)
   );
 });
 
-// Notification Click
+// Notification Click Handler
 self.addEventListener('notificationclick', (event) => {
-  console.log('[SW] Notification clicked');
+  console.log('[SW] Notification click');
   event.notification.close();
 
-  const urlToOpen = event.notification.data?.url || '/';
+  const urlToOpen = event.notification.data || '/';
 
   event.waitUntil(
-    clients
-      .matchAll({ type: 'window', includeUncontrolled: true })
+    clients.matchAll({ type: 'window', includeUncontrolled: true })
       .then((clientList) => {
-        for (const client of clientList) {
-          if (client.url.includes(urlToOpen) && 'focus' in client) {
+        // Se já existe uma janela aberta, focar nela
+        for (let i = 0; i < clientList.length; i++) {
+          const client = clientList[i];
+          if (client.url === urlToOpen && 'focus' in client) {
             return client.focus();
           }
         }
+        // Se não, abrir nova janela
         if (clients.openWindow) {
           return clients.openWindow(urlToOpen);
         }
@@ -201,9 +167,4 @@ self.addEventListener('notificationclick', (event) => {
   );
 });
 
-// Notification Close
-self.addEventListener('notificationclose', (event) => {
-  console.log('[SW] Notification closed');
-});
-
-console.log('[SW] Service Worker v1.0.0 loaded');
+console.log('[SW] Service Worker loaded');
