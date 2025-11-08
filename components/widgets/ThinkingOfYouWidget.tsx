@@ -280,7 +280,11 @@ export default function ThinkingOfYouWidget({
 
         if (!pushResponse.ok) {
           const errorData = await pushResponse.json();
-          console.error('Push notification failed:', pushResponse.status, errorData);
+          console.error(
+            'Push notification failed:',
+            pushResponse.status,
+            errorData
+          );
           // Don't show error to user, notification was saved to DB anyway
         } else {
           const result = await pushResponse.json();
@@ -404,12 +408,12 @@ export default function ThinkingOfYouWidget({
             </>
           ) : !canSend() && todayClickCount < MAX_CLICKS_PER_DAY ? (
             <>
-              <p className="font-semibold text-sm">⏰ Aguarde</p>
+              <p className="font-semibold text-sm">Aguarde</p>
               <p className="text-xs text-white/80">{getRemainingCooldown()}</p>
             </>
           ) : todayClickCount >= MAX_CLICKS_PER_DAY ? (
             <>
-              <p className="font-semibold text-sm">🚫 Limite atingido</p>
+              <p className="font-semibold text-sm">Limite atingido!</p>
               <p className="text-xs text-white/80">
                 {todayClickCount}/{MAX_CLICKS_PER_DAY} hoje
               </p>

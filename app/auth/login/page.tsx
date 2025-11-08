@@ -84,13 +84,16 @@ function LoginForm() {
 
         if (result) {
           console.log('Login bem-sucedido, redirecionando...');
-          toast.success('Bem-vindo de volta! 💕');
 
           // Check if we should force reload (for Edge or after cache clear)
           const forceReload = searchParams.get('force_reload') === 'true';
           const isEdge = /Edg/.test(navigator.userAgent);
 
-          console.log('Navigation info:', { forceReload, isEdge, userAgent: navigator.userAgent });
+          console.log('Navigation info:', {
+            forceReload,
+            isEdge,
+            userAgent: navigator.userAgent,
+          });
 
           if (forceReload || isEdge) {
             // Force hard reload for Edge or when explicitly requested
