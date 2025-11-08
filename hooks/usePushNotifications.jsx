@@ -190,6 +190,22 @@ export function usePushNotifications() {
     }
   }
 
+  // Auto-subscribe if permission is already granted
+  useEffect(() => {
+    if (isSupported && permission === 'granted' && !subscription) {
+      console.log('[Push] Permission granted, auto-subscribing...')
+      subscribeToPush()
+        .then(sub => {
+          if (sub) {
+            console.log('[Push] Auto-subscribed successfully')
+          }
+        })
+        .catch(err => {
+          console.error('[Push] Auto-subscribe failed:', err)
+        })
+    }
+  }, [isSupported, permission, subscription])
+
   return {
     isSupported,
     permission,
