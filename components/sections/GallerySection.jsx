@@ -273,7 +273,8 @@ export default function GallerySection({ id }) {
                 Galeria de <span className="text-primary">Momentos</span>
               </h2>
               <p className="text-md text-textSecondary max-w-2xl mx-auto">
-                Fotinhas para registrar nossa passagem nesses tempos líquidos.
+                Fotinhas para registrar nossa passagem por esses tempos
+                líquidos.
               </p>
             </div>
 
