@@ -1,67 +1,78 @@
 // Service Worker para Sindoca da Maloka
-// Versão v5 - Fix de notificações e navegação
+// Versão v6 - Melhorias de performance
 
-const CACHE_VERSION = 'v5';
+const CACHE_VERSION = 'v6';
 const CACHE_NAME = `sindoca-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `sindoca-runtime-${CACHE_VERSION}`;
+const IMAGE_CACHE = `sindoca-images-${CACHE_VERSION}`;
 
-// Assets essenciais para cache inicial (SEM manifest.json e SEM homepage)
+// Network timeout para evitar requests travadas
+const NETWORK_TIMEOUT = 5000; // 5 segundos
+
+// Assets essenciais para cache inicial
 const PRECACHE_URLS = [
+  '/icon-72x72.png',
+  '/icon-96x96.png',
+  '/icon-128x128.png',
+  '/icon-144x144.png',
+  '/icon-152x152.png',
   '/icon-192x192.png',
+  '/icon-384x384.png',
   '/icon-512x512.png',
+  '/apple-touch-icon.png',
+  '/favicon.ico',
 ];
 
-// Install: Cachear apenas ícones, skipWaiting imediato
+// Install: Cachear assets essenciais
 self.addEventListener('install', (event) => {
-  console.log('[SW] Install event - v5');
+  console.log('[SW] Install event - v6');
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
-        console.log('[SW] Caching essential assets (icons only)');
-        return cache.addAll(PRECACHE_URLS);
+        console.log('[SW] Caching essential assets');
+        return cache.addAll(PRECACHE_URLS).catch(err => {
+          console.error('[SW] Failed to cache some assets:', err);
+          // Não falhar completamente se alguns assets não carregarem
+        });
       })
       .then(() => {
-        console.log('[SW] Skip waiting - force activation');
-        return self.skipWaiting();
+        console.log('[SW] Install complete');
+        // Não usar skipWaiting imediatamente para evitar problemas
+        // Apenas se não houver controller ativo
+        if (!self.clients || self.clients.length === 0) {
+          return self.skipWaiting();
+        }
       })
   );
 });
 
-// Activate: LIMPAR TODOS OS CACHES ANTIGOS e tomar controle imediato
+// Activate: Limpar caches antigos
 self.addEventListener('activate', (event) => {
-  console.log('[SW] Activate event - v5 cleaning ALL old caches');
+  console.log('[SW] Activate event - v6');
   event.waitUntil(
     caches.keys().then(cacheNames => {
       console.log('[SW] Found caches:', cacheNames);
-      // Deletar TODOS os caches que não são v5
+      // Deletar caches de versões antigas
       return Promise.all(
         cacheNames.map(cacheName => {
-          if (cacheName !== CACHE_NAME && cacheName !== RUNTIME_CACHE) {
-            console.log('[SW] 🗑️ Deleting old cache:', cacheName);
+          if (cacheName !== CACHE_NAME && cacheName !== RUNTIME_CACHE && cacheName !== IMAGE_CACHE) {
+            console.log('[SW] Deleting old cache:', cacheName);
             return caches.delete(cacheName);
           }
         })
       );
     }).then(() => {
-      console.log('[SW] Claiming all clients immediately');
+      console.log('[SW] Claiming clients');
       return self.clients.claim();
     }).then(() => {
-      console.log('[SW] ✅ All clients now controlled by v5');
-      // Notificar todos os clientes para recarregar
-      return self.clients.matchAll().then(clients => {
-        clients.forEach(client => {
-          client.postMessage({
-            type: 'SW_UPDATED',
-            version: 'v5',
-            message: 'Service Worker atualizado - recarregando página'
-          });
-        });
-      });
+      console.log('[SW] Service Worker v6 activated');
+      // NÃO enviar mensagem de reload para evitar loops infinitos
+      // O usuário verá a nova versão naturalmente na próxima navegação
     })
   );
 });
 
-// Fetch: Estratégia de cache
+// Fetch: Estratégia de cache otimizada
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
@@ -71,30 +82,49 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // NUNCA cachear manifest.json ou homepage - sempre buscar do servidor
-  if (url.pathname === '/manifest.json' || url.pathname === '/' || url.pathname.match(/^\/(_next|api)/)) {
+  // API e páginas dinâmicas: sempre do servidor (sem cache)
+  if (url.pathname.match(/^\/api\//) || url.pathname === '/') {
     event.respondWith(fetch(request));
     return;
   }
 
-  // Ignorar requests do Chrome extensions e outras origens
-  if (!url.origin.includes(self.location.origin) && !url.origin.includes('supabase.co') && !url.origin.includes('googleapis.com') && !url.origin.includes('gstatic.com')) {
+  // Next.js internal: Network First com timeout
+  if (url.pathname.match(/^\/(_next|_error)/)) {
+    event.respondWith(networkFirstWithTimeout(request));
     return;
   }
 
-  // Estratégia para diferentes tipos de recursos
-  if (url.pathname.match(/\.(png|jpg|jpeg|svg|gif|webp|ico)$/)) {
-    // Imagens: Cache First
+  // Manifest sempre fresco
+  if (url.pathname === '/manifest.json') {
+    event.respondWith(fetch(request));
+    return;
+  }
+
+  // Ignorar outras origens não confiáveis
+  const trustedOrigins = [self.location.origin, 'supabase.co', 'googleapis.com', 'gstatic.com'];
+  if (!trustedOrigins.some(origin => url.origin.includes(origin))) {
+    return;
+  }
+
+  // Imagens: Cache First com fallback (cache separado)
+  if (url.pathname.match(/\.(png|jpg|jpeg|svg|gif|webp|ico|avif)$/)) {
+    event.respondWith(cacheFirstImages(request));
+  }
+  // Google Fonts: Cache First (longa duração)
+  else if (url.origin.includes('googleapis.com') || url.origin.includes('gstatic.com')) {
     event.respondWith(cacheFirst(request));
-  } else if (url.origin.includes('googleapis.com') || url.origin.includes('gstatic.com')) {
-    // Google Fonts: Cache First com fallback
-    event.respondWith(cacheFirst(request));
-  } else if (url.origin.includes('supabase.co')) {
-    // Supabase: Network First
-    event.respondWith(networkFirst(request));
-  } else {
-    // Outras requests: Network First com cache fallback
-    event.respondWith(networkFirst(request));
+  }
+  // Supabase: Network First com timeout
+  else if (url.origin.includes('supabase.co')) {
+    event.respondWith(networkFirstWithTimeout(request));
+  }
+  // CSS, JS, fontes: Stale While Revalidate (melhor UX)
+  else if (url.pathname.match(/\.(css|js|woff2?|ttf|eot)$/)) {
+    event.respondWith(staleWhileRevalidate(request));
+  }
+  // Outras requests: Network First com timeout
+  else {
+    event.respondWith(networkFirstWithTimeout(request));
   }
 });
 
@@ -114,14 +144,19 @@ async function cacheFirst(request) {
     }
     return response;
   } catch (error) {
-    console.log('[SW] Fetch failed for:', request.url);
+    console.log('[SW] Fetch failed:', request.url);
     throw error;
   }
 }
 
-// Network First: Tenta network primeiro, depois cache
-async function networkFirst(request) {
-  const cache = await caches.open(RUNTIME_CACHE);
+// Cache First para imagens (cache separado)
+async function cacheFirstImages(request) {
+  const cache = await caches.open(IMAGE_CACHE);
+  const cached = await cache.match(request);
+
+  if (cached) {
+    return cached;
+  }
 
   try {
     const response = await fetch(request);
@@ -130,12 +165,56 @@ async function networkFirst(request) {
     }
     return response;
   } catch (error) {
+    console.log('[SW] Image fetch failed:', request.url);
+    throw error;
+  }
+}
+
+// Network First com timeout
+async function networkFirstWithTimeout(request) {
+  const cache = await caches.open(RUNTIME_CACHE);
+
+  try {
+    // Race entre fetch e timeout
+    const response = await Promise.race([
+      fetch(request),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Network timeout')), NETWORK_TIMEOUT)
+      )
+    ]);
+
+    if (response.ok) {
+      cache.put(request, response.clone());
+    }
+    return response;
+  } catch (error) {
+    console.log('[SW] Network failed, trying cache:', request.url);
     const cached = await cache.match(request);
     if (cached) {
       return cached;
     }
     throw error;
   }
+}
+
+// Stale While Revalidate: Retorna cache imediatamente, atualiza em background
+async function staleWhileRevalidate(request) {
+  const cache = await caches.open(RUNTIME_CACHE);
+  const cached = await cache.match(request);
+
+  // Promise para buscar nova versão em background
+  const fetchPromise = fetch(request).then(response => {
+    if (response.ok) {
+      cache.put(request, response.clone());
+    }
+    return response;
+  }).catch(err => {
+    console.log('[SW] Background fetch failed:', request.url);
+    return null;
+  });
+
+  // Retorna cache se disponível, senão espera o fetch
+  return cached || fetchPromise;
 }
 
 // Push Notification Handler

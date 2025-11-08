@@ -52,16 +52,14 @@ export default function AppProvider({ children }) {
     // Listener para mensagens do Service Worker
     const handleSWMessage = (event) => {
       if (event.data && event.data.type === 'SW_UPDATED') {
-        console.log('Service Worker atualizado:', event.data.version)
-        console.log('Recarregando página em 1 segundo...')
-        setTimeout(() => {
-          window.location.reload()
-        }, 1000)
+        console.log('✅ Service Worker atualizado:', event.data.version)
+        // Não recarregar automaticamente para evitar loops
+        // A nova versão será usada na próxima navegação
       }
 
       // Navigate when notification is clicked
       if (event.data && event.data.type === 'NAVIGATE') {
-        console.log('Navegando para:', event.data.url)
+        console.log('📍 Navegando para:', event.data.url)
         window.location.href = event.data.url
       }
     }
@@ -94,12 +92,12 @@ export default function AppProvider({ children }) {
           })
         })
 
-        // Verificar atualizações a cada 1 minuto (mais frequente)
+        // Verificar atualizações a cada 5 minutos (balanceado)
         const updateInterval = setInterval(() => {
           registration.update().catch(err => {
             console.log('Erro ao verificar atualização:', err.message)
           })
-        }, 60 * 1000)
+        }, 5 * 60 * 1000) // 5 minutos
 
         // Limpar interval quando componente desmontar
         return () => {
