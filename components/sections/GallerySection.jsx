@@ -12,6 +12,7 @@ import {
   X,
   Check,
 } from 'lucide-react';
+import imageCompression from 'browser-image-compression';
 import Lightbox from '../Lightbox';
 import MasonryGrid from '../ui/MasonryGrid';
 import Button from '../ui/Button';
@@ -52,13 +53,20 @@ export default function GallerySection({ id }) {
   // Estado para controlar o número de colunas responsivamente
   const [columns, setColumns] = useState(3);
 
-  // Estado de paginação
-  const PHOTOS_PER_PAGE = 20;
+  // Estado de paginação (ajustado para mobile)
+  const [isMobile, setIsMobile] = useState(false);
+  const PHOTOS_PER_PAGE = isMobile ? 12 : 20;
   const [displayedCount, setDisplayedCount] = useState(PHOTOS_PER_PAGE);
 
+  // Upload preview state
+  const [uploadPreviews, setUploadPreviews] = useState([]);
+
   useEffect(() => {
-    const updateColumns = () => {
-      if (window.innerWidth < 640) {
+    const updateLayout = () => {
+      const mobile = window.innerWidth < 640;
+      setIsMobile(mobile);
+
+      if (mobile) {
         setColumns(2); // Mobile: 2 colunas
       } else if (window.innerWidth < 1024) {
         setColumns(3); // Tablet: 3 colunas
@@ -67,9 +75,9 @@ export default function GallerySection({ id }) {
       }
     };
 
-    updateColumns();
-    window.addEventListener('resize', updateColumns);
-    return () => window.removeEventListener('resize', updateColumns);
+    updateLayout();
+    window.addEventListener('resize', updateLayout);
+    return () => window.removeEventListener('resize', updateLayout);
   }, []);
 
   // Filtra as fotos baseado no filtro ativo
@@ -183,31 +191,63 @@ export default function GallerySection({ id }) {
       return;
     }
 
-    // Validate file size
-    const largeFiles = files.filter((file) => file.size > 10 * 1024 * 1024);
+    // Validate file size (before compression)
+    const largeFiles = files.filter((file) => file.size > 50 * 1024 * 1024);
     if (largeFiles.length > 0) {
       setUploadError(
-        `${largeFiles.length} imagem(ns) muito grande(s) (máx 10MB cada).`
+        `${largeFiles.length} imagem(ns) muito grande(s) (máx 50MB cada).`
       );
       if (event.target) event.target.value = '';
       return;
     }
 
-    // console.log(`📤 Starting upload of ${files.length} files`);
-    files.forEach((f, i) =>
-      console.log(
-        `  ${i + 1}. ${f.name} (${f.type}, ${(f.size / 1024 / 1024).toFixed(
-          2
-        )}MB)`
-      )
-    );
-
     setUploadError(null);
     setIsUploading(true);
     setUploadProgress({ current: 0, total: files.length });
 
+    // Generate previews for animation
+    const previews = await Promise.all(
+      files.map(async (file) => {
+        return new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onload = (e) => resolve({ url: e.target.result, name: file.name });
+          reader.readAsDataURL(file);
+        });
+      })
+    );
+    setUploadPreviews(previews);
+
     try {
-      const result = await uploadPhotos(files);
+      // Compress images
+      const compressionOptions = {
+        maxSizeMB: 2,
+        maxWidthOrHeight: 1920,
+        useWebWorker: true,
+        fileType: 'image/jpeg',
+      };
+
+      const compressedFiles = await Promise.all(
+        files.map(async (file, index) => {
+          try {
+            console.log(`📦 Comprimindo ${file.name}...`);
+            const compressed = await imageCompression(file, compressionOptions);
+            console.log(
+              `✅ ${file.name}: ${(file.size / 1024 / 1024).toFixed(2)}MB → ${(
+                compressed.size /
+                1024 /
+                1024
+              ).toFixed(2)}MB`
+            );
+            setUploadProgress({ current: index + 1, total: files.length });
+            return compressed;
+          } catch (error) {
+            console.error(`Erro ao comprimir ${file.name}:`, error);
+            return file; // Fallback to original
+          }
+        })
+      );
+
+      const result = await uploadPhotos(compressedFiles);
 
       if (!result) {
         throw new Error(
@@ -217,19 +257,15 @@ export default function GallerySection({ id }) {
 
       const { results, errors } = result;
 
-      setUploadProgress({ current: results?.length || 0, total: files.length });
-
       if (results && results.length > 0) {
-        // console.log(`🎉 ${results.length} foto(s) adicionada(s) à galeria!`);
+        console.log(`🎉 ${results.length} foto(s) adicionada(s) à galeria!`);
       }
 
       if (errors && errors.length > 0) {
         const errorMsg = errors[0]?.error || errors[0];
         setUploadError(`Erro ao enviar ${errors.length} foto(s): ${errorMsg}`);
-        // console.error('Errors:', errors);
       }
     } catch (error) {
-      // console.error('❌ Erro no upload:', error);
       const errorMessage =
         error.message || 'Erro ao enviar fotos. Tente novamente.';
       setUploadError(errorMessage);
@@ -237,6 +273,7 @@ export default function GallerySection({ id }) {
 
     setIsUploading(false);
     setUploadProgress({ current: 0, total: 0 });
+    setUploadPreviews([]);
     if (event.target) event.target.value = '';
   };
 
@@ -374,6 +411,40 @@ export default function GallerySection({ id }) {
             )}
             {uploadError && (
               <p className="text-sm text-red-500 mt-2">{uploadError}</p>
+            )}
+
+            {/* Upload Preview Animation */}
+            {uploadPreviews.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mt-4 grid grid-cols-4 md:grid-cols-6 gap-2"
+              >
+                {uploadPreviews.map((preview, index) => (
+                  <motion.div
+                    key={preview.name}
+                    initial={{ scale: 0, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ delay: index * 0.05 }}
+                    className="relative aspect-square rounded-lg overflow-hidden bg-gray-200"
+                  >
+                    <img
+                      src={preview.url}
+                      alt={preview.name}
+                      className="w-full h-full object-cover"
+                    />
+                    {index < uploadProgress.current && (
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="absolute inset-0 bg-green-500/20 flex items-center justify-center"
+                      >
+                        <Check className="text-green-600" size={20} />
+                      </motion.div>
+                    )}
+                  </motion.div>
+                ))}
+              </motion.div>
             )}
           </motion.div>
 

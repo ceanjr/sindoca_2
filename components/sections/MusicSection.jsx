@@ -50,6 +50,10 @@ export default function MusicSection({ id }) {
   const audioRef = useRef(null);
   const previousTracksCount = useRef(0);
   const { ref, inView } = useInView({ threshold: 0.1, triggerOnce: true });
+
+  // Pagination state
+  const TRACKS_PER_PAGE = 20;
+  const [displayedCount, setDisplayedCount] = useState(TRACKS_PER_PAGE);
   const {
     isOpen,
     loading: confirmLoading,
@@ -182,13 +186,17 @@ export default function MusicSection({ id }) {
     if (!previewUrl) return;
 
     if (playingPreview === track.id) {
+      // Pause current playing
       audioRef.current?.pause();
       setPlayingPreview(null);
     } else {
+      // Reuse audio instance, just change source
       if (audioRef.current) {
         audioRef.current.pause();
         audioRef.current.src = previewUrl;
-        audioRef.current.play();
+        audioRef.current.play().catch((error) => {
+          console.error('Error playing audio:', error);
+        });
       }
       setPlayingPreview(track.id);
     }
@@ -218,11 +226,25 @@ export default function MusicSection({ id }) {
   };
 
   // Filter tracks
-  const filteredTracks = showOnlyFavorites
+  const allFilteredTracks = showOnlyFavorites
     ? tracks.filter((track) => track.isFavorite)
     : tracks;
 
+  // Apply pagination
+  const filteredTracks = allFilteredTracks.slice(0, displayedCount);
+  const hasMore = allFilteredTracks.length > displayedCount;
+
   const favoritesCount = tracks.filter((track) => track.isFavorite).length;
+
+  // Reset pagination when filter changes
+  useEffect(() => {
+    setDisplayedCount(TRACKS_PER_PAGE);
+  }, [showOnlyFavorites]);
+
+  // Load more tracks
+  const loadMore = () => {
+    setDisplayedCount((prev) => prev + TRACKS_PER_PAGE);
+  };
 
   return (
     <>
@@ -442,8 +464,9 @@ export default function MusicSection({ id }) {
 
           {/* Track List */}
           {!loading && filteredTracks.length > 0 && (
-            <div className="grid gap-4 max-w-4xl mx-auto">
-              {filteredTracks.map((track, index) => (
+            <>
+              <div className="grid gap-4 max-w-4xl mx-auto">
+                {filteredTracks.map((track, index) => (
                 <motion.div
                   key={track.id}
                   initial={{ opacity: 0, y: 20 }}
@@ -474,7 +497,12 @@ export default function MusicSection({ id }) {
                           src={track.data.album_cover}
                           alt={track.title}
                           className="w-full h-full object-cover"
+                          loading="lazy"
                         />
+                        {/* Playing indicator - subtle pulsing border */}
+                        {playingPreview === track.id && (
+                          <div className="absolute inset-0 border-2 border-green-500 rounded-lg animate-pulse" />
+                        )}
                         {track.data?.preview_url && (
                           <div
                             className={`absolute inset-0 flex items-center justify-center transition-all ${
@@ -596,7 +624,26 @@ export default function MusicSection({ id }) {
                   </div>
                 </motion.div>
               ))}
-            </div>
+              </div>
+
+              {/* Load More Button */}
+              {hasMore && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="text-center mt-8"
+                >
+                  <Button
+                    onClick={loadMore}
+                    variant="outline"
+                    size="md"
+                    className="px-8"
+                  >
+                    Carregar mais músicas ({allFilteredTracks.length - displayedCount} restantes)
+                  </Button>
+                </motion.div>
+              )}
+            </>
           )}
         </div>
       </section>
