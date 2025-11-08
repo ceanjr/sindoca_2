@@ -196,9 +196,10 @@ export default function LoveReasonsSection({ id }) {
         // Send push notification to partner
         if (partnerId && partnerProfile) {
           try {
-            await fetch('/api/push/send', {
+            const pushResponse = await fetch('/api/push/send', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
+              credentials: 'include',
               body: JSON.stringify({
                 recipientUserId: partnerId,
                 title: `${partnerProfile.full_name} adicionou uma nova razão para te aguentar!`,
@@ -210,6 +211,14 @@ export default function LoveReasonsSection({ id }) {
                 data: { url: '/razoes' },
               }),
             });
+
+            if (!pushResponse.ok) {
+              const errorData = await pushResponse.json();
+              console.error('Push notification failed:', errorData);
+            } else {
+              const result = await pushResponse.json();
+              console.log('Push notification sent:', result);
+            }
           } catch (error) {
             console.error('Error sending push notification:', error);
           }

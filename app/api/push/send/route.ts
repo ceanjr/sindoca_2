@@ -22,14 +22,28 @@ export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient();
 
-    // Get authenticated user (sender)
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    // Check for internal API secret (for server-to-server calls)
+    const internalSecret = request.headers.get('x-internal-secret');
+    const isInternalCall = internalSecret === process.env.INTERNAL_API_SECRET;
 
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+    let senderId: string | undefined;
+
+    if (!isInternalCall) {
+      // For external calls, require user authentication
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+      if (authError || !user) {
+        console.error('[Push] Auth error:', authError?.message || 'No user');
+        return NextResponse.json(
+          { error: 'Unauthorized', details: authError?.message },
+          { status: 401 }
+        );
+      }
+
+      senderId = user.id;
+      console.log('[Push] Authenticated user:', senderId);
+    } else {
+      console.log('[Push] Internal API call (authenticated via secret)');
     }
 
     // Get notification data
@@ -42,6 +56,12 @@ export async function POST(request: NextRequest) {
       tag,
       data: notificationData,
     } = await request.json();
+
+    console.log('[Push] Sending notification:', {
+      from: senderId || 'internal',
+      to: recipientUserId,
+      title,
+    });
 
     if (!recipientUserId || !title) {
       return NextResponse.json(
@@ -57,18 +77,22 @@ export async function POST(request: NextRequest) {
       .eq('user_id', recipientUserId);
 
     if (subsError) {
-      console.error('Error fetching subscriptions:', subsError);
+      console.error('[Push] Error fetching subscriptions:', subsError);
       return NextResponse.json(
-        { error: 'Failed to fetch subscriptions' },
+        { error: 'Failed to fetch subscriptions', details: subsError.message },
         { status: 500 }
       );
     }
 
+    console.log('[Push] Found subscriptions:', subscriptions?.length || 0);
+
     if (!subscriptions || subscriptions.length === 0) {
+      console.warn('[Push] No subscriptions found for recipient:', recipientUserId);
       return NextResponse.json({
         success: true,
         message: 'No subscriptions found for user',
         sent: 0,
+        warning: 'Recipient has no active push subscriptions',
       });
     }
 
@@ -111,6 +135,15 @@ export async function POST(request: NextRequest) {
 
     const successful = results.filter(r => r.status === 'fulfilled' && r.value.success).length;
     const failed = results.length - successful;
+
+    console.log('[Push] Results:', { successful, failed, total: subscriptions.length });
+
+    // Log failures for debugging
+    results.forEach((result, index) => {
+      if (result.status === 'rejected' || (result.status === 'fulfilled' && !result.value.success)) {
+        console.error('[Push] Failed to send to subscription', index, result);
+      }
+    });
 
     return NextResponse.json({
       success: true,

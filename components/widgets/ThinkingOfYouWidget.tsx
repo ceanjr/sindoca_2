@@ -264,9 +264,10 @@ export default function ThinkingOfYouWidget({
 
       // Send server-side push notification to partner
       try {
-        await fetch('/api/push/send', {
+        const pushResponse = await fetch('/api/push/send', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'include', // Important: include cookies for auth
           body: JSON.stringify({
             recipientUserId: partnerId,
             title: title,
@@ -276,8 +277,18 @@ export default function ThinkingOfYouWidget({
             data: { url: '/' },
           }),
         });
+
+        if (!pushResponse.ok) {
+          const errorData = await pushResponse.json();
+          console.error('Push notification failed:', pushResponse.status, errorData);
+          // Don't show error to user, notification was saved to DB anyway
+        } else {
+          const result = await pushResponse.json();
+          console.log('Push notification sent:', result);
+        }
       } catch (error) {
         console.error('Error sending push notification:', error);
+        // Don't show error to user, notification was saved to DB anyway
       }
 
       // Show success toast (no local notification for sender)

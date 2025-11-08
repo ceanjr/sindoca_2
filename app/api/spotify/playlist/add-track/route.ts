@@ -138,9 +138,12 @@ export async function POST(request: NextRequest) {
     // Send push notification to partner
     if (partnerId) {
       try {
-        await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/push/send`, {
+        const pushResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/push/send`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'x-internal-secret': process.env.INTERNAL_API_SECRET || '',
+          },
           body: JSON.stringify({
             recipientUserId: partnerId,
             title: '🎵 Nova música adicionada!',
@@ -150,6 +153,14 @@ export async function POST(request: NextRequest) {
             data: { url: '/musica' },
           }),
         });
+
+        if (!pushResponse.ok) {
+          const errorData = await pushResponse.json();
+          console.error('Push notification failed:', errorData);
+        } else {
+          const result = await pushResponse.json();
+          console.log('Push notification sent:', result);
+        }
       } catch (error) {
         console.error('Error sending push notification:', error);
         // Don't fail the request if push fails
