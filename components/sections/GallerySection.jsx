@@ -284,12 +284,12 @@ export default function GallerySection({ id }) {
       const errorMessage =
         error.message || 'Erro ao enviar fotos. Tente novamente.';
       setUploadError(errorMessage);
+    } finally {
+      setIsUploading(false);
+      setUploadProgress({ current: 0, total: 0 });
+      setUploadPreviews([]);
+      if (event.target) event.target.value = '';
     }
-
-    setIsUploading(false);
-    setUploadProgress({ current: 0, total: 0 });
-    setUploadPreviews([]);
-    if (event.target) event.target.value = '';
   };
 
   return (

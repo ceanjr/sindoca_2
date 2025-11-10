@@ -246,7 +246,7 @@ export default function ThinkingOfYouWidget({
 
       // Save to database as a notification/message
       const supabase = createClient();
-      await supabase.from('content').insert({
+      const { error: insertError } = await supabase.from('content').insert({
         workspace_id: workspaceId,
         author_id: user.id,
         type: 'message',
@@ -258,6 +258,10 @@ export default function ThinkingOfYouWidget({
           message_index: messageIndex,
         },
       });
+
+      if (insertError) {
+        throw new Error(`Erro ao salvar: ${insertError.message}`);
+      }
 
       setLastSentTime(new Date());
       setTodayClickCount((prev) => prev + 1);
