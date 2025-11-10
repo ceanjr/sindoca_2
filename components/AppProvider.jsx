@@ -1,6 +1,9 @@
 'use client'
 
 import { useState, useEffect, createContext, useContext } from 'react'
+import { usePushNotifications } from '@/hooks/usePushNotifications'
+import { useAuth } from '@/contexts/AuthContext'
+import { logger } from '@/lib/utils/logger'
 
 const AppContext = createContext()
 
@@ -14,6 +17,8 @@ export function useApp() {
 
 export default function AppProvider({ children }) {
   const [theme, setTheme] = useState('light')
+  const { user } = useAuth()
+  const { subscribeToPush, isSupported, permission } = usePushNotifications()
 
   // Load theme from storage
   useEffect(() => {
@@ -66,6 +71,8 @@ export default function AppProvider({ children }) {
 
     navigator.serviceWorker.addEventListener('message', handleSWMessage)
 
+    let updateIntervalId = null
+
     const registerServiceWorker = async () => {
       try {
         console.log('Registrando Service Worker...')
@@ -93,17 +100,11 @@ export default function AppProvider({ children }) {
         })
 
         // Verificar atualizações a cada 5 minutos (balanceado)
-        const updateInterval = setInterval(() => {
+        updateIntervalId = setInterval(() => {
           registration.update().catch(err => {
             console.log('Erro ao verificar atualização:', err.message)
           })
         }, 5 * 60 * 1000) // 5 minutos
-
-        // Limpar interval quando componente desmontar
-        return () => {
-          clearInterval(updateInterval)
-          navigator.serviceWorker.removeEventListener('message', handleSWMessage)
-        }
 
       } catch (error) {
         console.error('Erro ao registrar Service Worker:', {
@@ -121,7 +122,63 @@ export default function AppProvider({ children }) {
     }
 
     registerServiceWorker()
+
+    // Cleanup function for useEffect
+    return () => {
+      if (updateIntervalId) {
+        clearInterval(updateIntervalId)
+      }
+      navigator.serviceWorker.removeEventListener('message', handleSWMessage)
+    }
   }, [])
+
+  // Auto-request push notification permission when user is logged in
+  useEffect(() => {
+    if (!user || !isSupported) return
+
+    // Use ref to prevent duplicate execution
+    let isExecuting = false
+
+    const setupPushNotifications = async () => {
+      if (isExecuting) return
+      isExecuting = true
+
+      try {
+        // Only auto-request if permission is not already denied
+        if (permission === 'default') {
+          // Wait a bit after page load to ask for permission (better UX)
+          await new Promise(resolve => setTimeout(resolve, 3000))
+
+          const result = await Notification.requestPermission()
+          if (result === 'granted') {
+            await subscribeToPush()
+          }
+        } else if (permission === 'granted') {
+          // If permission is granted, check if we have an active subscription
+          if ('serviceWorker' in navigator && 'PushManager' in window) {
+            const registration = await navigator.serviceWorker.ready
+            const existingSubscription = await registration.pushManager.getSubscription()
+
+            if (!existingSubscription) {
+              // Permission granted but no subscription - create one!
+              logger.log('[Push] Permission granted but no subscription found - creating one...')
+              await subscribeToPush()
+            } else {
+              logger.log('[Push] Subscription already exists')
+            }
+          }
+        }
+      } catch (error) {
+        logger.error('[Push] Error setting up notifications:', error)
+      } finally {
+        isExecuting = false
+      }
+    }
+
+    setupPushNotifications()
+    // Don't add subscribeToPush to deps - it causes unnecessary re-renders
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, isSupported, permission])
 
   // Save theme to storage
   const handleThemeChange = async (newTheme) => {

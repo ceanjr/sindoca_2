@@ -3,7 +3,8 @@
  */
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import dynamic from 'next/dynamic';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useInView } from 'react-intersection-observer';
 import {
@@ -20,7 +21,6 @@ import {
 } from 'lucide-react';
 import Button from '../ui/Button';
 import Badge from '../ui/Badge';
-import SpotifySearchModal from '../music/SpotifySearchModal';
 import ConfirmDialog from '../ui/ConfirmDialog';
 import { useRealtimePlaylist } from '@/hooks/useRealtimePlaylist';
 import { useAuth } from '@/contexts/AuthContext';
@@ -28,6 +28,12 @@ import { createClient } from '@/lib/supabase/client';
 import { useConfirm } from '@/hooks/useConfirm';
 import { toast } from 'sonner';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
+
+// Lazy load SpotifySearchModal for better performance
+const SpotifySearchModal = dynamic(() => import('../music/SpotifySearchModal'), {
+  ssr: false,
+  loading: () => <div className="flex items-center justify-center p-4">Carregando...</div>
+});
 
 export default function MusicSection({ id }) {
   const { user } = useAuth();
@@ -50,6 +56,17 @@ export default function MusicSection({ id }) {
   const audioRef = useRef(null);
   const previousTracksCount = useRef(0);
   const { ref, inView } = useInView({ threshold: 0.1, triggerOnce: true });
+
+  // Cleanup audio element on unmount
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.src = '';
+        audioRef.current = null;
+      }
+    };
+  }, []);
 
   // Pagination state
   const TRACKS_PER_PAGE = 20;
@@ -78,20 +95,38 @@ export default function MusicSection({ id }) {
 
       if (!error && data?.spotify_tokens) {
         setSpotifyConnected(true);
+      } else {
+        setSpotifyConnected(false);
       }
     };
 
     checkSpotifyConnection();
   }, [user]);
 
-  // Check for connection success
+  // Check for connection success and recheck connection status
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('connected') === 'true') {
-      setSpotifyConnected(true);
-      window.history.replaceState({}, '', '/musica');
+      // Wait a bit to ensure DB update is complete, then recheck
+      setTimeout(async () => {
+        if (!user) return;
+        
+        const supabase = createClient();
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('spotify_tokens')
+          .eq('id', user.id)
+          .single();
+
+        if (!error && data?.spotify_tokens) {
+          setSpotifyConnected(true);
+          toast.success('Spotify conectado com sucesso!');
+        }
+        
+        window.history.replaceState({}, '', '/musica');
+      }, 500);
     }
-  }, []);
+  }, [user]);
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -226,12 +261,17 @@ export default function MusicSection({ id }) {
   };
 
   // Filter tracks
-  const allFilteredTracks = showOnlyFavorites
-    ? tracks.filter((track) => track.isFavorite)
-    : tracks;
+  const allFilteredTracks = useMemo(() => {
+    return showOnlyFavorites
+      ? tracks.filter((track) => track.isFavorite)
+      : tracks;
+  }, [tracks, showOnlyFavorites]);
 
-  // Apply pagination
-  const filteredTracks = allFilteredTracks.slice(0, displayedCount);
+  // Apply pagination with memoization
+  const filteredTracks = useMemo(() => {
+    return allFilteredTracks.slice(0, displayedCount);
+  }, [allFilteredTracks, displayedCount]);
+
   const hasMore = allFilteredTracks.length > displayedCount;
 
   const favoritesCount = tracks.filter((track) => track.isFavorite).length;
@@ -496,8 +536,12 @@ export default function MusicSection({ id }) {
                         <img
                           src={track.data.album_cover}
                           alt={track.title}
+                          width="64"
+                          height="64"
                           className="w-full h-full object-cover"
+                          style={{ backgroundColor: '#e5e7eb' }}
                           loading="lazy"
+                          decoding="async"
                         />
                         {/* Playing indicator - subtle pulsing border */}
                         {playingPreview === track.id && (

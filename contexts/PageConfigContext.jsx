@@ -15,10 +15,18 @@ export function PageConfigProvider({ children }) {
   const isAdmin = user?.email === 'celiojunior0110@gmail.com';
 
   useEffect(() => {
+    // Set timeout fallback to prevent infinite loading
+    const timeout = setTimeout(() => {
+      if (loading) {
+        console.warn('⚠️ PageConfig: Timeout waiting for auth, proceeding anyway');
+        setLoading(false);
+      }
+    }, 10000); // 10 second timeout
+
     // Wait for auth to finish loading
     if (authLoading) {
       console.log('🔄 PageConfig: Waiting for auth to load...');
-      return;
+      return () => clearTimeout(timeout);
     }
 
     console.log('🔧 PageConfig: Initializing once with user:', user?.email);
@@ -40,6 +48,7 @@ export function PageConfigProvider({ children }) {
       } catch (error) {
         console.error('Error loading page config:', error);
       } finally {
+        clearTimeout(timeout);
         setLoading(false);
       }
     };

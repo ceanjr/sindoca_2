@@ -34,11 +34,7 @@ export function useSupabasePhotos() {
   const channelRef = useRef(null);
   const initializingRef = useRef(false);
   const initializedRef = useRef(false);
-
-  // Log quando photos muda
-  useEffect(() => {
-    console.log('📊 Photos state changed:', photos.length, 'photos');
-  }, [photos]);
+  const urlCacheRef = useRef({}); // Cache for photo URLs to avoid regenerating
 
   useEffect(() => {
     // Prevent multiple initializations
@@ -103,14 +99,9 @@ export function useSupabasePhotos() {
   }, []);
 
   const loadPhotos = useCallback(async () => {
-    console.log('🔵 loadPhotos called');
-
     if (!supabaseRef.current || !workspaceRef.current) {
-      console.warn('⚠️  Cannot load photos: not initialized');
       return;
     }
-
-    console.log('📥 Fetching photos for workspace:', workspaceRef.current);
 
     try {
       setLoading(true);
@@ -119,19 +110,18 @@ export function useSupabasePhotos() {
         workspaceRef.current
       );
 
-      console.log(`📸 Fetched ${data.length} photos from database`);
-
       // Transform data to include favorites
       const transformedPhotos = data.map((photo) => {
-        console.log('🔍 Processing photo:', photo.id);
-        console.log('  storage_path:', photo.storage_path);
-        console.log('  data type:', typeof photo.data);
-        console.log('  data raw:', photo.data);
-
         const favoritesMap = {};
+        const favoritedBy = [];
         photo.reactions?.forEach((reaction) => {
           if (reaction.type === 'favorite') {
             favoritesMap[reaction.user_id] = true;
+            favoritedBy.push({
+              userId: reaction.user_id,
+              name: reaction.profiles?.full_name || 'Desconhecido',
+              avatar: reaction.profiles?.avatar_url,
+            });
           }
         });
 
@@ -140,30 +130,28 @@ export function useSupabasePhotos() {
         if (typeof photoData === 'string') {
           try {
             photoData = JSON.parse(photoData);
-            console.log('  ✅ Parsed data:', photoData);
           } catch (e) {
-            console.warn('  ❌ Failed to parse photo data:', e);
             photoData = {};
           }
         }
 
-        // Get URL from data or generate from storage_path
+        // Get URL from data or generate from storage_path with caching
         let photoUrl = photoData?.url || '';
-        console.log('  photoData.url:', photoData?.url);
 
         if (!photoUrl && photo.storage_path) {
-          // Remove 'gallery/' prefix if exists, since bucket is already 'gallery'
-          const cleanPath = photo.storage_path.replace(/^gallery\//, '');
-          console.log('  Generating URL from storage_path:', cleanPath);
-          const { data: urlData } = supabaseRef.current.storage
-            .from('gallery')
-            .getPublicUrl(cleanPath);
-          photoUrl = urlData?.publicUrl || '';
-
-          console.log('  Generated URL:', photoUrl);
+          // Check cache first
+          if (urlCacheRef.current[photo.storage_path]) {
+            photoUrl = urlCacheRef.current[photo.storage_path];
+          } else {
+            // Generate and cache the URL
+            const cleanPath = photo.storage_path.replace(/^gallery\//, '');
+            const { data: urlData } = supabaseRef.current.storage
+              .from('gallery')
+              .getPublicUrl(cleanPath);
+            photoUrl = urlData?.publicUrl || '';
+            urlCacheRef.current[photo.storage_path] = photoUrl;
+          }
         }
-
-        console.log('  FINAL URL:', photoUrl);
 
         return {
           id: photo.id,
@@ -172,17 +160,16 @@ export function useSupabasePhotos() {
           category: photo.category || 'all',
           created_at: photo.created_at,
           favorite: favoritesMap[userRef.current?.id] || false,
+          isFavoritedByAnyone: favoritedBy.length > 0,
+          favoritedBy: favoritedBy,
           storage_path: photo.storage_path,
         };
       });
 
-      console.log(`✅ Transformed ${transformedPhotos.length} photos`);
       setPhotos([...transformedPhotos]); // Force new array reference
       setUpdateCounter((prev) => prev + 1); // Force re-render
       setError(null);
-      console.log('✅ Photos state updated');
     } catch (err) {
-      console.error('❌ Error loading photos:', err);
       setError(err.message);
     } finally {
       setLoading(false);
@@ -195,26 +182,119 @@ export function useSupabasePhotos() {
       .on(
         'postgres_changes',
         {
-          event: '*',
+          event: 'INSERT',
           schema: 'public',
           table: 'content',
           filter: `workspace_id=eq.${workspaceId}`,
         },
-        (payload) => {
-          console.log('🔔 Realtime event (content):', payload.eventType);
-          loadPhotos();
+        async (payload) => {
+          if (payload.new?.type !== 'photo') return;
+
+          // Transform and add new photo to state
+          const photo = payload.new;
+          let photoData = photo.data;
+          if (typeof photoData === 'string') {
+            try {
+              photoData = JSON.parse(photoData);
+            } catch (e) {
+              photoData = {};
+            }
+          }
+
+          let photoUrl = photoData?.url || '';
+          if (!photoUrl && photo.storage_path) {
+            const cleanPath = photo.storage_path.replace(/^gallery\//, '');
+            const { data: urlData } = supabase.storage
+              .from('gallery')
+              .getPublicUrl(cleanPath);
+            photoUrl = urlData?.publicUrl || '';
+          }
+
+          const newPhoto = {
+            id: photo.id,
+            url: photoUrl,
+            caption: photo.description || '',
+            category: photo.category || 'all',
+            created_at: photo.created_at,
+            favorite: false,
+            isFavoritedByAnyone: false,
+            favoritedBy: [],
+            storage_path: photo.storage_path,
+          };
+
+          setPhotos((prev) => [newPhoto, ...prev]);
         }
       )
       .on(
         'postgres_changes',
         {
-          event: '*',
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'content',
+          filter: `workspace_id=eq.${workspaceId}`,
+        },
+        async (payload) => {
+          if (payload.new?.type !== 'photo') return;
+
+          // Update existing photo
+          const photo = payload.new;
+          let photoData = photo.data;
+          if (typeof photoData === 'string') {
+            try {
+              photoData = JSON.parse(photoData);
+            } catch (e) {
+              photoData = {};
+            }
+          }
+
+          setPhotos((prev) =>
+            prev.map((p) =>
+              p.id === photo.id
+                ? {
+                    ...p,
+                    caption: photo.description || '',
+                    category: photo.category || 'all',
+                  }
+                : p
+            )
+          );
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'content',
+          filter: `workspace_id=eq.${workspaceId}`,
+        },
+        (payload) => {
+          if (payload.old?.type !== 'photo') return;
+          setPhotos((prev) => prev.filter((p) => p.id !== payload.old.id));
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
           schema: 'public',
           table: 'reactions',
         },
-        (payload) => {
-          console.log('🔔 Realtime event (reactions):', payload.eventType);
-          loadPhotos();
+        async (payload) => {
+          // Reload photos to update reactions (this is complex to do incrementally)
+          await loadPhotos();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'reactions',
+        },
+        async (payload) => {
+          // Reload photos to update reactions
+          await loadPhotos();
         }
       )
       .subscribe();
@@ -228,27 +308,14 @@ export function useSupabasePhotos() {
   };
 
   const uploadPhotos = async (files) => {
-    console.log('🔵 uploadPhotos called with', files.length, 'files');
-
     if (!supabaseRef.current || !userRef.current || !workspaceRef.current) {
-      console.error('❌ Not initialized:', {
-        supabase: !!supabaseRef.current,
-        user: !!userRef.current,
-        workspace: !!workspaceRef.current,
-      });
       throw new Error('Not initialized');
     }
-
-    console.log('✅ Initialized:', {
-      userId: userRef.current.id,
-      workspaceId: workspaceRef.current,
-    });
 
     const results = [];
     const errors = [];
 
     for (const file of files) {
-      console.log(`📤 Uploading ${file.name}...`);
       try {
         const { path, publicUrl, originalName, size, mimeType } =
           await uploadPhotoToStorage(
@@ -257,9 +324,6 @@ export function useSupabasePhotos() {
             userRef.current.id,
             workspaceRef.current
           );
-
-        console.log(`  ✅ Uploaded to storage: ${path}`);
-        console.log(`  🔗 Public URL: ${publicUrl}`);
 
         const photo = await createPhotoRecord(
           supabaseRef.current,
@@ -270,21 +334,13 @@ export function useSupabasePhotos() {
           { originalName, size, mimeType }
         );
 
-        console.log(`  ✅ Created DB record: ${photo.id}`);
-
         results.push(photo);
       } catch (error) {
-        console.error(`  ❌ Error uploading ${file.name}:`, error);
         errors.push({ file: file.name, error: error.message });
       }
     }
 
-    console.log(
-      `🎉 Upload complete: ${results.length} success, ${errors.length} errors`
-    );
-
     if (results.length > 0) {
-      console.log('🔄 Reloading photos...');
       await loadPhotos();
     }
 
@@ -292,40 +348,25 @@ export function useSupabasePhotos() {
   };
 
   const removePhoto = async (photoId) => {
-    console.log('🔵 removePhoto called for:', photoId);
-
     if (!supabaseRef.current) {
-      console.error('❌ Supabase not initialized');
       throw new Error('Supabase not initialized');
     }
 
     try {
       const photo = photos.find((p) => p.id === photoId);
       if (!photo) {
-        console.error('❌ Photo not found:', photoId);
         throw new Error('Photo not found');
       }
 
-      console.log('📸 Photo to delete:', {
-        id: photo.id,
-        storage_path: photo.storage_path,
-      });
-
       if (photo.storage_path) {
-        console.log('🗑️  Deleting from storage:', photo.storage_path);
         await deletePhotoFromStorage(supabaseRef.current, photo.storage_path);
-        console.log('  ✅ Deleted from storage');
       }
 
-      console.log('🗑️  Deleting from database...');
       await deletePhotoRecord(supabaseRef.current, photoId);
-      console.log('  ✅ Deleted from database');
 
       setPhotos((prev) => [...prev.filter((p) => p.id !== photoId)]); // Force new array
       setUpdateCounter((prev) => prev + 1); // Force re-render
-      console.log('✅ Photo removed successfully');
     } catch (error) {
-      console.error('❌ Error removing photo:', error);
       throw error;
     }
   };
@@ -342,12 +383,8 @@ export function useSupabasePhotos() {
         userRef.current.id
       );
 
-      setPhotos((prev) => [
-        ...prev.map((photo) =>
-          photo.id === photoId ? { ...photo, favorite: isFavorited } : photo
-        ),
-      ]);
-      setUpdateCounter((prev) => prev + 1);
+      // Reload photos to get updated favoritedBy information
+      await loadPhotos();
     } catch (error) {
       throw error;
     }

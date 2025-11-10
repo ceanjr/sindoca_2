@@ -5,6 +5,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { logger } from '@/lib/utils/logger';
 
 export function useRealtimePlaylist() {
   const [tracks, setTracks] = useState([]);
@@ -151,7 +152,7 @@ export function useRealtimePlaylist() {
         .single();
 
       if (error) {
-        console.error('Error loading playlist URL:', error);
+        logger.error('Error loading playlist URL:', error);
         return;
       }
 
@@ -160,7 +161,7 @@ export function useRealtimePlaylist() {
         setPlaylistUrl(data.data.spotify_playlist_url || null);
       }
     } catch (err) {
-      console.error('Failed to load playlist URL:', err);
+      logger.error('Failed to load playlist URL:', err);
     }
   }, []);
 
@@ -175,7 +176,7 @@ export function useRealtimePlaylist() {
         .single();
 
       if (error) {
-        console.error('Error loading turn info:', error);
+        logger.error('Error loading turn info:', error);
         // Default to allowing user to add (backward compatibility)
         setIsMyTurn(true);
         return;
@@ -198,7 +199,7 @@ export function useRealtimePlaylist() {
         setIsMyTurn(turnUserId === userRef.current.id);
       }
     } catch (err) {
-      console.error('Failed to load turn info:', err);
+      logger.error('Failed to load turn info:', err);
       // Default to allowing user to add (backward compatibility)
       setIsMyTurn(true);
     }
@@ -215,7 +216,7 @@ export function useRealtimePlaylist() {
         .eq('workspace_id', workspaceRef.current);
 
       if (membersError) {
-        console.error('Error loading partner:', membersError);
+        logger.error('Error loading partner:', membersError);
         setPartnerName('seu parceiro');
         return;
       }
@@ -232,7 +233,7 @@ export function useRealtimePlaylist() {
           .single();
 
         if (profileError) {
-          console.error('Error loading partner profile:', profileError);
+          logger.error('Error loading partner profile:', profileError);
           setPartnerName('seu parceiro');
           return;
         }
@@ -242,7 +243,7 @@ export function useRealtimePlaylist() {
         setPartnerName('seu parceiro');
       }
     } catch (err) {
-      console.error('Failed to load partner name:', err);
+      logger.error('Failed to load partner name:', err);
       setPartnerName('seu parceiro');
     }
   };
@@ -279,7 +280,7 @@ export function useRealtimePlaylist() {
               }
             }
           } catch (err) {
-            console.error('Error processing workspace update:', err);
+            logger.error('Error processing workspace update:', err);
           }
         }
       )
@@ -299,14 +300,91 @@ export function useRealtimePlaylist() {
       .on(
         'postgres_changes',
         {
-          event: '*',
+          event: 'INSERT',
+          schema: 'public',
+          table: 'content',
+          filter: `workspace_id=eq.${workspaceId}`,
+        },
+        async (payload) => {
+          if (payload.new?.type !== 'music') return;
+
+          // Add new track to state
+          const track = {
+            ...payload.new,
+            isFavorite: false,
+          };
+          setTracks((prev) => [track, ...prev]);
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'content',
+          filter: `workspace_id=eq.${workspaceId}`,
+        },
+        async (payload) => {
+          if (payload.new?.type !== 'music') return;
+
+          // Update existing track
+          setTracks((prev) =>
+            prev.map((t) =>
+              t.id === payload.new.id ? { ...t, ...payload.new } : t
+            )
+          );
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
           schema: 'public',
           table: 'content',
           filter: `workspace_id=eq.${workspaceId}`,
         },
         (payload) => {
-          if (payload.new?.type === 'music' || payload.old?.type === 'music') {
-            loadTracks();
+          if (payload.old?.type !== 'music') return;
+          setTracks((prev) => prev.filter((t) => t.id !== payload.old.id));
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'reactions',
+        },
+        async (payload) => {
+          // Update favorite status for the specific track
+          if (payload.new?.type === 'favorite') {
+            setTracks((prev) =>
+              prev.map((t) =>
+                t.id === payload.new.content_id
+                  ? { ...t, isFavorite: payload.new.user_id === userRef.current?.id }
+                  : t
+              )
+            );
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'reactions',
+        },
+        async (payload) => {
+          // Update favorite status for the specific track
+          if (payload.old?.type === 'favorite') {
+            setTracks((prev) =>
+              prev.map((t) =>
+                t.id === payload.old.content_id && payload.old.user_id === userRef.current?.id
+                  ? { ...t, isFavorite: false }
+                  : t
+              )
+            );
           }
         }
       )

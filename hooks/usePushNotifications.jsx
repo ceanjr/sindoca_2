@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { toast } from 'sonner'
+import { logger } from '@/lib/utils/logger'
 
 /**
  * Hook para gerenciar Push Notifications
@@ -192,19 +193,22 @@ export function usePushNotifications() {
 
   // Auto-subscribe if permission is already granted
   useEffect(() => {
+    // Don't add subscription to deps - it causes infinite loop
+    // We only want to auto-subscribe once when permission is granted
     if (isSupported && permission === 'granted' && !subscription) {
-      console.log('[Push] Permission granted, auto-subscribing...')
+      logger.log('[Push] Permission granted, auto-subscribing...')
       subscribeToPush()
         .then(sub => {
           if (sub) {
-            console.log('[Push] Auto-subscribed successfully')
+            logger.log('[Push] Auto-subscribed successfully')
           }
         })
         .catch(err => {
-          console.error('[Push] Auto-subscribe failed:', err)
+          logger.error('[Push] Auto-subscribe failed:', err)
         })
     }
-  }, [isSupported, permission, subscription])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSupported, permission])
 
   return {
     isSupported,

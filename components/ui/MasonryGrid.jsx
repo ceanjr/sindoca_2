@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Heart, Maximize2, Trash2, CheckCircle, ImageIcon } from 'lucide-react';
 
@@ -78,7 +78,7 @@ export default function MasonryGrid({
  * - Mobile: tap rápido = expandir, long press = menu excluir
  * - Desktop: hover = botões
  */
-function MasonryItem({
+const MasonryItem = React.memo(function MasonryItem({
   photo,
   height,
   onPhotoClick,
@@ -230,23 +230,50 @@ function MasonryItem({
             ref={imgRef}
             src={photo.url}
             alt={photo.caption || `Foto ${photo.id}`}
+            width="300"
+            height={height}
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+            style={{
+              backgroundColor: '#f3f4f6',
+              minHeight: height,
+            }}
             loading="lazy"
+            decoding="async"
             onLoad={() => {
-              console.log(`✅ Image loaded: ${photo.id}`, photo.url);
               setImageLoaded(true);
               setImageError(false);
             }}
-            onError={(e) => {
-              console.error(`❌ Image error: ${photo.id}`, {
-                url: photo.url,
-                photo: photo,
-                error: e
-              });
+            onError={() => {
               setImageError(true);
               setImageLoaded(false);
             }}
           />
+
+          {/* Favorite indicators (always visible) - Desktop */}
+          {!isMobile && !isDeleteMode && photo.isFavoritedByAnyone && (
+            <div className="absolute top-3 left-3 flex gap-1.5 z-10">
+              {/* Avatars of who favorited */}
+              {photo.favoritedBy?.map((user) => (
+                <div
+                  key={user.userId}
+                  className="w-8 h-8 rounded-full shadow-lg overflow-hidden bg-white border-2 border-white"
+                  title={user.name}
+                >
+                  {user.avatar ? (
+                    <img
+                      src={user.avatar}
+                      alt={user.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-primary flex items-center justify-center text-white text-xs font-bold">
+                      {user.name.charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* Hover Overlay or Selection Indicator - Desktop only */}
           {!isMobile && (
@@ -342,45 +369,74 @@ function MasonryItem({
                   {isSelected && <CheckCircle size={24} fill="currentColor" />}
                 </motion.div>
               ) : (
-                <motion.button
-                  whileTap={{ scale: 0.9 }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onToggleFavorite(photo.id);
-                  }}
-                  onTouchStart={(e) => {
-                    e.stopPropagation();
-                  }}
-                  onTouchEnd={(e) => {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    onToggleFavorite(photo.id);
-                  }}
-                  className={`absolute top-3 right-3 z-10 p-2 rounded-full backdrop-blur-md shadow-lg transition-colors ${
-                    photo.favorite
-                      ? 'bg-primary text-white'
-                      : 'bg-white/80 text-gray-700'
-                  }`}
-                >
-                  <Heart
-                    size={20}
-                    fill={photo.favorite ? 'currentColor' : 'none'}
-                  />
-                </motion.button>
+                <>
+                  {/* Favorite button */}
+                  <motion.button
+                    whileTap={{ scale: 0.9 }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onToggleFavorite(photo.id);
+                    }}
+                    onTouchStart={(e) => {
+                      e.stopPropagation();
+                    }}
+                    onTouchEnd={(e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      onToggleFavorite(photo.id);
+                    }}
+                    className={`absolute top-3 right-3 z-10 p-2 rounded-full backdrop-blur-md shadow-lg transition-colors ${
+                      photo.favorite
+                        ? 'bg-primary text-white'
+                        : 'bg-white/80 text-gray-700'
+                    }`}
+                  >
+                    <Heart
+                      size={20}
+                      fill={photo.favorite ? 'currentColor' : 'none'}
+                    />
+                  </motion.button>
+                  {/* Avatars of who favorited - Mobile */}
+                  {photo.isFavoritedByAnyone && (
+                    <div className="absolute top-3 left-3 flex gap-1 z-10">
+                      {photo.favoritedBy?.map((user) => (
+                        <div
+                          key={user.userId}
+                          className="w-7 h-7 rounded-full shadow-lg overflow-hidden bg-white border-2 border-white"
+                          title={user.name}
+                        >
+                          {user.avatar ? (
+                            <img
+                              src={user.avatar}
+                              alt={user.name}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-primary flex items-center justify-center text-white text-xs font-bold">
+                              {user.name.charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
               )}
             </>
-          )}
-
-          {/* Favorite Badge - desktop only */}
-          {!isMobile && photo.favorite && !isHovered && !isDeleteMode && (
-            <div className="absolute top-3 left-3">
-              <div className="bg-primary text-white p-2 rounded-full shadow-lg">
-                <Heart size={16} fill="currentColor" />
-              </div>
-            </div>
           )}
         </div>
       </motion.div>
     </>
   );
-}
+}, (prevProps, nextProps) => {
+  // Only re-render if these specific props change
+  return (
+    prevProps.photo.id === nextProps.photo.id &&
+    prevProps.photo.url === nextProps.photo.url &&
+    prevProps.photo.favorite === nextProps.photo.favorite &&
+    prevProps.photo.favoritedBy?.length === nextProps.photo.favoritedBy?.length &&
+    prevProps.isSelected === nextProps.isSelected &&
+    prevProps.isDeleteMode === nextProps.isDeleteMode &&
+    prevProps.height === nextProps.height
+  );
+});

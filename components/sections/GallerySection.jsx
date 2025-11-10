@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import dynamic from 'next/dynamic';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useInView } from 'react-intersection-observer';
 import {
@@ -13,16 +14,45 @@ import {
   Check,
 } from 'lucide-react';
 import imageCompression from 'browser-image-compression';
-import Lightbox from '../Lightbox';
 import MasonryGrid from '../ui/MasonryGrid';
 import Button from '../ui/Button';
 import Badge from '../ui/Badge';
 import { useSupabasePhotos } from '@/hooks';
 
+// Lazy load Lightbox component for better performance
+const Lightbox = dynamic(() => import('../Lightbox'), {
+  ssr: false,
+  loading: () => <div className="flex items-center justify-center p-4">Carregando...</div>
+});
+
 const filterOptions = [
   { label: 'Todas', value: 'all' },
   { label: 'Favoritas', value: 'favorites', icon: Heart },
 ];
+
+// Memoized filter button component to prevent unnecessary re-renders
+const FilterButton = React.memo(({ filter, active, disabled, onClick }) => {
+  const Icon = filter.icon;
+  return (
+    <motion.button
+      key={filter.value}
+      whileHover={{ scale: 1.05 }}
+      whileTap={{ scale: 0.95 }}
+      onClick={onClick}
+      disabled={disabled}
+      className={`px-4 py-2 rounded-xl font-medium text-sm transition-all duration-200 flex items-center gap-2 ${
+        active
+          ? 'bg-primary text-white shadow-soft-md'
+          : 'bg-surface text-textSecondary hover:bg-surfaceAlt'
+      } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+    >
+      {Icon && <Icon size={16} />}
+      {filter.label}
+    </motion.button>
+  );
+});
+
+FilterButton.displayName = 'FilterButton';
 
 export default function GallerySection({ id }) {
   // Use Supabase hook with realtime sync
@@ -83,7 +113,7 @@ export default function GallerySection({ id }) {
   // Filtra as fotos baseado no filtro ativo
   const allFilteredPhotos = useMemo(() => {
     if (activeFilter === 'all') return photos;
-    if (activeFilter === 'favorites') return photos.filter((p) => p.favorite);
+    if (activeFilter === 'favorites') return photos.filter((p) => p.isFavoritedByAnyone);
     return photos.filter((p) => p.category === activeFilter);
   }, [photos, activeFilter]);
 
@@ -116,7 +146,6 @@ export default function GallerySection({ id }) {
         setCurrentPhoto(null);
       }
     } catch (error) {
-      // console.error('❌ Erro ao deletar foto:', error);
       setUploadError('Erro ao remover foto. Tente novamente.');
     }
   };
@@ -160,9 +189,8 @@ export default function GallerySection({ id }) {
     for (const photoId of selectedPhotos) {
       try {
         await removePhoto(photoId);
-        // console.log(`✅ Foto ${photoId} deletada`);
       } catch (error) {
-        // console.error(`❌ Erro ao deletar ${photoId}:`, error);
+        // Silently continue
       }
     }
 
@@ -229,19 +257,10 @@ export default function GallerySection({ id }) {
       const compressedFiles = await Promise.all(
         files.map(async (file, index) => {
           try {
-            console.log(`📦 Comprimindo ${file.name}...`);
             const compressed = await imageCompression(file, compressionOptions);
-            console.log(
-              `✅ ${file.name}: ${(file.size / 1024 / 1024).toFixed(2)}MB → ${(
-                compressed.size /
-                1024 /
-                1024
-              ).toFixed(2)}MB`
-            );
             setUploadProgress({ current: index + 1, total: files.length });
             return compressed;
           } catch (error) {
-            console.error(`Erro ao comprimir ${file.name}:`, error);
             return file; // Fallback to original
           }
         })
@@ -256,10 +275,6 @@ export default function GallerySection({ id }) {
       }
 
       const { results, errors } = result;
-
-      if (results && results.length > 0) {
-        console.log(`🎉 ${results.length} foto(s) adicionada(s) à galeria!`);
-      }
 
       if (errors && errors.length > 0) {
         const errorMsg = errors[0]?.error || errors[0];
@@ -320,7 +335,7 @@ export default function GallerySection({ id }) {
               <Badge variant="primary">{photos.length} fotos</Badge>
               <Badge variant="accent">
                 <Heart size={14} className="inline mr-1" />
-                {photos.filter((p) => p.favorite).length} favoritas
+                {photos.filter((p) => p.isFavoritedByAnyone).length} favoritas
               </Badge>
               <Badge variant="lavender">
                 <Calendar size={14} className="inline mr-1" />
@@ -332,26 +347,15 @@ export default function GallerySection({ id }) {
             <div className="space-y-4">
               {/* Filters */}
               <div className="flex flex-wrap gap-2">
-                {filterOptions.map((filter) => {
-                  const Icon = filter.icon;
-                  return (
-                    <motion.button
-                      key={filter.value}
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => setActiveFilter(filter.value)}
-                      disabled={isDeleteMode}
-                      className={`px-4 py-2 rounded-xl font-medium text-sm transition-all duration-200 flex items-center gap-2 ${
-                        activeFilter === filter.value
-                          ? 'bg-primary text-white shadow-soft-md'
-                          : 'bg-surface text-textSecondary hover:bg-surfaceAlt'
-                      } ${isDeleteMode ? 'opacity-50 cursor-not-allowed' : ''}`}
-                    >
-                      {Icon && <Icon size={16} />}
-                      {filter.label}
-                    </motion.button>
-                  );
-                })}
+                {filterOptions.map((filter) => (
+                  <FilterButton
+                    key={filter.value}
+                    filter={filter}
+                    active={activeFilter === filter.value}
+                    disabled={isDeleteMode}
+                    onClick={() => setActiveFilter(filter.value)}
+                  />
+                ))}
               </div>
 
               {/* Action Menu */}
