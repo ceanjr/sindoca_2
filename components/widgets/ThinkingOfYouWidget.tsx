@@ -300,9 +300,13 @@ export default function ThinkingOfYouWidget({
       }
 
       // Show success toast (no local notification for sender)
+      const confirmationMessage = partnerName
+        ? `${partnerName} foi notificado(a) que você está pensando nele(a)!`
+        : 'Mensagem enviada com sucesso!';
+
       toast.success('Mensagem enviada! 💕', {
-        description: message,
-        duration: 5000,
+        description: confirmationMessage,
+        duration: 4000,
       });
     } catch (error: any) {
       console.error('Error sending notification:', error);
