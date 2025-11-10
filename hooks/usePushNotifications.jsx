@@ -21,6 +21,23 @@ export function usePushNotifications() {
           'PushManager' in window) {
         setIsSupported(true)
         setPermission(Notification.permission)
+
+        // Load existing subscription from browser
+        const loadExistingSubscription = async () => {
+          try {
+            const registration = await navigator.serviceWorker.ready
+            const existingSub = await registration.pushManager.getSubscription()
+            if (existingSub) {
+              logger.log('[Push] Found existing subscription')
+              setSubscription(existingSub)
+              // Note: Database sync is handled by AppProvider when user is logged in
+            }
+          } catch (error) {
+            logger.error('[Push] Error loading existing subscription:', error)
+          }
+        }
+
+        loadExistingSubscription()
       }
     } catch (error) {
       console.log('Push: Erro ao verificar suporte:', error.message)
@@ -191,24 +208,8 @@ export function usePushNotifications() {
     }
   }
 
-  // Auto-subscribe if permission is already granted
-  useEffect(() => {
-    // Don't add subscription to deps - it causes infinite loop
-    // We only want to auto-subscribe once when permission is granted
-    if (isSupported && permission === 'granted' && !subscription) {
-      logger.log('[Push] Permission granted, auto-subscribing...')
-      subscribeToPush()
-        .then(sub => {
-          if (sub) {
-            logger.log('[Push] Auto-subscribed successfully')
-          }
-        })
-        .catch(err => {
-          logger.error('[Push] Auto-subscribe failed:', err)
-        })
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isSupported, permission])
+  // Note: Auto-subscribe is now handled by AppProvider to ensure user is logged in
+  // This prevents 401 errors when trying to save subscription to database
 
   return {
     isSupported,

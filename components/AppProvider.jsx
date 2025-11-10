@@ -164,7 +164,9 @@ export default function AppProvider({ children }) {
               logger.log('[Push] Permission granted but no subscription found - creating one...')
               await subscribeToPush()
             } else {
-              logger.log('[Push] Subscription already exists')
+              // Subscription exists, sync with database (important for migration)
+              logger.log('[Push] Subscription found, syncing with database...')
+              await subscribeToPush()
             }
           }
         }
