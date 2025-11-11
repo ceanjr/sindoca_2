@@ -83,7 +83,11 @@ export async function proxy(request: NextRequest) {
     '/auth/callback',
     '/auth/join',
     '/api/auth/verify-invite',
-    '/api/spotify/callback',
+    '/api/spotify/auth',     // ✅ CORREÇÃO: Permitir iniciar OAuth do Spotify
+    '/api/spotify/callback', // ✅ Callback do Spotify
+    '/api/spotify/test-auth-direct',  // Rota de teste
+    '/api/spotify/debug-user',        // Rota de diagnóstico
+    '/spotify-diagnostico',           // Página de diagnóstico
     '/clear-cache',
     '/pwa-debug'
   ]
@@ -104,8 +108,13 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(redirectUrl)
   }
 
-  // Redirect to home if authenticated and trying to access auth pages (except callback and onboarding)
-  if (user && isPublicRoute && request.nextUrl.pathname !== '/auth/callback') {
+  // Redirect to home if authenticated and trying to access auth pages
+  // IMPORTANTE: NÃO redirecionar rotas de API ou callbacks (Spotify, auth, etc)
+  const isApiRoute = request.nextUrl.pathname.startsWith('/api/')
+  const isCallback = request.nextUrl.pathname === '/auth/callback'
+  const isAuthPage = ['/auth/login', '/auth/signup', '/auth/join'].includes(request.nextUrl.pathname)
+
+  if (user && isAuthPage && !isApiRoute && !isCallback) {
     const redirectUrl = new URL('/', request.url)
     return NextResponse.redirect(redirectUrl)
   }

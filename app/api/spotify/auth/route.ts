@@ -44,15 +44,39 @@ export async function GET(request: NextRequest) {
     });
 
     // Store state in cookie for verification in callback
-    const response = NextResponse.redirect(authUrl);
-    response.cookies.set('spotify_auth_state', state, {
+    // ✅ CORREÇÃO: Retornar HTML com meta redirect para garantir que funcione
+    const htmlResponse = new NextResponse(
+      `<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="refresh" content="0;url=${authUrl}">
+  <meta charset="utf-8">
+  <title>Redirecionando para Spotify...</title>
+</head>
+<body>
+  <p>Redirecionando para o Spotify...</p>
+  <p>Se não for redirecionado automaticamente, <a href="${authUrl}">clique aqui</a>.</p>
+  <script>window.location.href="${authUrl}";</script>
+</body>
+</html>`,
+      {
+        status: 200,
+        headers: {
+          'Content-Type': 'text/html',
+          'Cache-Control': 'no-store, must-revalidate',
+          'Pragma': 'no-cache',
+        },
+      }
+    );
+
+    htmlResponse.cookies.set('spotify_auth_state', state, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       maxAge: 60 * 10, // 10 minutes
     });
 
-    return response;
+    return htmlResponse;
   } catch (error) {
     console.error('Spotify auth error:', error);
     await remoteLogger.error('spotify-auth', '💥 Erro crítico na autenticação', {
