@@ -10,6 +10,13 @@ import { createClient } from '@/lib/supabase/server';
 import { remoteLogger } from '@/lib/utils/remoteLogger';
 
 export async function GET(request: NextRequest) {
+  // Log de entrada ANTES de qualquer try/catch
+  console.log('[Spotify Callback] 🎯 ROTA ACESSADA!', {
+    url: request.url,
+    method: request.method,
+    headers: Object.fromEntries(request.headers.entries()),
+  });
+
   try {
     const searchParams = request.nextUrl.searchParams;
     const code = searchParams.get('code');
