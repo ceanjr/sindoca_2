@@ -78,8 +78,11 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(redirectUrl)
   }
 
-  // Redirect to home if authenticated and trying to access auth pages (except callback and onboarding)
-  if (user && isPublicRoute && request.nextUrl.pathname !== '/auth/callback') {
+  // Redirect to home if authenticated and trying to access auth pages (except callbacks and onboarding)
+  const isCallback = request.nextUrl.pathname === '/auth/callback' ||
+                     request.nextUrl.pathname.startsWith('/api/spotify/');
+
+  if (user && isPublicRoute && !isCallback) {
     const redirectUrl = new URL('/', request.url)
     return NextResponse.redirect(redirectUrl)
   }
