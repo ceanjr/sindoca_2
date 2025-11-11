@@ -8,6 +8,8 @@ export default function DiagnosticoSpotify() {
   const { user } = useAuth();
   const [diagnostico, setDiagnostico] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [testFlow, setTestFlow] = useState(null);
+  const [testFlowLoading, setTestFlowLoading] = useState(false);
 
   useEffect(() => {
     const runDiagnostico = async () => {
@@ -119,6 +121,23 @@ export default function DiagnosticoSpotify() {
     }
   }, [user]);
 
+  const runTestFlow = async () => {
+    setTestFlowLoading(true);
+    try {
+      const response = await fetch('/api/spotify/test-flow');
+      const data = await response.json();
+      setTestFlow(data);
+    } catch (error) {
+      console.error('Error running test flow:', error);
+      setTestFlow({
+        success: false,
+        error: error.message,
+      });
+    } finally {
+      setTestFlowLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -136,6 +155,76 @@ export default function DiagnosticoSpotify() {
         <h1 className="text-4xl font-bold text-textPrimary mb-8">
           Diagnóstico Spotify
         </h1>
+
+        {/* Test Flow Button */}
+        <div className="mb-6">
+          <button
+            onClick={runTestFlow}
+            disabled={testFlowLoading}
+            className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          >
+            {testFlowLoading ? (
+              <>
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                Testando...
+              </>
+            ) : (
+              <>
+                🔬 Testar Fluxo OAuth Completo
+              </>
+            )}
+          </button>
+          <p className="text-sm text-textSecondary mt-2">
+            Este teste verifica todas as etapas do fluxo OAuth: variáveis de ambiente, conexão com Supabase, configuração de redirect URI, e mais.
+          </p>
+        </div>
+
+        {/* Test Flow Results */}
+        {testFlow && (
+          <div className={`bg-white rounded-xl shadow-lg p-6 mb-6 border-2 ${
+            testFlow.success ? 'border-green-500' : 'border-red-500'
+          }`}>
+            <div className="flex items-center gap-3 mb-4">
+              <span className="text-3xl">
+                {testFlow.success ? '✅' : '❌'}
+              </span>
+              <h2 className="text-2xl font-semibold text-textPrimary">
+                {testFlow.success ? 'Todos os Testes Passaram!' : 'Alguns Testes Falharam'}
+              </h2>
+            </div>
+
+            {/* Individual Tests */}
+            <div className="space-y-4">
+              {testFlow.tests?.map((test, index) => (
+                <TestResult key={index} test={test} />
+              ))}
+            </div>
+
+            {/* Recommendations */}
+            {testFlow.recommendations && testFlow.recommendations.length > 0 && (
+              <div className="mt-6 p-4 bg-yellow-50 border-2 border-yellow-200 rounded-lg">
+                <h3 className="font-semibold text-yellow-800 mb-2">⚠️ Recomendações:</h3>
+                <ul className="list-disc list-inside space-y-1 text-sm text-yellow-700">
+                  {testFlow.recommendations.map((rec, index) => (
+                    <li key={index}>{rec}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Config Details */}
+            {testFlow.config && (
+              <details className="mt-4">
+                <summary className="cursor-pointer text-textSecondary hover:text-textPrimary transition-colors">
+                  Ver detalhes de configuração
+                </summary>
+                <pre className="mt-2 p-4 bg-gray-900 text-green-400 rounded-lg overflow-x-auto text-sm">
+                  {JSON.stringify(testFlow.config, null, 2)}
+                </pre>
+              </details>
+            )}
+          </div>
+        )}
 
         {/* Environment */}
         <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
@@ -276,6 +365,55 @@ export default function DiagnosticoSpotify() {
             >
               Conectar Spotify
             </a>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TestResult({ test }) {
+  const statusColors = {
+    passed: 'bg-green-50 border-green-200 text-green-800',
+    failed: 'bg-red-50 border-red-200 text-red-800',
+    warning: 'bg-yellow-50 border-yellow-200 text-yellow-800',
+    error: 'bg-red-50 border-red-200 text-red-800',
+    checking: 'bg-blue-50 border-blue-200 text-blue-800',
+  };
+
+  const statusIcons = {
+    passed: '✅',
+    failed: '❌',
+    warning: '⚠️',
+    error: '💥',
+    checking: '🔍',
+  };
+
+  return (
+    <div className={`p-4 rounded-lg border-2 ${statusColors[test.status]}`}>
+      <div className="flex items-start gap-3">
+        <span className="text-2xl">{statusIcons[test.status]}</span>
+        <div className="flex-1">
+          <h4 className="font-semibold mb-2">{test.name}</h4>
+          {test.details && (
+            <div className="text-sm space-y-1">
+              {typeof test.details === 'object' && !Array.isArray(test.details) ? (
+                Object.entries(test.details).map(([key, value]) => (
+                  <div key={key} className="flex gap-2">
+                    <span className="font-medium">{key}:</span>
+                    <span className="font-mono">{
+                      typeof value === 'object'
+                        ? JSON.stringify(value, null, 2)
+                        : String(value)
+                    }</span>
+                  </div>
+                ))
+              ) : (
+                <pre className="font-mono text-xs whitespace-pre-wrap">
+                  {JSON.stringify(test.details, null, 2)}
+                </pre>
+              )}
+            </div>
           )}
         </div>
       </div>
