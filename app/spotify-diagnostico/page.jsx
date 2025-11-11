@@ -11,6 +11,10 @@ export default function SpotifyDiagnosticoPage() {
   const [debugInfo, setDebugInfo] = useState(null);
   const [testingAuth, setTestingAuth] = useState(false);
   const [authTestResult, setAuthTestResult] = useState(null);
+  const [directTestResult, setDirectTestResult] = useState(null);
+  const [testingDirect, setTestingDirect] = useState(false);
+  const [inspectResult, setInspectResult] = useState(null);
+  const [inspecting, setInspecting] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -84,6 +88,125 @@ export default function SpotifyDiagnosticoPage() {
     window.location.href = '/api/spotify/auth';
   };
 
+  const testDirectAuth = async () => {
+    setTestingDirect(true);
+    setDirectTestResult(null);
+
+    try {
+      console.log('🧪 TESTE DIRETO: Chamando /api/spotify/test-auth-direct...');
+
+      const response = await fetch('/api/spotify/test-auth-direct');
+      const data = await response.json();
+
+      console.log('📊 Resultado do teste:', data);
+      setDirectTestResult(data);
+    } catch (error) {
+      console.error('❌ Erro no teste direto:', error);
+      setDirectTestResult({
+        finalResult: 'ERROR',
+        reason: error.message,
+      });
+    } finally {
+      setTestingDirect(false);
+    }
+  };
+
+  const openAuthInNewTab = () => {
+    console.log('🔗 Abrindo /api/spotify/auth em nova aba...');
+    const newTab = window.open('/api/spotify/auth', '_blank');
+
+    setTimeout(() => {
+      if (!newTab || newTab.closed || typeof newTab.closed === 'undefined') {
+        alert('⚠️ Pop-ups bloqueados! Por favor, permita pop-ups para este site.');
+      }
+    }, 1000);
+  };
+
+  const inspectAuthRoute = async () => {
+    setInspecting(true);
+    setInspectResult(null);
+
+    try {
+      console.log('🔍 INSPEÇÃO COMPLETA: Chamando /api/spotify/auth...');
+
+      const response = await fetch('/api/spotify/auth', {
+        method: 'GET',
+        redirect: 'manual', // NÃO seguir redirects automaticamente
+        credentials: 'include', // Incluir cookies
+      });
+
+      console.log('📊 Resposta recebida:', response);
+
+      const result = {
+        status: response.status,
+        statusText: response.statusText,
+        type: response.type,
+        redirected: response.redirected,
+        url: response.url,
+        headers: {},
+        body: null,
+      };
+
+      // Capturar headers
+      response.headers.forEach((value, key) => {
+        result.headers[key] = value;
+      });
+
+      // Tentar ler o corpo (se houver)
+      try {
+        const contentType = response.headers.get('content-type');
+        if (contentType?.includes('application/json')) {
+          result.body = await response.json();
+        } else {
+          result.body = await response.text();
+        }
+      } catch (e) {
+        result.body = '(não foi possível ler o corpo)';
+      }
+
+      console.log('📊 Resultado completo:', result);
+
+      setInspectResult({
+        success: response.status === 200 || response.type === 'opaqueredirect',
+        result,
+        interpretation: interpretResponse(response, result),
+      });
+    } catch (error) {
+      console.error('❌ Erro na inspeção:', error);
+      setInspectResult({
+        success: false,
+        error: error.message,
+        interpretation: 'Erro ao fazer requisição. Pode ser CORS ou network error.',
+      });
+    } finally {
+      setInspecting(false);
+    }
+  };
+
+  const interpretResponse = (response, result) => {
+    if (response.type === 'opaqueredirect' || response.status === 0) {
+      return '✅ A rota está FUNCIONANDO e está tentando redirecionar! O redirect foi bloqueado pelo fetch com redirect:manual, mas isso significa que funcionaria normalmente.';
+    }
+
+    if (response.status === 302 || response.status === 307) {
+      return `✅ Redirect funcionando! Location: ${result.headers.location || '(não especificado)'}`;
+    }
+
+    if (response.status === 401) {
+      return '❌ Não autenticado. Sessão Supabase pode ter expirado. Faça logout e login novamente.';
+    }
+
+    if (response.status === 500) {
+      return '❌ Erro no servidor. Verifique os logs do Vercel.';
+    }
+
+    if (response.status === 200) {
+      return '⚠️ Retornou 200 mas deveria redirecionar. Algo está errado na rota.';
+    }
+
+    return `⚠️ Status inesperado: ${response.status}. Veja os detalhes.`;
+  };
+
   const StatusIcon = ({ status }) => {
     if (status?.includes('✅')) return <CheckCircle className="text-green-500" size={20} />;
     if (status?.includes('❌')) return <XCircle className="text-red-500" size={20} />;
@@ -114,12 +237,21 @@ export default function SpotifyDiagnosticoPage() {
           <p className="text-gray-600">
             Use esta página para diagnosticar problemas de conexão com o Spotify
           </p>
-          <div className="mt-4 flex gap-3">
+          <div className="mt-4 flex flex-wrap gap-3">
             <Button variant="outline" size="sm" onClick={loadDebugInfo} disabled={loading}>
               {loading ? <Loader className="animate-spin" size={16} /> : 'Atualizar'}
             </Button>
             <Button variant="outline" size="sm" onClick={testAuthFlow} disabled={testingAuth}>
               {testingAuth ? <Loader className="animate-spin" size={16} /> : 'Testar Rota Auth'}
+            </Button>
+            <Button variant="outline" size="sm" onClick={testDirectAuth} disabled={testingDirect}>
+              {testingDirect ? <Loader className="animate-spin" size={16} /> : 'Teste Detalhado'}
+            </Button>
+            <Button variant="outline" size="sm" onClick={inspectAuthRoute} disabled={inspecting}>
+              {inspecting ? <Loader className="animate-spin" size={16} /> : '🔍 Inspecionar Rota'}
+            </Button>
+            <Button variant="secondary" size="sm" onClick={openAuthInNewTab}>
+              Abrir em Nova Aba
             </Button>
             <Button variant="primary" size="sm" onClick={tryActualAuth}>
               Tentar Conectar Agora
@@ -136,6 +268,135 @@ export default function SpotifyDiagnosticoPage() {
           >
             <h3 className="font-bold text-lg mb-2">{authTestResult.message}</h3>
             <p className="text-sm text-gray-700">{authTestResult.details}</p>
+          </div>
+        )}
+
+        {/* Direct Test Result */}
+        {directTestResult && (
+          <div className="bg-white rounded-2xl shadow-lg p-6 mb-6 border-2 border-blue-200">
+            <h3 className="font-bold text-2xl mb-4">🧪 Resultado do Teste Detalhado</h3>
+
+            <div className={`p-4 rounded-lg mb-4 ${
+              directTestResult.finalResult?.includes('✅') ? 'bg-green-50' : 'bg-red-50'
+            }`}>
+              <div className="font-bold text-lg mb-2">{directTestResult.finalResult}</div>
+              {directTestResult.message && <p className="text-sm mb-2">{directTestResult.message}</p>}
+              {directTestResult.reason && <p className="text-sm text-red-600">{directTestResult.reason}</p>}
+            </div>
+
+            {directTestResult.steps && (
+              <div className="space-y-3">
+                <h4 className="font-semibold text-lg">Etapas do Teste:</h4>
+                {directTestResult.steps.map((step, index) => (
+                  <div key={index} className="p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="font-semibold">#{step.step} {step.name}</span>
+                      <span className={`text-sm ${
+                        step.status?.includes('✅') ? 'text-green-600' :
+                        step.status?.includes('❌') ? 'text-red-600' :
+                        'text-gray-600'
+                      }`}>
+                        {step.status}
+                      </span>
+                    </div>
+                    {step.message && <p className="text-sm text-gray-700 mb-2">{step.message}</p>}
+                    {step.error && (
+                      <div className="text-sm text-red-600 bg-red-50 p-2 rounded">
+                        Erro: {step.error}
+                      </div>
+                    )}
+                    {step.data && (
+                      <details className="mt-2">
+                        <summary className="cursor-pointer text-xs text-blue-600">Ver dados</summary>
+                        <pre className="mt-2 p-2 bg-gray-100 rounded text-xs overflow-auto">
+                          {JSON.stringify(step.data, null, 2)}
+                        </pre>
+                      </details>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {directTestResult.spotifyAuthUrl && (
+              <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+                <p className="font-semibold mb-2">URL de Autenticação do Spotify gerada:</p>
+                <div className="text-xs bg-white p-2 rounded overflow-auto break-all">
+                  {directTestResult.spotifyAuthUrl}
+                </div>
+                <p className="text-sm mt-2 text-gray-600">
+                  Esta é a URL para qual você deveria ser redirecionado.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Inspect Result */}
+        {inspectResult && (
+          <div className="bg-white rounded-2xl shadow-lg p-6 mb-6 border-2 border-purple-200">
+            <h3 className="font-bold text-2xl mb-4">🔍 Inspeção da Rota /api/spotify/auth</h3>
+
+            <div className={`p-4 rounded-lg mb-4 ${
+              inspectResult.success ? 'bg-green-50' : 'bg-red-50'
+            }`}>
+              <div className="font-bold text-lg mb-2">{inspectResult.interpretation}</div>
+            </div>
+
+            {inspectResult.error && (
+              <div className="p-4 bg-red-50 rounded-lg mb-4">
+                <div className="font-semibold text-red-700 mb-2">Erro:</div>
+                <div className="text-sm text-red-600">{inspectResult.error}</div>
+              </div>
+            )}
+
+            {inspectResult.result && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-3 bg-gray-50 rounded">
+                    <div className="text-xs text-gray-600 mb-1">Status</div>
+                    <div className="font-semibold">{inspectResult.result.status} {inspectResult.result.statusText}</div>
+                  </div>
+                  <div className="p-3 bg-gray-50 rounded">
+                    <div className="text-xs text-gray-600 mb-1">Type</div>
+                    <div className="font-semibold">{inspectResult.result.type}</div>
+                  </div>
+                  <div className="p-3 bg-gray-50 rounded">
+                    <div className="text-xs text-gray-600 mb-1">Redirected</div>
+                    <div className="font-semibold">{inspectResult.result.redirected ? 'Sim' : 'Não'}</div>
+                  </div>
+                  <div className="p-3 bg-gray-50 rounded">
+                    <div className="text-xs text-gray-600 mb-1">URL</div>
+                    <div className="font-semibold text-xs break-all">{inspectResult.result.url}</div>
+                  </div>
+                </div>
+
+                {Object.keys(inspectResult.result.headers).length > 0 && (
+                  <div className="p-4 bg-gray-50 rounded">
+                    <div className="font-semibold mb-2">Headers da Resposta:</div>
+                    <div className="space-y-1">
+                      {Object.entries(inspectResult.result.headers).map(([key, value]) => (
+                        <div key={key} className="text-xs">
+                          <span className="font-mono text-blue-600">{key}:</span>{' '}
+                          <span className="text-gray-700">{value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {inspectResult.result.body && (
+                  <div className="p-4 bg-gray-50 rounded">
+                    <div className="font-semibold mb-2">Corpo da Resposta:</div>
+                    <pre className="text-xs overflow-auto bg-white p-2 rounded">
+                      {typeof inspectResult.result.body === 'string'
+                        ? inspectResult.result.body
+                        : JSON.stringify(inspectResult.result.body, null, 2)}
+                    </pre>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 
