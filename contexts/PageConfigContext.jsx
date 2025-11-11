@@ -15,27 +15,26 @@ export function PageConfigProvider({ children }) {
   const isAdmin = user?.email === 'celiojunior0110@gmail.com';
 
   useEffect(() => {
-    // Set timeout fallback to prevent infinite loading
-    const timeout = setTimeout(() => {
-      if (loading) {
-        console.warn('⚠️ PageConfig: Timeout waiting for auth, proceeding anyway');
-        setLoading(false);
-      }
-    }, 10000); // 10 second timeout
-
     // Wait for auth to finish loading
     if (authLoading) {
       console.log('🔄 PageConfig: Waiting for auth to load...');
-      return () => clearTimeout(timeout);
+      return;
     }
 
     console.log('🔧 PageConfig: Initializing once with user:', user?.email);
     console.log('🔧 PageConfig: isAdmin:', isAdmin);
 
     const supabase = createClient();
+    let timeout;
 
     const initializePageConfig = async () => {
       try {
+        // Set timeout fallback to prevent infinite loading
+        timeout = setTimeout(() => {
+          console.warn('⚠️ PageConfig: Timeout loading config, proceeding anyway');
+          setLoading(false);
+        }, 10000); // 10 second timeout
+
         // Fetch page config
         const { data, error } = await supabase
           .from('page_config')
@@ -48,7 +47,7 @@ export function PageConfigProvider({ children }) {
       } catch (error) {
         console.error('Error loading page config:', error);
       } finally {
-        clearTimeout(timeout);
+        if (timeout) clearTimeout(timeout);
         setLoading(false);
       }
     };
@@ -81,6 +80,7 @@ export function PageConfigProvider({ children }) {
 
     return () => {
       console.log('🧹 PageConfig: Cleaning up channel subscription');
+      if (timeout) clearTimeout(timeout);
       supabase.removeChannel(channel);
     };
   }, [authLoading]); // Only re-run when authLoading changes (once)

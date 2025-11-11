@@ -43,6 +43,7 @@ export function useRealtimePlaylist() {
 
         if (userError || !user) {
           setLoading(false);
+          initializingRef.current = false;
           return;
         }
 
@@ -56,6 +57,7 @@ export function useRealtimePlaylist() {
 
         if (membersError || !members) {
           setLoading(false);
+          initializingRef.current = false;
           return;
         }
 
@@ -74,6 +76,7 @@ export function useRealtimePlaylist() {
         }
 
         initializedRef.current = true;
+        initializingRef.current = false;
       } catch (err) {
         setError(err.message);
         setLoading(false);

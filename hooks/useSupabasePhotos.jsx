@@ -56,6 +56,7 @@ export function useSupabasePhotos() {
 
         if (userError || !user) {
           setLoading(false);
+          initializingRef.current = false;
           return;
         }
 
@@ -69,6 +70,7 @@ export function useSupabasePhotos() {
 
         if (membersError || !members) {
           setLoading(false);
+          initializingRef.current = false;
           return;
         }
 
@@ -81,6 +83,7 @@ export function useSupabasePhotos() {
         }
 
         initializedRef.current = true;
+        initializingRef.current = false;
       } catch (err) {
         setError(err.message);
         setLoading(false);
