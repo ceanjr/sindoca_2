@@ -42,11 +42,11 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md' })
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50"
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60]"
           />
 
           {/* Modal - Bottom Sheet on Mobile, Centered on Desktop */}
-          <div className={`fixed z-50 ${isMobile ? 'inset-x-0 bottom-0' : 'inset-0 flex items-center justify-center p-4'}`}>
+          <div className={`fixed z-[60] ${isMobile ? 'inset-x-0 bottom-0' : 'inset-0 flex items-center justify-center p-4'}`}>
             <motion.div
               initial={isMobile ? { y: '100%' } : { opacity: 0, scale: 0.95, y: 20 }}
               animate={isMobile ? { y: 0 } : { opacity: 1, scale: 1, y: 0 }}
@@ -85,7 +85,7 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md' })
               </div>
 
               {/* Content */}
-              <div className="p-6">{children}</div>
+              <div className={`p-6 ${isMobile ? 'pb-24' : ''}`}>{children}</div>
             </motion.div>
           </div>
         </>
