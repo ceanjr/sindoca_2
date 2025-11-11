@@ -4,6 +4,7 @@ import { AuthProvider } from '@/contexts/AuthContext';
 import { PageConfigProvider } from '@/contexts/PageConfigContext';
 import ConditionalLayout from '@/components/ConditionalLayout';
 import { Toaster } from 'sonner';
+import GlobalErrorBoundary from '@/components/GlobalErrorBoundary';
 
 export const metadata = {
   title: 'Uma Sindoca para a Todos Governar',
@@ -78,29 +79,31 @@ export default function RootLayout({ children }) {
         `}</style>
       </head>
       <body className="antialiased" suppressHydrationWarning>
-        <AuthProvider>
-          <PageConfigProvider>
-            <AppProvider>
-              {/* Toast Notifications */}
-              <Toaster
-                position="top-center"
-                richColors
-                closeButton
-                toastOptions={{
-                  style: {
-                    background: 'var(--surface)',
-                    color: 'var(--textPrimary)',
-                    border: '1px solid rgba(255, 107, 157, 0.2)',
-                  },
-                  className: 'glass-strong',
-                }}
-              />
+        <GlobalErrorBoundary>
+          <AuthProvider>
+            <PageConfigProvider>
+              <AppProvider>
+                {/* Toast Notifications */}
+                <Toaster
+                  position="top-center"
+                  richColors
+                  closeButton
+                  toastOptions={{
+                    style: {
+                      background: 'var(--surface)',
+                      color: 'var(--textPrimary)',
+                      border: '1px solid rgba(255, 107, 157, 0.2)',
+                    },
+                    className: 'glass-strong',
+                  }}
+                />
 
-              {/* Conditional Layout - hides sidebar/footer on auth pages */}
-              <ConditionalLayout>{children}</ConditionalLayout>
-            </AppProvider>
-          </PageConfigProvider>
-        </AuthProvider>
+                {/* Conditional Layout - hides sidebar/footer on auth pages */}
+                <ConditionalLayout>{children}</ConditionalLayout>
+              </AppProvider>
+            </PageConfigProvider>
+          </AuthProvider>
+        </GlobalErrorBoundary>
       </body>
     </html>
   );

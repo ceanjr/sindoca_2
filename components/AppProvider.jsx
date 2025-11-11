@@ -4,6 +4,7 @@ import { useState, useEffect, createContext, useContext } from 'react'
 import { usePushNotifications } from '@/hooks/usePushNotifications'
 import { useAuth } from '@/contexts/AuthContext'
 import { logger } from '@/lib/utils/logger'
+import { startHeartbeat, updateHeartbeat } from '@/lib/utils/heartbeat'
 
 const AppContext = createContext()
 
@@ -99,12 +100,12 @@ export default function AppProvider({ children }) {
           })
         })
 
-        // Verificar atualizações a cada 5 minutos (balanceado)
+        // ✅ Verificar atualizações a cada 30 minutos (evita interferência)
         updateIntervalId = setInterval(() => {
           registration.update().catch(err => {
             console.log('Erro ao verificar atualização:', err.message)
           })
-        }, 5 * 60 * 1000) // 5 minutos
+        }, 30 * 60 * 1000) // ✅ 30 minutos em vez de 5
 
       } catch (error) {
         console.error('Erro ao registrar Service Worker:', {
@@ -130,6 +131,24 @@ export default function AppProvider({ children }) {
       }
       navigator.serviceWorker.removeEventListener('message', handleSWMessage)
     }
+  }, [])
+
+  // ✅ Heartbeat Monitor para detectar app travado
+  useEffect(() => {
+    // Iniciar heartbeat monitor
+    startHeartbeat();
+
+    // Atualizar heartbeat em interações do usuário
+    const handleInteraction = () => updateHeartbeat();
+    window.addEventListener('click', handleInteraction);
+    window.addEventListener('keydown', handleInteraction);
+    window.addEventListener('scroll', handleInteraction);
+
+    return () => {
+      window.removeEventListener('click', handleInteraction);
+      window.removeEventListener('keydown', handleInteraction);
+      window.removeEventListener('scroll', handleInteraction);
+    };
   }, [])
 
   // Auto-request push notification permission when user is logged in

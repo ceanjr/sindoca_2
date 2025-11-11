@@ -103,6 +103,11 @@ export function useRealtimePlaylist() {
 
     try {
       setLoading(true);
+      
+      // ✅ Timeout de 8 segundos
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
+
       const { data, error } = await supabaseRef.current
         .from('content')
         .select(`
@@ -119,7 +124,10 @@ export function useRealtimePlaylist() {
         `)
         .eq('workspace_id', workspaceRef.current)
         .eq('type', 'music')
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .abortSignal(controller.signal);
+
+      clearTimeout(timeoutId);
 
       if (error) throw error;
 
@@ -139,7 +147,12 @@ export function useRealtimePlaylist() {
       setTracks(transformedTracks);
       setError(null);
     } catch (err) {
-      setError(err.message);
+      if (err.name === 'AbortError') {
+        console.error('❌ Tracks load timed out');
+        setError('Request timed out');
+      } else {
+        setError(err.message);
+      }
     } finally {
       setLoading(false);
     }

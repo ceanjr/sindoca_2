@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from './AuthContext';
 
@@ -9,52 +9,87 @@ const PageConfigContext = createContext(undefined);
 export function PageConfigProvider({ children }) {
   const [pageConfig, setPageConfig] = useState([]);
   const [loading, setLoading] = useState(true);
-  const { user, loading: authLoading } = useAuth(); // Use user from AuthContext
+  const { user, loading: authLoading } = useAuth();
+  const supabaseRef = useRef(null); // ✅ Reutilizar mesma instância
+  const channelRef = useRef(null); // ✅ Guardar referência do canal
+  const initializedRef = useRef(false); // ✅ Prevenir dupla inicialização
 
-  // Derive isAdmin from user
   const isAdmin = user?.email === 'celiojunior0110@gmail.com';
 
   useEffect(() => {
-    // Wait for auth to finish loading
+    // ✅ Aguardar auth finalizar
     if (authLoading) {
-      console.log('🔄 PageConfig: Waiting for auth to load...');
+      console.log('🔄 PageConfig: Waiting for auth...');
       return;
     }
 
+    // ✅ Evitar dupla inicialização
+    if (initializedRef.current) {
+      return;
+    }
+
+    initializedRef.current = true;
     console.log('🔧 PageConfig: Initializing once with user:', user?.email);
     console.log('🔧 PageConfig: isAdmin:', isAdmin);
 
-    const supabase = createClient();
-    let timeout;
+    // ✅ Criar instância única do Supabase
+    if (!supabaseRef.current) {
+      supabaseRef.current = createClient();
+    }
+
+    const supabase = supabaseRef.current;
+    let timeoutId = null;
 
     const initializePageConfig = async () => {
       try {
-        // Set timeout fallback to prevent infinite loading
-        timeout = setTimeout(() => {
-          console.warn('⚠️ PageConfig: Timeout loading config, proceeding anyway');
+        // ✅ Timeout com AbortController
+        const controller = new AbortController();
+        timeoutId = setTimeout(() => {
+          controller.abort();
+          console.warn('⚠️ PageConfig: Timeout, using defaults');
           setLoading(false);
-        }, 10000); // 10 second timeout
+        }, 8000);
 
-        // Fetch page config
-        const { data, error } = await supabase
+        const { data, error, status } = await supabase
           .from('page_config')
           .select('*')
-          .order('page_id');
+          .order('page_id')
+          .abortSignal(controller.signal);
 
-        if (error) throw error;
+        clearTimeout(timeoutId);
+
+        // ✅ Tratar erro de token expirado
+        if (error) {
+          if (status === 401 || error.message?.includes('JWT')) {
+            console.error('❌ PageConfig: Auth error, user needs to re-login');
+            await supabase.auth.signOut();
+            window.location.href = '/auth/login';
+            return;
+          }
+          throw error;
+        }
 
         setPageConfig(data || []);
+        setLoading(false);
       } catch (error) {
-        console.error('Error loading page config:', error);
-      } finally {
-        if (timeout) clearTimeout(timeout);
+        if (error.name === 'AbortError') {
+          console.warn('⚠️ PageConfig: Request aborted by timeout');
+        } else {
+          console.error('❌ PageConfig: Error loading config:', error);
+        }
+        // ✅ Sempre setar loading false
         setLoading(false);
       }
     };
 
     initializePageConfig();
 
-    // Subscribe to changes (only once)
+    // ✅ Cleanup do canal anterior antes de criar novo
+    if (channelRef.current) {
+      supabase.removeChannel(channelRef.current);
+    }
+
+    // ✅ Subscribe to changes (apenas uma vez)
     const channel = supabase
       .channel('page_config_changes')
       .on(
@@ -65,8 +100,8 @@ export function PageConfigProvider({ children }) {
           table: 'page_config',
         },
         (payload) => {
-          console.log('Page config changed:', payload);
-
+          console.log('📡 Page config changed:', payload);
+          
           if (payload.eventType === 'UPDATE') {
             setPageConfig((prev) =>
               prev.map((page) =>
@@ -76,14 +111,22 @@ export function PageConfigProvider({ children }) {
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('📡 PageConfig subscription status:', status);
+      });
 
+    channelRef.current = channel;
+
+    // ✅ Cleanup completo
     return () => {
-      console.log('🧹 PageConfig: Cleaning up channel subscription');
-      if (timeout) clearTimeout(timeout);
-      supabase.removeChannel(channel);
+      console.log('🧹 PageConfig: Cleaning up...');
+      if (timeoutId) clearTimeout(timeoutId);
+      if (channelRef.current && supabaseRef.current) {
+        supabaseRef.current.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
     };
-  }, [authLoading]); // Only re-run when authLoading changes (once)
+  }, [authLoading]); // ✅ Só depende de authLoading
 
   /**
    * Update page active status

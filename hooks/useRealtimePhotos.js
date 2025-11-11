@@ -166,17 +166,7 @@ export function useRealtimePhotos(pollInterval = 10000) {
     };
   }, [userId, workspaceId, supabase]);
 
-  // Polling - recarrega fotos a cada X segundos (backup)
-  useEffect(() => {
-    if (!userId || !workspaceId) return;
-
-    const interval = setInterval(() => {
-      console.log('🔄 Polling Firebase Storage for photo updates...');
-      loadPhotos();
-    }, pollInterval);
-
-    return () => clearInterval(interval);
-  }, [pollInterval, userId, workspaceId]);
+  // ❌ POLLING REMOVIDO - Realtime Subscription já cuida das atualizações
 
   const toggleFavorite = async (photoId) => {
     if (!userId) {

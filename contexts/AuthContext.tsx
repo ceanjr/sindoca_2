@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useContext, useEffect, useState, useRef } from 'react'
 import { User } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
@@ -34,39 +34,67 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
   const router = useRouter()
-  const supabase = createClient()
+  const supabaseRef = useRef(createClient()) // ✅ Instância única
+  const supabase = supabaseRef.current
+  const fetchingProfileRef = useRef(false) // ✅ Prevenir chamadas duplicadas
 
-  // Fetch user profile
+  // ✅ Fetch user profile com timeout
   const fetchProfile = async (userId: string) => {
+    // Prevenir múltiplas chamadas simultâneas
+    if (fetchingProfileRef.current) {
+      console.log('⏳ Profile fetch already in progress, skipping...');
+      return;
+    }
+
+    fetchingProfileRef.current = true;
+
     try {
+      // ✅ Timeout de 5 segundos
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
+        .abortSignal(controller.signal)
         .single()
 
+      clearTimeout(timeoutId);
+
       if (error) {
-        // Profile might not exist yet for new users
+        // ✅ Tratar erro de token expirado
+        if (error.message?.includes('JWT') || error.code === 'PGRST301') {
+          console.error('❌ Auth: Token expired, signing out...');
+          await handleSignOut();
+          return;
+        }
+        
         console.log('Profile not found or error:', error.message)
         setProfile(null)
         return
       }
 
       setProfile(data)
-    } catch (error) {
-      console.error('Error fetching profile:', error)
-      setProfile(null)
+    } catch (error: any) {
+      if (error.name === 'AbortError') {
+        console.error('❌ Profile fetch timed out');
+        setProfile(null);
+      } else {
+        console.error('Error fetching profile:', error)
+        setProfile(null)
+      }
+    } finally {
+      fetchingProfileRef.current = false;
     }
   }
 
-  // Refresh profile
   const refreshProfile = async () => {
     if (user) {
       await fetchProfile(user.id)
     }
   }
 
-  // Sign out
   const handleSignOut = async () => {
     try {
       await supabase.auth.signOut()
@@ -78,14 +106,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  // Initialize auth state
+  // ✅ Initialize auth state (apenas uma vez)
   useEffect(() => {
-    // Get initial session
+    let mounted = true;
+
     const initializeAuth = async () => {
       try {
+        console.log('🔐 Auth: Initializing...');
+        
         const {
           data: { session },
         } = await supabase.auth.getSession()
+
+        if (!mounted) return;
 
         setUser(session?.user ?? null)
 
@@ -100,43 +133,58 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setProfile(null)
         }
       } finally {
-        setLoading(false)
+        if (mounted) {
+          setLoading(false)
+        }
       }
     }
 
     initializeAuth()
 
-    // Listen for auth changes
+    // ✅ Listen for auth changes com debounce
+    let debounceTimer: NodeJS.Timeout | null = null;
+
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth state changed:', event)
+      if (!mounted) return;
 
-      if (event === 'TOKEN_REFRESHED') {
-        console.log('Token refreshed successfully')
+      console.log('🔐 Auth state changed:', event)
+
+      // ✅ Debounce para evitar processamento duplicado
+      if (debounceTimer) {
+        clearTimeout(debounceTimer);
       }
 
-      if (event === 'SIGNED_OUT') {
-        setUser(null)
-        setProfile(null)
-      } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
-        setUser(session?.user ?? null)
-
-        if (session?.user) {
-          await fetchProfile(session.user.id)
-        } else {
-          setProfile(null)
+      debounceTimer = setTimeout(async () => {
+        if (event === 'TOKEN_REFRESHED') {
+          console.log('✅ Token refreshed successfully')
         }
-      }
 
-      // Sempre seta loading como false após processar qualquer evento
-      setLoading(false)
+        if (event === 'SIGNED_OUT') {
+          setUser(null)
+          setProfile(null)
+          setLoading(false)
+        } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+          setUser(session?.user ?? null)
+
+          if (session?.user) {
+            await fetchProfile(session.user.id)
+          } else {
+            setProfile(null)
+          }
+          
+          setLoading(false)
+        }
+      }, 300); // 300ms debounce
     })
 
     return () => {
+      mounted = false;
+      if (debounceTimer) clearTimeout(debounceTimer);
       subscription.unsubscribe()
     }
-  }, [])
+  }, []) // ✅ Sem dependências - executa apenas uma vez
 
   return (
     <AuthContext.Provider
