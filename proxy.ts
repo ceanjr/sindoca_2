@@ -91,7 +91,8 @@ export async function proxy(request: NextRequest) {
     '/clear-cache',
     '/pwa-debug',
     '/api/push/send',        // ✅ Push notifications (autenticação via x-internal-secret)
-    '/api/push/subscribe'    // ✅ Push subscriptions (autenticação via cookie ou header)
+    '/api/push/subscribe',   // ✅ Push subscriptions (autenticação via cookie ou header)
+    '/admin/force-refresh'   // ✅ Página administrativa de limpeza (acessível mesmo sem login)
   ]
   const isPublicRoute = publicRoutes.some(route => request.nextUrl.pathname.startsWith(route))
 
