@@ -29,16 +29,21 @@ export default function DebugLogsPage() {
   const [categories, setCategories] = useState([]);
 
   useEffect(() => {
+    console.log('[Debug Logs] useEffect executado', { hasUser: !!user });
     if (user) {
       loadLogs();
+    } else {
+      setLoading(false);
     }
   }, [user]);
 
   const loadLogs = async () => {
+    console.log('[Debug Logs] loadLogs iniciado');
     try {
       setLoading(true);
       const supabase = createClient();
 
+      console.log('[Debug Logs] Criando query...');
       let query = supabase
         .from('debug_logs')
         .select('*')
@@ -53,19 +58,47 @@ export default function DebugLogsPage() {
         query = query.eq('level', filterLevel);
       }
 
+      console.log('[Debug Logs] Executando query...');
       const { data, error } = await query;
 
-      if (error) throw error;
+      console.log('[Debug Logs] Query executada', {
+        hasData: !!data,
+        dataLength: data?.length,
+        hasError: !!error,
+        error: error?.message
+      });
 
+      if (error) {
+        console.error('[Debug Logs] Error loading logs:', error);
+
+        // Se a tabela não existe, mostrar mensagem específica
+        if (error.code === '42P01' || error.message.includes('does not exist')) {
+          toast.error('Tabela debug_logs não existe! Aplique a migration primeiro.');
+          setLogs([]);
+          setLoading(false);
+          return;
+        }
+
+        toast.error(`Erro ao carregar logs: ${error.message}`);
+        setLogs([]);
+        setLoading(false);
+        return;
+      }
+
+      console.log('[Debug Logs] Atualizando estado com', data?.length || 0, 'logs');
       setLogs(data || []);
 
       // Extract unique categories
       const uniqueCategories = [...new Set(data?.map((log) => log.category) || [])];
       setCategories(uniqueCategories);
+
+      console.log('[Debug Logs] Estado atualizado com sucesso');
     } catch (error) {
-      console.error('Error loading logs:', error);
-      toast.error('Erro ao carregar logs');
+      console.error('[Debug Logs] Catch error:', error);
+      toast.error(`Erro: ${error.message}`);
+      setLogs([]);
     } finally {
+      console.log('[Debug Logs] setLoading(false)');
       setLoading(false);
     }
   };
