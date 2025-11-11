@@ -78,15 +78,16 @@ export function useSupabasePhotos() {
 
         workspaceRef.current = members.workspace_id;
 
-        // Get partner ID
+        // Get all partner IDs (all members except current user)
         const { data: allMembers } = await supabase
           .from('workspace_members')
           .select('user_id')
           .eq('workspace_id', members.workspace_id);
 
-        const partner = allMembers?.find(m => m.user_id !== user.id);
-        if (partner) {
-          partnerIdRef.current = partner.user_id;
+        const partners = allMembers?.filter(m => m.user_id !== user.id) || [];
+        if (partners.length > 0) {
+          // Store array of partner IDs
+          partnerIdRef.current = partners.map(p => p.user_id);
         }
 
         await loadPhotos();
@@ -360,32 +361,39 @@ export function useSupabasePhotos() {
     if (results.length > 0) {
       await loadPhotos();
 
-      // Send push notification to partner
-      if (partnerIdRef.current && results.length > 0) {
+      // Send push notification to all partners
+      if (partnerIdRef.current && partnerIdRef.current.length > 0 && results.length > 0) {
         try {
           const photoCount = results.length;
           const message = photoCount === 1
             ? 'Uma nova foto foi adicionada à galeria!'
             : `${photoCount} novas fotos foram adicionadas à galeria!`;
 
-          await fetchJSON('/api/push/send', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            timeout: 10000,
-            body: JSON.stringify({
-              recipientUserId: partnerIdRef.current,
-              title: '📸 Nova(s) foto(s) na galeria!',
-              body: message,
-              icon: '/icon-192x192.png',
-              tag: 'new-photo',
-              data: { url: '/fotos' },
-            }),
-          });
+          // Send to all partners in parallel
+          const notificationPromises = partnerIdRef.current.map(partnerId =>
+            fetchJSON('/api/push/send', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              credentials: 'include',
+              timeout: 10000,
+              body: JSON.stringify({
+                recipientUserId: partnerId,
+                title: '📸 Nova(s) foto(s) na galeria!',
+                body: message,
+                icon: '/icon-192x192.png',
+                tag: 'new-photo',
+                data: { url: '/fotos' },
+              }),
+            }).catch(err => {
+              console.error(`❌ Error sending to partner ${partnerId}:`, err);
+              return null; // Continue with other notifications
+            })
+          );
 
-          console.log('✅ Push notification sent for photo upload');
+          await Promise.allSettled(notificationPromises);
+          console.log(`✅ Push notifications sent to ${partnerIdRef.current.length} partner(s) for photo upload`);
         } catch (error) {
-          console.error('❌ Error sending push notification for photo:', error);
+          console.error('❌ Error sending push notifications for photo:', error);
           // Don't throw - notification sending is non-critical
         }
       }

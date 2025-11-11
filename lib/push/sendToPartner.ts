@@ -48,34 +48,51 @@ export async function sendPushToPartner(
       return { success: false, error: 'Members not found' };
     }
 
-    // Find partner (the other user in the workspace)
-    const partner = members.find(m => m.user_id !== userId);
+    // Find all partners (all users except current user)
+    const partners = members.filter(m => m.user_id !== userId);
 
-    if (!partner) {
-      return { success: false, error: 'Partner not found' };
+    if (partners.length === 0) {
+      return { success: false, error: 'No partners found' };
     }
 
-    // Send push notification via internal API
-    const response = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/push/send`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-internal-secret': process.env.INTERNAL_API_SECRET || '',
-      },
-      body: JSON.stringify({
-        recipientUserId: partner.user_id,
-        ...notification,
-      }),
-    });
+    console.log(`[Push] Sending to ${partners.length} partner(s)`);
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error('Error sending push:', errorData);
-      return { success: false, error: errorData.error };
-    }
+    // Send push notification to ALL partners via internal API
+    const results = await Promise.allSettled(
+      partners.map(async (partner) => {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/push/send`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-internal-secret': process.env.INTERNAL_API_SECRET || '',
+          },
+          body: JSON.stringify({
+            recipientUserId: partner.user_id,
+            ...notification,
+          }),
+        });
 
-    const result = await response.json();
-    return { success: true, ...result };
+        if (!response.ok) {
+          const errorData = await response.json();
+          console.error('Error sending push to', partner.user_id, ':', errorData);
+          return { success: false, userId: partner.user_id, error: errorData.error };
+        }
+
+        const result = await response.json();
+        return { success: true, userId: partner.user_id, ...result };
+      })
+    );
+
+    const successful = results.filter(r => r.status === 'fulfilled' && r.value.success).length;
+    const failed = results.length - successful;
+
+    return {
+      success: true,
+      sent: successful,
+      failed,
+      total: partners.length,
+      details: results
+    };
 
   } catch (error: any) {
     console.error('Error in sendPushToPartner:', error);

@@ -89,7 +89,9 @@ export async function proxy(request: NextRequest) {
     '/api/spotify/debug-user',        // Rota de diagnóstico
     '/spotify-diagnostico',           // Página de diagnóstico
     '/clear-cache',
-    '/pwa-debug'
+    '/pwa-debug',
+    '/api/push/send',        // ✅ Push notifications (autenticação via x-internal-secret)
+    '/api/push/subscribe'    // ✅ Push subscriptions (autenticação via cookie ou header)
   ]
   const isPublicRoute = publicRoutes.some(route => request.nextUrl.pathname.startsWith(route))
 
