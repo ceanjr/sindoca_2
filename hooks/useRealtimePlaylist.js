@@ -6,6 +6,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { logger } from '@/lib/utils/logger';
+import { fetchJSON } from '@/lib/utils/fetchWithTimeout';
 
 export function useRealtimePlaylist() {
   const [tracks, setTracks] = useState([]);
@@ -403,17 +404,12 @@ export function useRealtimePlaylist() {
 
   const addTrack = async (track) => {
     try {
-      const response = await fetch('/api/spotify/playlist/add-track', {
+      const data = await fetchJSON('/api/spotify/playlist/add-track', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        timeout: 15000, // 15 seconds timeout for Spotify API
         body: JSON.stringify({ track }),
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to add track');
-      }
 
       // Realtime will handle the update
       return data.track;
@@ -424,17 +420,12 @@ export function useRealtimePlaylist() {
 
   const removeTrack = async (trackId) => {
     try {
-      const response = await fetch('/api/spotify/playlist/remove-track', {
+      await fetchJSON('/api/spotify/playlist/remove-track', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
+        timeout: 15000, // 15 seconds timeout for Spotify API
         body: JSON.stringify({ trackId }),
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to remove track');
-      }
 
       // Realtime will handle the update
     } catch (error) {

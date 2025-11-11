@@ -28,6 +28,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useConfirm } from '@/hooks/useConfirm';
 import { toast } from 'sonner';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
+import { remoteLogger } from '@/lib/utils/remoteLogger';
 
 // Lazy load SpotifySearchModal for better performance
 const SpotifySearchModal = dynamic(() => import('../music/SpotifySearchModal'), {
@@ -84,18 +85,43 @@ export default function MusicSection({ id }) {
   // Check if Spotify is connected
   useEffect(() => {
     const checkSpotifyConnection = async () => {
-      if (!user) return;
+      if (!user) {
+        remoteLogger.debug('spotify-check', 'Usuário não autenticado');
+        return;
+      }
+
+      remoteLogger.info('spotify-check', 'Verificando conexão do Spotify', {
+        userId: user.id,
+        userEmail: user.email,
+      });
 
       const supabase = createClient();
       const { data, error } = await supabase
         .from('profiles')
-        .select('spotify_tokens')
+        .select('spotify_tokens, spotify_user_id, spotify_display_name')
         .eq('id', user.id)
         .single();
 
-      if (!error && data?.spotify_tokens) {
+      if (error) {
+        remoteLogger.error('spotify-check', 'Erro ao buscar dados do perfil', {
+          error: error.message,
+          code: error.code,
+        });
+        setSpotifyConnected(false);
+        return;
+      }
+
+      remoteLogger.info('spotify-check', 'Dados do perfil retornados', {
+        hasTokens: !!data?.spotify_tokens,
+        spotifyUserId: data?.spotify_user_id,
+        spotifyDisplayName: data?.spotify_display_name,
+      });
+
+      if (data?.spotify_tokens) {
+        remoteLogger.info('spotify-check', '✅ Spotify conectado!');
         setSpotifyConnected(true);
       } else {
+        remoteLogger.info('spotify-check', '❌ Spotify não conectado');
         setSpotifyConnected(false);
       }
     };
@@ -106,23 +132,63 @@ export default function MusicSection({ id }) {
   // Check for connection success and recheck connection status
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('connected') === 'true') {
+    const hasConnectedParam = urlParams.get('connected') === 'true';
+    const hasErrorParam = urlParams.get('error');
+
+    if (hasErrorParam) {
+      remoteLogger.error('spotify-callback', 'Erro retornado no callback', {
+        error: hasErrorParam,
+      });
+      toast.error(`Erro ao conectar Spotify: ${hasErrorParam}`);
+      window.history.replaceState({}, '', '/musica');
+      return;
+    }
+
+    if (hasConnectedParam) {
+      remoteLogger.info('spotify-callback', 'Parâmetro connected=true detectado!');
       // Wait a bit to ensure DB update is complete, then recheck
       setTimeout(async () => {
-        if (!user) return;
-        
+        if (!user) {
+          remoteLogger.warn('spotify-callback', 'Usuário não autenticado no recheck');
+          return;
+        }
+
+        remoteLogger.info('spotify-callback', 'Verificando conexão após callback...', {
+          userId: user.id,
+        });
         const supabase = createClient();
         const { data, error } = await supabase
           .from('profiles')
-          .select('spotify_tokens')
+          .select('spotify_tokens, spotify_user_id, spotify_display_name')
           .eq('id', user.id)
           .single();
 
+        if (error) {
+          remoteLogger.error('spotify-callback', 'Erro ao verificar dados após callback', {
+            error: error.message,
+            code: error.code,
+          });
+        } else {
+          remoteLogger.info('spotify-callback', 'Dados após callback', {
+            hasTokens: !!data?.spotify_tokens,
+            spotifyUserId: data?.spotify_user_id,
+            spotifyDisplayName: data?.spotify_display_name,
+          });
+        }
+
         if (!error && data?.spotify_tokens) {
+          remoteLogger.info('spotify-callback', '✅ Conexão confirmada!');
           setSpotifyConnected(true);
           toast.success('Spotify conectado com sucesso!');
+        } else {
+          remoteLogger.error('spotify-callback', '❌ Tokens não encontrados após callback', {
+            hadError: !!error,
+            hasData: !!data,
+            hasTokens: !!data?.spotify_tokens,
+          });
+          toast.error('Erro ao salvar conexão. Tente novamente.');
         }
-        
+
         window.history.replaceState({}, '', '/musica');
       }, 500);
     }
@@ -171,6 +237,10 @@ export default function MusicSection({ id }) {
   }, [tracks, user]);
 
   const handleConnectSpotify = () => {
+    remoteLogger.info('spotify-connect', 'Iniciando conexão com Spotify', {
+      userId: user?.id,
+      userEmail: user?.email,
+    });
     setConnectingSpotify(true);
     window.location.href = '/api/spotify/auth';
   };

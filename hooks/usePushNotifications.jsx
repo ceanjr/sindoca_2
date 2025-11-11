@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { toast } from 'sonner'
 import { logger } from '@/lib/utils/logger'
+import { fetchJSON } from '@/lib/utils/fetchWithTimeout'
 
 /**
  * Hook para gerenciar Push Notifications
@@ -116,17 +117,14 @@ export function usePushNotifications() {
 
         // Send subscription to backend
         try {
-          const response = await fetch('/api/push/subscribe', {
+          await fetchJSON('/api/push/subscribe', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            timeout: 10000, // 10 seconds timeout
             body: JSON.stringify({
               subscription: sub.toJSON(),
             }),
           })
-
-          if (!response.ok) {
-            console.error('Failed to save subscription to server')
-          }
         } catch (error) {
           console.error('Error saving subscription:', error)
         }
@@ -190,9 +188,10 @@ export function usePushNotifications() {
 
         // Delete from backend
         try {
-          await fetch('/api/push/subscribe', {
+          await fetchJSON('/api/push/subscribe', {
             method: 'DELETE',
             headers: { 'Content-Type': 'application/json' },
+            timeout: 10000, // 10 seconds timeout
             body: JSON.stringify({ endpoint }),
           })
         } catch (error) {

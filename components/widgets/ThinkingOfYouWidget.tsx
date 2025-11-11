@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
+import { fetchJSON, FetchTimeoutError, FetchNetworkError } from '@/lib/utils/fetchWithTimeout';
 
 interface ThinkingOfYouWidgetProps {
   workspaceId: string;
@@ -268,10 +269,11 @@ export default function ThinkingOfYouWidget({
 
       // Send server-side push notification to partner
       try {
-        const pushResponse = await fetch('/api/push/send', {
+        const result = await fetchJSON('/api/push/send', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include', // Important: include cookies for auth
+          timeout: 10000, // 10 seconds timeout
           body: JSON.stringify({
             recipientUserId: partnerId,
             title: title,
@@ -282,20 +284,15 @@ export default function ThinkingOfYouWidget({
           }),
         });
 
-        if (!pushResponse.ok) {
-          const errorData = await pushResponse.json();
-          console.error(
-            'Push notification failed:',
-            pushResponse.status,
-            errorData
-          );
-          // Don't show error to user, notification was saved to DB anyway
-        } else {
-          const result = await pushResponse.json();
-          console.log('Push notification sent:', result);
-        }
+        console.log('Push notification sent:', result);
       } catch (error) {
-        console.error('Error sending push notification:', error);
+        if (error instanceof FetchTimeoutError) {
+          console.error('Push notification timed out:', error);
+        } else if (error instanceof FetchNetworkError) {
+          console.error('Network error sending push:', error);
+        } else {
+          console.error('Error sending push notification:', error);
+        }
         // Don't show error to user, notification was saved to DB anyway
       }
 

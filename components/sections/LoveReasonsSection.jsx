@@ -13,6 +13,7 @@ import ConfirmDialog from '../ui/ConfirmDialog';
 import { toast } from 'sonner';
 import AddReasonModal from '@/components/ui/AddReasonModal';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
+import { fetchJSON } from '@/lib/utils/fetchWithTimeout';
 
 const REASONS_PER_PAGE = 9;
 const MIN_REASONS_FOR_RANDOM = 7;
@@ -196,10 +197,11 @@ export default function LoveReasonsSection({ id }) {
         // Send push notification to partner
         if (partnerId && partnerProfile) {
           try {
-            const pushResponse = await fetch('/api/push/send', {
+            const result = await fetchJSON('/api/push/send', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               credentials: 'include',
+              timeout: 10000, // 10 seconds timeout
               body: JSON.stringify({
                 recipientUserId: partnerId,
                 title: `${partnerProfile.full_name} adicionou uma nova razão para te aguentar!`,
@@ -212,15 +214,10 @@ export default function LoveReasonsSection({ id }) {
               }),
             });
 
-            if (!pushResponse.ok) {
-              const errorData = await pushResponse.json();
-              console.error('Push notification failed:', errorData);
-            } else {
-              const result = await pushResponse.json();
-              console.log('Push notification sent:', result);
-            }
+            console.log('Push notification sent:', result);
           } catch (error) {
             console.error('Error sending push notification:', error);
+            // Don't throw - notification sending is non-critical
           }
         }
       }
