@@ -56,7 +56,8 @@ export async function DELETE(request: NextRequest) {
 
     // Remove from Spotify
     try {
-      const accessToken = await getValidAccessToken(user.id);
+      // ✅ CORREÇÃO: Passar isServerSide=true pois estamos em uma API route
+      const accessToken = await getValidAccessToken(user.id, true);
       await removeTrackFromPlaylist(
         accessToken,
         workspace.data.spotify_playlist_id,

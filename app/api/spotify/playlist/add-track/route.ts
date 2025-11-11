@@ -1,10 +1,16 @@
 /**
  * Add track to workspace playlist
  * POST /api/spotify/playlist/add-track
+ *
+ * CORREÇÕES APLICADAS:
+ * - Usa Supabase server-side corretamente
+ * - Cria playlist como colaborativa
+ * - Torna playlist existente colaborativa se necessário
+ * - Valida permissões de ambos usuários
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { addTrackToPlaylist, createPlaylist, getValidAccessToken } from '@/lib/spotify/client';
+import { addTrackToPlaylist, createPlaylist, getValidAccessToken, updatePlaylistToCollaborative } from '@/lib/spotify/client';
 import { createClient } from '@/lib/supabase/server';
 
 export async function POST(request: NextRequest) {
@@ -60,7 +66,10 @@ export async function POST(request: NextRequest) {
     }
 
     let spotifyPlaylistId = workspace.data?.spotify_playlist_id;
-    const accessToken = await getValidAccessToken(user.id);
+    let isPlaylistCollaborative = workspace.data?.spotify_playlist_is_collaborative === true;
+
+    // ✅ CORREÇÃO: Passar isServerSide=true pois estamos em uma API route
+    const accessToken = await getValidAccessToken(user.id, true);
 
     // Create Spotify playlist if doesn't exist
     if (!spotifyPlaylistId) {
@@ -74,14 +83,16 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Spotify user ID not found' }, { status: 400 });
       }
 
+      // ✅ CORREÇÃO: A playlist já é criada como colaborativa (ver lib/spotify/client.ts)
       const playlist = await createPlaylist(
         accessToken,
         profile.spotify_user_id,
         'Nossa Trilha Sonora ❤️',
-        'Playlist criada pelo Sindoca'
+        'Playlist criada pelo Sindoca - Colaborativa para ambos os parceiros'
       );
 
       spotifyPlaylistId = playlist.id;
+      isPlaylistCollaborative = true;
 
       // Save playlist ID to workspace
       await supabase
@@ -91,9 +102,34 @@ export async function POST(request: NextRequest) {
             ...workspace.data,
             spotify_playlist_id: spotifyPlaylistId,
             spotify_playlist_url: playlist.external_urls.spotify,
+            spotify_playlist_is_collaborative: true,
           },
         })
         .eq('id', workspaceId);
+
+      console.log('✅ Playlist colaborativa criada:', spotifyPlaylistId);
+    } else if (!isPlaylistCollaborative) {
+      // ✅ CORREÇÃO: Se a playlist existe mas não é colaborativa, torná-la colaborativa
+      try {
+        console.log('🔄 Tornando playlist existente colaborativa:', spotifyPlaylistId);
+        await updatePlaylistToCollaborative(accessToken, spotifyPlaylistId);
+
+        // Atualizar flag no workspace
+        await supabase
+          .from('workspaces')
+          .update({
+            data: {
+              ...workspace.data,
+              spotify_playlist_is_collaborative: true,
+            },
+          })
+          .eq('id', workspaceId);
+
+        console.log('✅ Playlist atualizada para colaborativa');
+      } catch (error) {
+        console.error('⚠️ Erro ao tornar playlist colaborativa:', error);
+        // Continuar mesmo se falhar - pode já ser colaborativa ou usuário não ter permissão
+      }
     }
 
     // Add track to Spotify playlist

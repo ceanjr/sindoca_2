@@ -26,7 +26,8 @@ export async function GET(request: NextRequest) {
     }
 
     // Get valid access token (auto-refreshes if needed)
-    const accessToken = await getValidAccessToken(user.id);
+    // Passando isServerSide=true pois estamos em uma API route
+    const accessToken = await getValidAccessToken(user.id, true);
 
     // Search tracks
     const tracks = await searchTracks(accessToken, query);

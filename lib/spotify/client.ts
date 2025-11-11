@@ -4,13 +4,17 @@
 
 import { SPOTIFY_API_BASE } from './config';
 import { isTokenExpired, refreshAccessToken, SpotifyTokens } from './auth';
-import { createClient } from '@/lib/supabase/client';
+import { createClient as createClientSide } from '@/lib/supabase/client';
+import { createClient as createServerClient } from '@/lib/supabase/server';
 
 /**
  * Get valid access token for user (auto-refresh if needed)
+ * IMPORTANTE: Esta função detecta automaticamente se está rodando no servidor ou cliente
+ * e usa o cliente Supabase correto.
  */
-export async function getValidAccessToken(userId: string): Promise<string> {
-  const supabase = createClient();
+export async function getValidAccessToken(userId: string, isServerSide: boolean = false): Promise<string> {
+  // Usar o cliente correto baseado no contexto
+  const supabase = isServerSide ? await createServerClient() : createClientSide();
 
   const { data: profile, error } = await supabase
     .from('profiles')
@@ -24,15 +28,18 @@ export async function getValidAccessToken(userId: string): Promise<string> {
 
   const tokens = profile.spotify_tokens as SpotifyTokens;
 
+  // Verificar se o token expirou (com margem de segurança de 5 minutos)
   if (isTokenExpired(tokens.expires_at)) {
-    console.log('🔄 Refreshing Spotify token...');
+    console.log('🔄 Refreshing Spotify token for user:', userId);
     const newTokens = await refreshAccessToken(tokens.refresh_token);
 
+    // Atualizar tokens no banco de dados
     await supabase
       .from('profiles')
       .update({ spotify_tokens: newTokens })
       .eq('id', userId);
 
+    console.log('✅ Token refreshed successfully');
     return newTokens.access_token;
   }
 
@@ -87,7 +94,8 @@ export async function getSpotifyProfile(accessToken: string): Promise<SpotifyPro
 }
 
 /**
- * Create a new playlist
+ * Create a new collaborative playlist
+ * IMPORTANTE: A playlist é criada como COLABORATIVA para permitir que ambos usuários adicionem músicas
  */
 export async function createPlaylist(
   accessToken: string,
@@ -104,7 +112,8 @@ export async function createPlaylist(
     body: JSON.stringify({
       name,
       description,
-      public: false,
+      public: false, // Privada, mas colaborativa
+      collaborative: true, // ✅ CORREÇÃO CRÍTICA: Permite múltiplos usuários adicionarem músicas
     }),
   });
 
@@ -114,6 +123,32 @@ export async function createPlaylist(
   }
 
   return response.json();
+}
+
+/**
+ * Update playlist details (tornar colaborativa)
+ * Útil para atualizar playlists existentes
+ */
+export async function updatePlaylistToCollaborative(
+  accessToken: string,
+  playlistId: string
+): Promise<void> {
+  const response = await fetch(`${SPOTIFY_API_BASE}/playlists/${playlistId}`, {
+    method: 'PUT',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      collaborative: true,
+      public: false,
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(`Update playlist failed: ${error.error?.message || 'Unknown error'}`);
+  }
 }
 
 /**

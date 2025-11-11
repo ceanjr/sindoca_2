@@ -14,7 +14,8 @@ export function getSpotifyAuthUrl(state: string): string {
     redirect_uri: SPOTIFY_CONFIG.redirectUri,
     scope: SPOTIFY_CONFIG.scopes.join(' '),
     state,
-    show_dialog: 'true',
+    // Removido show_dialog: 'true' para melhor UX
+    // Se o usuário já autorizou, não precisa mostrar a tela novamente
   });
 
   return `${SPOTIFY_AUTH_BASE}/authorize?${params.toString()}`;
