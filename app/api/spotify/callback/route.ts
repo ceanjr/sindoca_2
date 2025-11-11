@@ -145,10 +145,15 @@ export async function GET(request: NextRequest) {
     });
 
     // Success! Clear state cookie and redirect
+    // Add timestamp to prevent caching issues
     const response = NextResponse.redirect(
-      new URL('/musica?connected=true', request.url)
+      new URL(`/musica?connected=true&t=${Date.now()}`, request.url)
     );
     response.cookies.delete('spotify_auth_state');
+    
+    // Force cache revalidation
+    response.headers.set('Cache-Control', 'no-store, must-revalidate');
+    response.headers.set('Pragma', 'no-cache');
 
     console.log('[Spotify Callback] Redirecionando para /musica?connected=true');
     await remoteLogger.info('spotify-callback', '🎉 Sucesso! Redirecionando para /musica', {

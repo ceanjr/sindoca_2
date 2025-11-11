@@ -146,51 +146,75 @@ export default function MusicSection({ id }) {
 
     if (hasConnectedParam) {
       remoteLogger.info('spotify-callback', 'Parâmetro connected=true detectado!');
-      // Wait a bit to ensure DB update is complete, then recheck
-      setTimeout(async () => {
+
+      // Polling com retry: tenta várias vezes até os dados estarem disponíveis
+      const checkConnectionWithRetry = async (maxAttempts = 5, delayMs = 300) => {
         if (!user) {
           remoteLogger.warn('spotify-callback', 'Usuário não autenticado no recheck');
           return;
         }
 
-        remoteLogger.info('spotify-callback', 'Verificando conexão após callback...', {
+        remoteLogger.info('spotify-callback', 'Iniciando verificação com retry...', {
           userId: user.id,
+          maxAttempts,
+          delayMs,
         });
-        const supabase = createClient();
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('spotify_tokens, spotify_user_id, spotify_display_name')
-          .eq('id', user.id)
-          .single();
 
-        if (error) {
-          remoteLogger.error('spotify-callback', 'Erro ao verificar dados após callback', {
-            error: error.message,
-            code: error.code,
+        const supabase = createClient();
+
+        for (let attempt = 0; attempt < maxAttempts; attempt++) {
+          // Aguardar antes da tentativa (exceto na primeira)
+          if (attempt > 0) {
+            await new Promise(resolve => setTimeout(resolve, delayMs));
+          }
+
+          remoteLogger.info('spotify-callback', `Tentativa ${attempt + 1}/${maxAttempts}`, {
+            attemptNumber: attempt + 1,
           });
-        } else {
-          remoteLogger.info('spotify-callback', 'Dados após callback', {
+
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('spotify_tokens, spotify_user_id, spotify_display_name')
+            .eq('id', user.id)
+            .single();
+
+          if (error) {
+            remoteLogger.error('spotify-callback', `Erro na tentativa ${attempt + 1}`, {
+              error: error.message,
+              code: error.code,
+              attempt: attempt + 1,
+            });
+            continue; // Tentar novamente
+          }
+
+          remoteLogger.info('spotify-callback', `Dados recebidos na tentativa ${attempt + 1}`, {
             hasTokens: !!data?.spotify_tokens,
             spotifyUserId: data?.spotify_user_id,
             spotifyDisplayName: data?.spotify_display_name,
+            attempt: attempt + 1,
           });
+
+          // Sucesso: tokens encontrados!
+          if (data?.spotify_tokens) {
+            remoteLogger.info('spotify-callback', `✅ Conexão confirmada na tentativa ${attempt + 1}!`);
+            setSpotifyConnected(true);
+            toast.success('Spotify conectado com sucesso!');
+            window.history.replaceState({}, '', '/musica');
+            return;
+          }
         }
 
-        if (!error && data?.spotify_tokens) {
-          remoteLogger.info('spotify-callback', '✅ Conexão confirmada!');
-          setSpotifyConnected(true);
-          toast.success('Spotify conectado com sucesso!');
-        } else {
-          remoteLogger.error('spotify-callback', '❌ Tokens não encontrados após callback', {
-            hadError: !!error,
-            hasData: !!data,
-            hasTokens: !!data?.spotify_tokens,
-          });
-          toast.error('Erro ao salvar conexão. Tente novamente.');
-        }
-
+        // Após todas as tentativas, tokens ainda não encontrados
+        remoteLogger.error('spotify-callback', '❌ Tokens não encontrados após todas as tentativas', {
+          attempts: maxAttempts,
+          totalTimeMs: maxAttempts * delayMs,
+        });
+        toast.error('Erro ao sincronizar conexão. Tente recarregar a página.');
         window.history.replaceState({}, '', '/musica');
-      }, 500);
+      };
+
+      // Executar verificação com retry
+      checkConnectionWithRetry();
     }
   }, [user]);
 
