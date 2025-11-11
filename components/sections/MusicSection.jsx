@@ -136,10 +136,31 @@ export default function MusicSection({ id }) {
     const hasErrorParam = urlParams.get('error');
 
     if (hasErrorParam) {
+      const errorDetails = urlParams.get('details');
+
       remoteLogger.error('spotify-callback', 'Erro retornado no callback', {
         error: hasErrorParam,
+        details: errorDetails,
       });
-      toast.error(`Erro ao conectar Spotify: ${hasErrorParam}`);
+
+      // Mensagens de erro mais amigáveis
+      const errorMessages = {
+        'callback_failed': 'Erro desconhecido no callback',
+        'token_exchange_failed': 'Erro ao obter tokens do Spotify',
+        'profile_fetch_failed': 'Erro ao buscar perfil do Spotify',
+        'save_failed': 'Erro ao salvar dados no banco',
+        'spotify_unauthorized': 'Você não está autorizado no Spotify (verifique o Dashboard)',
+        'state_mismatch': 'Erro de segurança (CSRF). Tente novamente.',
+        'unauthorized': 'Você precisa estar logado no Sindoca',
+      };
+
+      const friendlyMessage = errorMessages[hasErrorParam] || hasErrorParam;
+
+      toast.error(`Erro ao conectar Spotify: ${friendlyMessage}`, {
+        description: errorDetails ? `Detalhes: ${errorDetails}` : undefined,
+        duration: 10000, // 10 segundos para dar tempo de ler
+      });
+
       window.history.replaceState({}, '', '/musica');
       return;
     }

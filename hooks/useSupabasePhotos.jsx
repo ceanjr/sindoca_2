@@ -22,6 +22,7 @@ import {
   togglePhotoFavorite as togglePhotoFavoriteAPI,
   fetchWorkspacePhotos,
 } from '@/lib/supabase/photoOperations';
+import { fetchJSON } from '@/lib/utils/fetchWithTimeout';
 
 export function useSupabasePhotos() {
   const [photos, setPhotos] = useState([]);
@@ -31,6 +32,7 @@ export function useSupabasePhotos() {
   const supabaseRef = useRef(null);
   const userRef = useRef(null);
   const workspaceRef = useRef(null);
+  const partnerIdRef = useRef(null);
   const channelRef = useRef(null);
   const initializingRef = useRef(false);
   const initializedRef = useRef(false);
@@ -75,6 +77,18 @@ export function useSupabasePhotos() {
         }
 
         workspaceRef.current = members.workspace_id;
+
+        // Get partner ID
+        const { data: allMembers } = await supabase
+          .from('workspace_members')
+          .select('user_id')
+          .eq('workspace_id', members.workspace_id);
+
+        const partner = allMembers?.find(m => m.user_id !== user.id);
+        if (partner) {
+          partnerIdRef.current = partner.user_id;
+        }
+
         await loadPhotos();
 
         // Only setup subscriptions if not already setup
@@ -345,6 +359,36 @@ export function useSupabasePhotos() {
 
     if (results.length > 0) {
       await loadPhotos();
+
+      // Send push notification to partner
+      if (partnerIdRef.current && results.length > 0) {
+        try {
+          const photoCount = results.length;
+          const message = photoCount === 1
+            ? 'Uma nova foto foi adicionada à galeria!'
+            : `${photoCount} novas fotos foram adicionadas à galeria!`;
+
+          await fetchJSON('/api/push/send', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            timeout: 10000,
+            body: JSON.stringify({
+              recipientUserId: partnerIdRef.current,
+              title: '📸 Nova(s) foto(s) na galeria!',
+              body: message,
+              icon: '/icon-192x192.png',
+              tag: 'new-photo',
+              data: { url: '/fotos' },
+            }),
+          });
+
+          console.log('✅ Push notification sent for photo upload');
+        } catch (error) {
+          console.error('❌ Error sending push notification for photo:', error);
+          // Don't throw - notification sending is non-critical
+        }
+      }
     }
 
     return { results, errors };

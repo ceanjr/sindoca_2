@@ -163,12 +163,24 @@ export async function GET(request: NextRequest) {
     return response;
   } catch (error) {
     console.error('Spotify callback error:', error);
+
+    // Extrair mensagem de erro específica
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorType = errorMessage.includes('token exchange') ? 'token_exchange_failed' :
+                      errorMessage.includes('profile') ? 'profile_fetch_failed' :
+                      errorMessage.includes('save') ? 'save_failed' :
+                      errorMessage.includes('Unauthorized') ? 'spotify_unauthorized' :
+                      'callback_failed';
+
     await remoteLogger.error('spotify-callback', '💥 Erro crítico no callback', {
-      error: error instanceof Error ? error.message : String(error),
+      error: errorMessage,
+      errorType,
       stack: error instanceof Error ? error.stack : undefined,
     });
+
+    // Retornar erro mais específico na URL
     return NextResponse.redirect(
-      new URL('/musica?error=callback_failed', request.url)
+      new URL(`/musica?error=${errorType}&details=${encodeURIComponent(errorMessage.substring(0, 100))}`, request.url)
     );
   }
 }
