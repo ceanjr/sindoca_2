@@ -26,6 +26,11 @@ export default function PhotoMenu({
   const menuRef = useRef(null);
   const buttonRef = useRef(null);
 
+  // Debug state changes
+  useEffect(() => {
+    console.log('[PhotoMenu] State changed:', { isOpen, showReactionMenu, photoId: photo.id });
+  }, [isOpen, showReactionMenu, photo.id]);
+
   // Close menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -100,6 +105,8 @@ export default function PhotoMenu({
     e.stopPropagation();
     e.preventDefault();
 
+    console.log('[PhotoMenu] handleReact called', { canReact, user: user?.id, author: photo.author_id });
+
     // Check if user can react
     if (!canReact) {
       console.log('[PhotoMenu] User cannot react to own content');
@@ -107,7 +114,29 @@ export default function PhotoMenu({
       return;
     }
 
+    console.log('[PhotoMenu] Opening reaction menu');
     triggerVibration(30);
+
+    // Recalculate menu position for reaction menu (may need different position)
+    if (buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      const menuWidth = 300; // Reaction menu is wider
+      const menuHeight = 60;
+
+      let top = rect.bottom + 8;
+      let left = rect.left;
+
+      // Adjust if menu goes off-screen
+      if (left + menuWidth > window.innerWidth) {
+        left = window.innerWidth - menuWidth - 8;
+      }
+      if (top + menuHeight > window.innerHeight) {
+        top = rect.top - menuHeight - 8;
+      }
+
+      setMenuCoords({ top, left });
+    }
+
     setShowReactionMenu(true);
   };
 
