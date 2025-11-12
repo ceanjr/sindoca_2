@@ -409,8 +409,8 @@ export default function MusicSection({ id }) {
         onError={() => setPlayingPreview(null)}
       />
 
-      <section id={id} className="min-h-screen px-3 sm:px-4 py-20" ref={ref}>
-        <div className="max-w-7xl mx-auto">
+      <section id={id} className="min-h-screen px-3 sm:px-4 py-20 overflow-x-hidden" ref={ref}>
+        <div className="max-w-7xl mx-auto w-full">
           {/* Header */}
           <motion.div
             initial={{ opacity: 0, y: 30 }}
@@ -620,14 +620,14 @@ export default function MusicSection({ id }) {
           {/* Track List */}
           {!loading && filteredTracks.length > 0 && (
             <>
-              <div className="grid gap-3 sm:gap-4 max-w-4xl mx-auto overflow-x-hidden">
+              <div className="grid gap-3 sm:gap-4 max-w-4xl mx-auto overflow-x-hidden w-full">
                 {filteredTracks.map((track, index) => (
                 <motion.div
                   key={track.id}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.05 }}
-                  className="flex items-center gap-2 sm:gap-4 p-3 sm:p-4 bg-white rounded-xl shadow-soft-sm hover:shadow-soft-md transition-all"
+                  className="flex items-center gap-2 sm:gap-4 p-3 sm:p-4 bg-white rounded-xl shadow-soft-sm hover:shadow-soft-md transition-all w-full max-w-full"
                 >
                   {/* Album Cover - Clickable Player */}
                   <button

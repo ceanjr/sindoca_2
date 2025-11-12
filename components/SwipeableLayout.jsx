@@ -50,7 +50,7 @@ export default function SwipeableLayout({ children }) {
   });
 
   return (
-    <div {...handlers} className="min-h-screen">
+    <div {...handlers} className="min-h-screen overflow-x-hidden w-full">
       <AnimatePresence mode="wait">
         <motion.div
           key={pathname}
@@ -62,6 +62,7 @@ export default function SwipeableLayout({ children }) {
             stiffness: 260,
             damping: 20,
           }}
+          className="w-full overflow-x-hidden"
         >
           {children}
         </motion.div>

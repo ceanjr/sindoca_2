@@ -8,7 +8,7 @@ export default function MusicaPage() {
   return (
     <PageAccessGuard pageId="musica">
       <ErrorBoundary>
-        <div className="min-h-screen">
+        <div className="min-h-screen overflow-x-hidden w-full">
           <MusicSection />
         </div>
       </ErrorBoundary>
