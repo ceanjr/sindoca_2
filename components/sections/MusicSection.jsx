@@ -621,14 +621,14 @@ export default function MusicSection({ id }) {
           {/* Track List */}
           {!loading && filteredTracks.length > 0 && (
             <>
-              <div className="grid gap-3 sm:gap-4 max-w-4xl mx-auto w-full">
+              <div className="flex flex-col gap-3 sm:gap-4 max-w-4xl mx-auto w-full">
                 {filteredTracks.map((track, index) => (
                 <motion.div
                   key={track.id}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.05 }}
-                  className="flex items-center gap-2 sm:gap-4 p-3 sm:p-4 bg-white rounded-xl shadow-soft-sm hover:shadow-soft-md transition-all w-full"
+                  className="flex items-center gap-2 sm:gap-3 p-3 sm:p-4 bg-white rounded-xl shadow-soft-sm hover:shadow-soft-md transition-all w-full min-w-0"
                 >
                   {/* Album Cover - Clickable Player */}
                   <button
@@ -636,7 +636,7 @@ export default function MusicSection({ id }) {
                       track.data?.preview_url && handlePlayPreview(track)
                     }
                     disabled={!track.data?.preview_url}
-                    className={`relative flex-shrink-0 w-12 h-12 sm:w-16 sm:h-16 bg-gray-200 rounded-lg overflow-hidden group ${
+                    className={`relative flex-shrink-0 w-14 h-14 sm:w-16 sm:h-16 bg-gray-200 rounded-lg overflow-hidden group ${
                       track.data?.preview_url
                         ? 'cursor-pointer'
                         : 'cursor-default'
@@ -646,12 +646,13 @@ export default function MusicSection({ id }) {
                         ? 'Tocar preview'
                         : 'Preview não disponível'
                     }
+                    aria-label={track.data?.preview_url ? 'Reproduzir preview da música' : 'Preview não disponível'}
                   >
                     {track.data?.album_cover ? (
                       <>
                         <img
                           src={track.data.album_cover}
-                          alt={track.title}
+                          alt={`Capa do álbum de ${track.title}`}
                           className="w-full h-full object-cover"
                           style={{ backgroundColor: '#e5e7eb' }}
                           loading="lazy"
@@ -670,29 +671,33 @@ export default function MusicSection({ id }) {
                             }`}
                           >
                             {playingPreview === track.id ? (
-                              <Pause size={24} className="text-white" />
+                              <Pause size={20} className="text-white sm:w-6 sm:h-6" />
                             ) : (
-                              <Play size={24} className="text-white" />
+                              <Play size={20} className="text-white sm:w-6 sm:h-6" />
                             )}
                           </div>
                         )}
                       </>
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
-                        <Music size={24} className="text-gray-400" />
+                        <Music size={20} className="text-gray-400 sm:w-6 sm:h-6" />
                       </div>
                     )}
                   </button>
 
-                  {/* Track Info */}
-                  <div className="flex-1 min-w-0 overflow-hidden">
-                    <MarqueeText className="font-semibold text-sm sm:text-base text-textPrimary">
-                      {track.title}
-                    </MarqueeText>
-                    <MarqueeText className="text-xs sm:text-sm text-textSecondary">
-                      {track.description}
-                    </MarqueeText>
-                    <p className="text-[10px] sm:text-xs text-textTertiary mt-1 truncate">
+                  {/* Track Info - with proper width constraints */}
+                  <div className="flex-1 min-w-0 flex flex-col gap-0.5 sm:gap-1 overflow-hidden pr-1">
+                    <div className="w-full min-w-0 overflow-hidden">
+                      <MarqueeText className="font-semibold text-sm sm:text-base text-textPrimary leading-tight">
+                        {track.title}
+                      </MarqueeText>
+                    </div>
+                    <div className="w-full min-w-0 overflow-hidden">
+                      <MarqueeText className="text-xs sm:text-sm text-textSecondary leading-tight">
+                        {track.description}
+                      </MarqueeText>
+                    </div>
+                    <p className="text-[10px] sm:text-xs text-textTertiary mt-0.5 truncate">
                       Adicionado por {track.profiles?.full_name || 'Alguém'} •{' '}
                       {formatDate(track.created_at)}
                     </p>
@@ -707,10 +712,11 @@ export default function MusicSection({ id }) {
                           openMenuId === track.id ? null : track.id
                         );
                       }}
-                      className="p-1.5 sm:p-2 rounded-full hover:bg-gray-100 text-gray-600 transition-colors"
+                      className="p-2 rounded-full hover:bg-gray-100 active:bg-gray-200 text-gray-600 transition-colors"
                       title="Mais opções"
+                      aria-label="Menu de opções"
                     >
-                      <MoreVertical size={16} className="sm:w-[18px] sm:h-[18px]" />
+                      <MoreVertical size={18} className="sm:w-5 sm:h-5" />
                     </button>
 
                     {/* Dropdown Menu */}
@@ -730,18 +736,18 @@ export default function MusicSection({ id }) {
                               handleToggleFavorite(track.id);
                               setOpenMenuId(null);
                             }}
-                            className={`w-full px-3 sm:px-4 py-2 text-left flex items-center gap-2 sm:gap-3 transition-colors ${
+                            className={`w-full px-3 sm:px-4 py-2.5 text-left flex items-center gap-2 sm:gap-3 transition-colors ${
                               track.isFavorite
                                 ? 'hover:bg-red-50 text-red-600'
                                 : 'hover:bg-pink-50 text-pink-600'
                             }`}
                           >
                             <Heart
-                              size={14}
-                              className="sm:w-4 sm:h-4 flex-shrink-0"
+                              size={16}
+                              className="flex-shrink-0"
                               fill={track.isFavorite ? 'currentColor' : 'none'}
                             />
-                            <span className="text-xs sm:text-sm font-medium truncate">
+                            <span className="text-xs sm:text-sm font-medium">
                               {track.isFavorite ? 'Desfavoritar' : 'Favoritar'}
                             </span>
                           </button>
@@ -752,11 +758,11 @@ export default function MusicSection({ id }) {
                               href={track.data.spotify_url}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="w-full px-3 sm:px-4 py-2 flex items-center gap-2 sm:gap-3 hover:bg-green-50 text-green-600 transition-colors"
+                              className="w-full px-3 sm:px-4 py-2.5 flex items-center gap-2 sm:gap-3 hover:bg-green-50 text-green-600 transition-colors"
                               onClick={() => setOpenMenuId(null)}
                             >
-                              <ExternalLink size={14} className="sm:w-4 sm:h-4 flex-shrink-0" />
-                              <span className="text-xs sm:text-sm font-medium truncate">
+                              <ExternalLink size={16} className="flex-shrink-0" />
+                              <span className="text-xs sm:text-sm font-medium">
                                 Ouvir no Spotify
                               </span>
                             </a>
@@ -769,10 +775,10 @@ export default function MusicSection({ id }) {
                                 handleRemoveTrack(track.id);
                                 setOpenMenuId(null);
                               }}
-                              className="w-full px-3 sm:px-4 py-2 text-left flex items-center gap-2 sm:gap-3 hover:bg-red-50 text-red-600 transition-colors"
+                              className="w-full px-3 sm:px-4 py-2.5 text-left flex items-center gap-2 sm:gap-3 hover:bg-red-50 text-red-600 transition-colors"
                             >
-                              <Trash2 size={14} className="sm:w-4 sm:h-4 flex-shrink-0" />
-                              <span className="text-xs sm:text-sm font-medium truncate">
+                              <Trash2 size={16} className="flex-shrink-0" />
+                              <span className="text-xs sm:text-sm font-medium">
                                 Remover
                               </span>
                             </button>

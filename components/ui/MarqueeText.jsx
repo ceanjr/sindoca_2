@@ -10,48 +10,79 @@ import React, { useRef, useEffect, useState } from 'react';
 export default function MarqueeText({
   children,
   className = '',
-  speed = 30, // pixels per second
+  speed = 40, // pixels per second
   pauseOnHover = true,
-  delay = 1000 // delay before starting animation (ms)
+  delay = 1500 // delay before starting animation (ms)
 }) {
   const [isOverflowing, setIsOverflowing] = useState(false);
   const [shouldAnimate, setShouldAnimate] = useState(false);
   const textRef = useRef(null);
   const containerRef = useRef(null);
+  const animationTimerRef = useRef(null);
 
   useEffect(() => {
     const checkOverflow = () => {
       if (textRef.current && containerRef.current) {
-        const isOverflow = textRef.current.scrollWidth > containerRef.current.clientWidth;
+        // Force a reflow to ensure accurate measurements
+        void textRef.current.offsetWidth;
+        void containerRef.current.offsetWidth;
+        
+        const textWidth = textRef.current.scrollWidth;
+        const containerWidth = containerRef.current.clientWidth;
+        const isOverflow = textWidth > containerWidth + 5; // 5px tolerance
+        
         setIsOverflowing(isOverflow);
+        setShouldAnimate(false);
+
+        // Clear any existing timer
+        if (animationTimerRef.current) {
+          clearTimeout(animationTimerRef.current);
+        }
 
         // Start animation after delay if overflowing
         if (isOverflow) {
-          const timer = setTimeout(() => {
+          animationTimerRef.current = setTimeout(() => {
             setShouldAnimate(true);
           }, delay);
-          return () => clearTimeout(timer);
         }
       }
     };
 
-    checkOverflow();
+    // Initial check with small delay to ensure render is complete
+    const initialTimer = setTimeout(checkOverflow, 100);
 
-    // Recheck on window resize
-    window.addEventListener('resize', checkOverflow);
-    return () => window.removeEventListener('resize', checkOverflow);
+    // Recheck on window resize with debounce
+    let resizeTimer;
+    const handleResize = () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(checkOverflow, 150);
+    };
+
+    window.addEventListener('resize', handleResize);
+    
+    return () => {
+      clearTimeout(initialTimer);
+      clearTimeout(resizeTimer);
+      if (animationTimerRef.current) {
+        clearTimeout(animationTimerRef.current);
+      }
+      window.removeEventListener('resize', handleResize);
+    };
   }, [children, delay]);
 
   // Calculate animation duration based on text length
   const animationDuration = isOverflowing && textRef.current
-    ? (textRef.current.scrollWidth / speed)
+    ? Math.max(textRef.current.scrollWidth / speed, 3) // minimum 3s
     : 0;
 
   return (
     <div
       ref={containerRef}
-      className={`overflow-hidden ${className}`}
-      style={{ position: 'relative' }}
+      className={`overflow-hidden w-full ${className}`}
+      style={{ 
+        position: 'relative',
+        maxWidth: '100%'
+      }}
     >
       <div
         ref={textRef}
@@ -62,16 +93,21 @@ export default function MarqueeText({
           isOverflowing && shouldAnimate
             ? {
                 display: 'inline-block',
-                paddingRight: '2rem',
+                paddingRight: '3rem',
                 animation: `marquee ${animationDuration}s linear infinite`,
+                willChange: 'transform'
               }
-            : {}
+            : {
+                display: 'block',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis'
+              }
         }
       >
         {children}
         {/* Duplicate text for seamless loop */}
         {isOverflowing && shouldAnimate && (
-          <span className="ml-8">{children}</span>
+          <span style={{ marginLeft: '3rem' }}>{children}</span>
         )}
       </div>
 
