@@ -1784,98 +1784,56 @@ async function authenticateWithBiometrics() {
 
 #### 5.1 Performance
 
-- [ ] Implementar virtualização em listas longas:
-  - [ ] Usar `@shopify/flash-list` no lugar de `FlatList`
-  - [ ] Lazy load de imagens
-- [ ] Otimizar imagens:
-  - [ ] Usar `expo-image` (caching automático)
-  - [ ] Progressive loading (blur-up)
-  - [ ] Limitar tamanho de upload (max 1920px)
-- [ ] Adicionar error boundaries:
-  - [ ] `react-native-error-boundary`
-  - [ ] Tela de erro user-friendly
-- [ ] Adicionar loading states:
-  - [ ] Skeleton screens
-  - [ ] Spinners em operações async
-- [ ] Testar performance:
-  - [ ] Flipper debugger
-  - [ ] React DevTools Profiler
+- [x] Implementar virtualização em listas longas:
+  - [x] Usar `@shopify/flash-list` no lugar de `FlatList`
+  - [x] Lazy load de imagens
+- [x] Otimizar imagens:
+  - [x] Usar `expo-image` (caching automático)
+  - [x] Progressive loading (blur-up)
+  - [x] Limitar tamanho de upload (max 1920px)
+- [x] Adicionar error boundaries:
+  - [x] `react-native-error-boundary`
+  - [x] Tela de erro user-friendly
+- [x] Adicionar loading states:
+  - [x] Skeleton screens
+  - [x] Spinners em operações async
+- [x] Testar performance:
+  - [x] Flipper debugger
+  - [x] React DevTools Profiler
 
 #### 5.2 UX/UI Nativo
 
-- [ ] Implementar Pull-to-Refresh em todas as listas
-- [ ] Adicionar Haptic Feedback em interações:
-  - [ ] Botões (Light impact)
-  - [ ] Tabs (Selection)
-  - [ ] Ações importantes (Medium/Heavy)
-- [ ] Implementar gestos nativos:
-  - [ ] Swipe to delete (mensagens, fotos)
-  - [ ] Long press para opções contextuais
-  - [ ] Double tap para favoritar
-- [ ] Adicionar transições de tela suaves
-- [ ] Implementar empty states (sem conteúdo)
-- [ ] Testar em diferentes tamanhos de tela
+- [x] Implementar Pull-to-Refresh em todas as listas
+- [x] Adicionar Haptic Feedback em interações:
+  - [x] Botões (Light impact)
+  - [x] Tabs (Selection)
+  - [x] Ações importantes (Medium/Heavy)
+- [x] Implementar gestos nativos:
+  - [x] Swipe to delete (mensagens, fotos)
+  - [x] Long press para opções contextuais
+  - [x] Double tap para favoritar
+- [x] Adicionar transições de tela suaves
+- [x] Implementar empty states (sem conteúdo)
+- [x] Testar em diferentes tamanhos de tela
 
 #### 5.3 Acessibilidade
 
-- [ ] Adicionar `accessibilityLabel` em botões
-- [ ] Adicionar `accessibilityRole` em componentes
-- [ ] Testar com VoiceOver (iOS) e TalkBack (Android)
-- [ ] Garantir contraste de cores (WCAG AA)
-- [ ] Testar navegação por teclado
+- [x] Adicionar `accessibilityLabel` em botões
+- [x] Adicionar `accessibilityRole` em componentes
+- [x] Testar com VoiceOver (iOS) e TalkBack (Android)
+- [x] Garantir contraste de cores (WCAG AA)
+- [x] Testar navegação por teclado
 
 #### 5.4 Offline Mode
 
-- [ ] Implementar detecção de conectividade:
-  - [ ] `@react-native-community/netinfo`
-- [ ] Adicionar banner de "Sem internet"
-- [ ] Cache de fotos já visualizadas (expo-image faz automático)
-- [ ] Queue de uploads pendentes:
-  - [ ] Salvar em AsyncStorage
-  - [ ] Retry automático quando online
-- [ ] Indicar status de sync (enviando, enviado, erro)
-
-#### 5.5 Onboarding
-
-- [ ] Criar tela de boas-vindas (primeira abertura)
-- [ ] Tutorial interativo:
-  - [ ] Como adicionar fotos
-  - [ ] Como enviar mensagens
-  - [ ] Como reagir
-  - [ ] Como usar Spotify
-- [ ] Pedir permissões com contexto:
-  - [ ] "Permitir notificações para saber quando seu amor reagir"
-  - [ ] "Permitir câmera para adicionar fotos"
-  - [ ] "Permitir microfone para gravar mensagens"
-
-### Fase 6: Recursos Exclusivos Nativos (Opcional, 1-2 semanas)
-
-#### 6.1 Widgets
-
-- [ ] Pesquisar libraries de widgets:
-  - [ ] iOS: Swift UI widgets (requer custom native module)
-  - [ ] Android: AppWidget via Java/Kotlin
-- [ ] Implementar widget simples:
-  - [ ] Contador de dias juntos
-  - [ ] Última foto adicionada
-  - [ ] Mensagem aleatória
-- [ ] Testar atualização automática
-
-#### 6.3 Compartilhamento Nativo
-
-- [ ] Implementar Share API:
-  - [ ] Compartilhar foto externa (WhatsApp, Instagram)
-  - [ ] Compartilhar mensagem
-  - [ ] Compartilhar música do Spotify
-- [ ] Testar com diferentes apps
-
-#### 6.5 Biometria
-
-- [ ] Implementar `expo-local-authentication`
-- [ ] Adicionar toggle nas configurações:
-  - [ ] "Proteger app com FaceID/TouchID"
-- [ ] Solicitar biometria ao abrir app
-- [ ] Fallback para senha
+- [x] Implementar detecção de conectividade:
+  - [x] `@react-native-community/netinfo`
+- [x] Adicionar banner de "Sem internet"
+- [x] Cache de fotos já visualizadas (expo-image faz automático)
+- [x] Queue de uploads pendentes:
+  - [x] Salvar em AsyncStorage
+  - [x] Retry automático quando online
+- [x] Indicar status de sync (enviando, enviado, erro)
 
 ### Fase 7: Build e Distribuição (1 semana)
 
@@ -1911,31 +1869,20 @@ async function authenticateWithBiometrics() {
 
 #### 7.3 Build iOS (Escolher uma opção)
 
-**Opção A: TestFlight** (requer Apple Developer $99/ano)
+✅ **AltStore** (100% gratuita, sem conta Apple Developer paga)
 
-- [ ] Criar Apple Developer Account
-- [ ] Configurar App ID no Apple Developer Portal
-- [ ] Configurar Push Notification entitlement
-- [ ] Build iOS:
-  - [ ] `eas build --platform ios --profile production`
-- [ ] Submit para TestFlight:
-  - [ ] `eas submit --platform ios`
-- [ ] Convidar tester via email (TestFlight)
-
-**Opção B: Adhoc** (gratuito, até 100 devices)
-
-- [ ] Obter UDID do iPhone:
-  - [ ] `eas device:create`
-- [ ] Adicionar UDID ao perfil de provisioning
-- [ ] Build adhoc:
-  - [ ] `eas build --platform ios --profile preview`
-- [ ] Instalar via link de download
-
-**Opção C: Expo Go** (apenas para desenvolvimento)
-
-- [ ] `npx expo start`
-- [ ] Escanear QR code no app Expo Go
-- [ ] **Limitação**: não funciona com Firebase/Push nativo
+- [ ] Criar **Apple ID pessoal** (se ainda não tiver)
+  - ⚙️ Se usar 2FA, gerar **App-Specific Password** em [appleid.apple.com](https://appleid.apple.com/)
+- [ ] Certificar que o projeto **tem o bundleIdentifier fixo** (ex: `"com.seunome.app"`)
+- [ ] Build iOS `.ipa` (usando EAS local ou Xcode):
+  - [ ] `eas build --platform ios --profile development --local`  
+         _(ou usar `expo run:ios` no Xcode e exportar o .ipa manualmente)_
+- [ ] Localizar o arquivo `.ipa` gerado (ex: `dist/*.ipa`)
+- [ ] Instalar o **AltServer** no computador ([altstore.io](https://altstore.io))
+- [ ] Conectar o iPhone via USB e instalar **AltStore** nele
+- [ ] No AltStore (no iPhone), abrir aba **My Apps → + → selecionar o .ipa**
+- [ ] Confirmar a instalação e **confiar no perfil** em  
+       **Ajustes → Geral → Gestão de Dispositivo**
 
 #### 7.4 Configurar OTA Updates
 
@@ -1944,7 +1891,7 @@ async function authenticateWithBiometrics() {
 - [ ] Testar update:
   - [ ] Fazer mudança no código
   - [ ] `eas update --branch production --message "Fix bug"`
-  - [ ] Abrir app e verificar update
+  - [ ] Abrir app instalado via AltStore e verificar se atualiza
 
 #### 7.5 Teste Completo em Produção
 
