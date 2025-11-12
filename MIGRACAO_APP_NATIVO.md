@@ -1839,16 +1839,31 @@ async function authenticateWithBiometrics() {
 
 #### 7.1 Preparação para Build
 
-- [ ] Configurar ícone do app (1024x1024 PNG)
-- [ ] Configurar splash screen (2732x2732 PNG)
-- [ ] Definir versão (1.0.0) e build number (1)
-- [ ] Configurar `app.json`:
-  - [ ] `name`, `slug`, `description`
-  - [ ] `bundleIdentifier` (iOS)
-  - [ ] `package` (Android)
-  - [ ] `permissions` (câmera, microfone, notificações)
-  - [ ] `scheme` para deep linking
-- [ ] Revisar `.env` (remover secrets de development)
+- [x] Configurar ícone do app (1024x1024 PNG)
+- [x] Configurar splash screen (2732x2732 PNG)
+- [x] Definir versão (1.0.0) e build number (1)
+- [x] Configurar `app.json`:
+  - [x] `name`, `slug`, `description`
+  - [x] `bundleIdentifier` (iOS)
+  - [x] `package` (Android)
+  - [x] `permissions` (câmera, microfone, notificações)
+  - [x] `scheme` para deep linking
+  - [x] OTA updates configurado
+  - [x] Runtime version policy
+- [x] Configurar `eas.json`:
+  - [x] Perfil `development`
+  - [x] Perfil `preview` (APK)
+  - [x] Perfil `production`
+  - [x] Channels (preview/production)
+- [x] Revisar `.env` (remover secrets de development)
+  - [x] `.env.example` criado
+  - [x] `.gitignore` atualizado
+- [x] Assets preparados:
+  - [x] Icon, splash, adaptive-icon
+  - [x] Notification icon
+  - [x] Favicon
+- [x] Documentação de build criada (`BUILD_GUIDE.md`)
+- [x] TypeScript sem erros (`npx tsc --noEmit`)
 - [ ] Testar build local primeiro:
   - [ ] `npx expo run:android`
   - [ ] `npx expo run:ios`
