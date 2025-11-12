@@ -22,7 +22,9 @@ export default function PhotoMenu({
   const { myReaction } = useReactions(photo.id);
   const [isOpen, setIsOpen] = useState(false);
   const [showReactionMenu, setShowReactionMenu] = useState(false);
+  const [menuCoords, setMenuCoords] = useState({ top: 0, left: 0 });
   const menuRef = useRef(null);
+  const buttonRef = useRef(null);
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -60,13 +62,30 @@ export default function PhotoMenu({
     e.stopPropagation();
     e.preventDefault();
     const newState = !isOpen;
-    setIsOpen(newState);
-    setShowReactionMenu(false);
 
-    // Vibrate when opening menu
-    if (newState) {
+    // Calculate menu position when opening
+    if (newState && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      const menuWidth = 160;
+      const menuHeight = 100; // Approximate
+
+      let top = rect.bottom + 8; // 8px gap
+      let left = rect.left;
+
+      // Adjust if menu goes off-screen
+      if (left + menuWidth > window.innerWidth) {
+        left = window.innerWidth - menuWidth - 8;
+      }
+      if (top + menuHeight > window.innerHeight) {
+        top = rect.top - menuHeight - 8;
+      }
+
+      setMenuCoords({ top, left });
       triggerVibration(30);
     }
+
+    setIsOpen(newState);
+    setShowReactionMenu(false);
   };
 
   const handleFavorite = (e) => {
@@ -80,6 +99,14 @@ export default function PhotoMenu({
   const handleReact = (e) => {
     e.stopPropagation();
     e.preventDefault();
+
+    // Check if user can react
+    if (!canReact) {
+      console.log('[PhotoMenu] User cannot react to own content');
+      setIsOpen(false);
+      return;
+    }
+
     triggerVibration(30);
     setShowReactionMenu(true);
   };
@@ -114,29 +141,15 @@ export default function PhotoMenu({
 
   const canReact = user && photo.author_id && photo.author_id !== user.id;
 
-  // Determine menu position classes
-  const getPositionClasses = () => {
-    switch (position) {
-      case 'bottom-right':
-        return 'top-full mt-2 right-0';
-      case 'top-left':
-        return 'bottom-full mb-2 left-0';
-      case 'top-right':
-        return 'bottom-full mb-2 right-0';
-      case 'bottom-left':
-      default:
-        return 'top-full mt-2 left-0';
-    }
-  };
-
   const buttonClasses = variant === 'desktop'
-    ? 'p-2 rounded-full backdrop-blur-md transition-colors bg-white/30 text-white hover:bg-white/50'
-    : 'p-2 rounded-full backdrop-blur-md shadow-lg transition-colors bg-white/80 hover:bg-white text-gray-700';
+    ? 'w-7 h-7 flex items-center justify-center rounded-full backdrop-blur-md transition-colors bg-white/30 text-white hover:bg-white/50'
+    : 'w-7 h-7 flex items-center justify-center rounded-full backdrop-blur-md shadow-lg transition-colors bg-white/80 hover:bg-white text-gray-700';
 
   return (
-    <div ref={menuRef} className="relative">
-      {/* Menu Button */}
+    <>
+      {/* Menu Button - 28x28px */}
       <motion.button
+        ref={buttonRef}
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.9 }}
         onClick={handleToggle}
@@ -145,18 +158,23 @@ export default function PhotoMenu({
         className={buttonClasses}
         title="Opções"
       >
-        <MoreVertical size={variant === 'desktop' ? 18 : 20} />
+        <MoreVertical size={16} />
       </motion.button>
 
-      {/* Dropdown Menu */}
+      {/* Dropdown Menu - Fixed positioning to avoid clipping */}
       <AnimatePresence>
         {isOpen && !showReactionMenu && (
           <motion.div
+            ref={menuRef}
             initial={{ opacity: 0, scale: 0.95, y: -10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: -10 }}
             transition={{ duration: 0.15 }}
-            className={`absolute ${getPositionClasses()} z-50 bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden min-w-[200px]`}
+            className="fixed z-[9999] bg-white rounded-lg shadow-2xl border border-gray-200 overflow-hidden min-w-[160px]"
+            style={{
+              top: `${menuCoords.top}px`,
+              left: `${menuCoords.left}px`,
+            }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Favoritar */}
@@ -168,39 +186,37 @@ export default function PhotoMenu({
                 e.preventDefault();
                 handleFavorite(e);
               }}
-              className={`w-full px-4 py-3 flex items-center gap-3 transition-colors ${
+              className={`w-full px-3 py-2 flex items-center gap-2 transition-colors text-left ${
                 photo.favorite
                   ? 'bg-primary/10 text-primary hover:bg-primary/20'
                   : 'hover:bg-gray-50 text-gray-700'
               }`}
             >
               <Heart
-                size={18}
+                size={16}
                 fill={photo.favorite ? 'currentColor' : 'none'}
               />
               <span className="font-medium text-sm">
-                {photo.favorite ? 'Remover favorito' : 'Favoritar'}
+                {photo.favorite ? 'Desfavoritar' : 'Favoritar'}
               </span>
             </button>
 
-            {/* Reagir - only show if user can react */}
-            {canReact && (
-              <button
-                onClick={handleReact}
-                onTouchStart={(e) => e.stopPropagation()}
-                onTouchEnd={(e) => {
-                  e.stopPropagation();
-                  e.preventDefault();
-                  handleReact(e);
-                }}
-                className="w-full px-4 py-3 flex items-center gap-3 hover:bg-gray-50 text-gray-700 transition-colors border-t border-gray-100"
-              >
-                <Smile size={18} />
-                <span className="font-medium text-sm">
-                  {myReaction ? `Mudar reação ${myReaction}` : 'Reagir'}
-                </span>
-              </button>
-            )}
+            {/* Reagir - always show, check canReact inside */}
+            <button
+              onClick={handleReact}
+              onTouchStart={(e) => e.stopPropagation()}
+              onTouchEnd={(e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                handleReact(e);
+              }}
+              className="w-full px-3 py-2 flex items-center gap-2 hover:bg-gray-50 text-gray-700 transition-colors border-t border-gray-100 text-left"
+            >
+              <Smile size={16} />
+              <span className="font-medium text-sm">
+                {myReaction ? `Mudar reação ${myReaction}` : 'Reagir'}
+              </span>
+            </button>
           </motion.div>
         )}
 
@@ -211,7 +227,11 @@ export default function PhotoMenu({
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
             transition={{ duration: 0.15 }}
-            className={`absolute ${getPositionClasses()} z-50`}
+            className="fixed z-[9999]"
+            style={{
+              top: `${menuCoords.top}px`,
+              left: `${menuCoords.left}px`,
+            }}
             onClick={(e) => e.stopPropagation()}
           >
             <ReactionMenu
@@ -224,6 +244,6 @@ export default function PhotoMenu({
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </>
   );
 }
