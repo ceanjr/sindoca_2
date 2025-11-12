@@ -88,17 +88,18 @@ export default function ReactableContent({
         menuJustOpened.current = true;
 
         // Strong haptic feedback when menu opens
-        // Try multiple patterns for better compatibility
-        if (navigator.vibrate) {
-          // Stronger, more noticeable pattern
-          try {
-            navigator.vibrate([100]); // Single strong vibration
-            console.log('[ReactableContent] Vibration triggered: 100ms');
-          } catch (err) {
-            console.log('[ReactableContent] Vibration error:', err);
+        // The Vibration API works in mobile browsers, not just PWA
+        try {
+          if ('vibrate' in navigator) {
+            const vibrated = navigator.vibrate(100); // Single strong vibration (100ms)
+            console.log('[ReactableContent] Vibration API called, result:', vibrated);
+            console.log('[ReactableContent] User agent:', navigator.userAgent);
+          } else {
+            console.log('[ReactableContent] Vibration API not available');
+            console.log('[ReactableContent] User agent:', navigator.userAgent);
           }
-        } else {
-          console.log('[ReactableContent] Vibration not supported');
+        } catch (err) {
+          console.error('[ReactableContent] Vibration error:', err);
         }
 
         console.log('[ReactableContent] Menu opened via long press');

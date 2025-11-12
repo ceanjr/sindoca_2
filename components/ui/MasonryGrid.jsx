@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Heart, Maximize2, Trash2, CheckCircle, ImageIcon } from 'lucide-react';
 import ReactableContent from './ReactableContent';
 import ReactionDisplay from './ReactionDisplay';
+import PhotoMenu from './PhotoMenu';
 
 /**
  * Componente Masonry Grid (estilo Pinterest)
@@ -326,24 +327,13 @@ const MasonryItem = React.memo(function MasonryItem({
                   className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"
                 >
                   <div className="absolute top-3 right-3 flex gap-2">
-                    <motion.button
-                      whileHover={{ scale: 1.1 }}
-                      whileTap={{ scale: 0.9 }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onToggleFavorite(photo.id);
-                      }}
-                      className={`p-2 rounded-full backdrop-blur-md transition-colors ${
-                        photo.favorite
-                          ? 'bg-primary text-white'
-                          : 'bg-white/30 text-white hover:bg-white/50'
-                      }`}
-                    >
-                      <Heart
-                        size={18}
-                        fill={photo.favorite ? 'currentColor' : 'none'}
-                      />
-                    </motion.button>
+                    {/* Photo Menu (3 dots) - Desktop */}
+                    <PhotoMenu
+                      photo={photo}
+                      onToggleFavorite={onToggleFavorite}
+                      position="bottom-right"
+                      variant="desktop"
+                    />
 
                     <motion.button
                       whileHover={{ scale: 1.1 }}
@@ -381,7 +371,7 @@ const MasonryItem = React.memo(function MasonryItem({
             </>
           )}
 
-          {/* Selection Indicator or Favorite Button - Mobile */}
+          {/* Selection Indicator or Menu - Mobile */}
           {isMobile && (
             <>
               {isDeleteMode ? (
@@ -398,32 +388,14 @@ const MasonryItem = React.memo(function MasonryItem({
                 </motion.div>
               ) : (
                 <>
-                  {/* Favorite button */}
-                  <motion.button
-                    whileTap={{ scale: 0.9 }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onToggleFavorite(photo.id);
-                    }}
-                    onTouchStart={(e) => {
-                      e.stopPropagation();
-                    }}
-                    onTouchEnd={(e) => {
-                      e.stopPropagation();
-                      e.preventDefault();
-                      onToggleFavorite(photo.id);
-                    }}
-                    className={`absolute top-3 right-3 z-10 p-2 rounded-full backdrop-blur-md shadow-lg transition-colors ${
-                      photo.favorite
-                        ? 'bg-primary text-white'
-                        : 'bg-white/80 text-gray-700'
-                    }`}
-                  >
-                    <Heart
-                      size={20}
-                      fill={photo.favorite ? 'currentColor' : 'none'}
+                  {/* Photo Menu (3 dots) */}
+                  <div className="absolute top-3 right-3 z-10">
+                    <PhotoMenu
+                      photo={photo}
+                      onToggleFavorite={onToggleFavorite}
+                      position="bottom-right"
                     />
-                  </motion.button>
+                  </div>
                   {/* Avatars of who favorited - Mobile */}
                   {photo.isFavoritedByAnyone && (
                     <div className="absolute top-3 left-3 flex gap-1 z-10">
