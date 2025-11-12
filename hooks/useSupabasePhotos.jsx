@@ -177,6 +177,7 @@ export function useSupabasePhotos() {
           caption: photo.description || '',
           category: photo.category || 'all',
           created_at: photo.created_at,
+          author_id: photo.author_id, // ID do usuário que adicionou a foto
           favorite: favoritesMap[userRef.current?.id] || false,
           isFavoritedByAnyone: favoritedBy.length > 0,
           favoritedBy: favoritedBy,
