@@ -14,6 +14,9 @@ export default function ReactionDisplay({ contentId, className = '' }) {
     return null;
   }
 
+  // Detect mobile
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+
   return (
     <div className={`flex items-center gap-1 flex-wrap ${className}`}>
       {Object.entries(reactionCounts).map(([emoji, count]) => (
@@ -22,9 +25,17 @@ export default function ReactionDisplay({ contentId, className = '' }) {
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
           exit={{ scale: 0 }}
-          className="bg-white/90 backdrop-blur-sm rounded-full px-1.5 py-0.5 flex items-center shadow-sm border border-gray-200"
+          className={`bg-white/90 backdrop-blur-sm rounded-full flex items-center shadow-sm border border-gray-200 ${
+            isMobile
+              ? 'px-1 py-0.5'  // Mobile: mais compacto
+              : 'px-1.5 py-0.5' // Desktop
+          }`}
         >
-          <span className="text-base leading-none">{emoji}</span>
+          <span className={`leading-none ${
+            isMobile
+              ? 'text-sm'   // Mobile: menor
+              : 'text-base' // Desktop
+          }`}>{emoji}</span>
         </motion.div>
       ))}
     </div>
