@@ -110,15 +110,26 @@ export default function ReactableContent({
         const position = spaceBelow >= menuHeight ? 'bottom' : 'top';
         setMenuPosition(position);
 
-        // Calculate horizontal position to keep menu on screen
-        let left = rect.left;
-        if (left + menuWidth > window.innerWidth) {
-          // Menu would go off right edge, align to right
-          left = window.innerWidth - menuWidth - 8;
-        }
-        if (left < 8) {
-          // Menu would go off left edge
-          left = 8;
+        // Calculate horizontal position
+        // Check if element is more on right or left side of screen
+        const elementCenter = rect.left + (rect.width / 2);
+        const screenCenter = window.innerWidth / 2;
+
+        let left;
+        if (elementCenter > screenCenter) {
+          // Element on right side - align menu to right edge of element
+          left = rect.right - menuWidth;
+          // Ensure menu doesn't go off left edge
+          if (left < 8) {
+            left = 8;
+          }
+        } else {
+          // Element on left side - align menu to left edge of element
+          left = rect.left;
+          // Ensure menu doesn't go off right edge
+          if (left + menuWidth > window.innerWidth - 8) {
+            left = window.innerWidth - menuWidth - 8;
+          }
         }
 
         let top = position === 'bottom' ? rect.bottom + 8 : rect.top - menuHeight - 8;
@@ -181,15 +192,26 @@ export default function ReactableContent({
         const position = spaceBelow >= menuHeight ? 'bottom' : 'top';
         setMenuPosition(position);
 
-        // Calculate horizontal position to keep menu on screen
-        let left = rect.left;
-        if (left + menuWidth > window.innerWidth) {
-          // Menu would go off right edge, align to right
-          left = window.innerWidth - menuWidth - 8;
-        }
-        if (left < 8) {
-          // Menu would go off left edge
-          left = 8;
+        // Calculate horizontal position
+        // Check if element is more on right or left side of screen
+        const elementCenter = rect.left + (rect.width / 2);
+        const screenCenter = window.innerWidth / 2;
+
+        let left;
+        if (elementCenter > screenCenter) {
+          // Element on right side - align menu to right edge of element
+          left = rect.right - menuWidth;
+          // Ensure menu doesn't go off left edge
+          if (left < 8) {
+            left = 8;
+          }
+        } else {
+          // Element on left side - align menu to left edge of element
+          left = rect.left;
+          // Ensure menu doesn't go off right edge
+          if (left + menuWidth > window.innerWidth - 8) {
+            left = window.innerWidth - menuWidth - 8;
+          }
         }
 
         let top = position === 'bottom' ? rect.bottom + 8 : rect.top - menuHeight - 8;
@@ -276,16 +298,7 @@ export default function ReactableContent({
       }}
     >
       {children}
-      
-      {/* Reaction indicator */}
-      {myReaction && !isMenuOpen && (
-        <div className="absolute top-2 right-2 z-10 pointer-events-none">
-          <div className="bg-white rounded-full shadow-md w-8 h-8 flex items-center justify-center text-lg border-2 border-primary">
-            {myReaction}
-          </div>
-        </div>
-      )}
-      
+
       {/* Reaction Menu - Fixed positioning */}
       {isMenuOpen && (
         <div
