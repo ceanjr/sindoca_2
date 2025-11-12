@@ -62,6 +62,7 @@ export default function ThinkingOfYouWidget({
   const [partnerThoughts, setPartnerThoughts] = useState<{
     count: number;
     lastMessage?: string;
+    lastReceivedAt?: Date;
   }>({ count: 0 });
 
   // Check partner's thoughts for today
@@ -87,6 +88,7 @@ export default function ThinkingOfYouWidget({
         setPartnerThoughts({
           count: data.length,
           lastMessage: data[0].description, // Most recent message
+          lastReceivedAt: new Date(data[0].created_at),
         });
       } else {
         setPartnerThoughts({ count: 0 });
@@ -140,6 +142,7 @@ export default function ThinkingOfYouWidget({
               return {
                 count: newCount,
                 lastMessage: payload.new.description,
+                lastReceivedAt: new Date(payload.new.created_at),
               };
             });
           }
@@ -344,6 +347,14 @@ export default function ThinkingOfYouWidget({
     );
   }
 
+  // Format time to display
+  const formatTime = (date: Date) => {
+    return date.toLocaleTimeString('pt-BR', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
   // Get button text based on partner
   const getButtonText = () => {
     if (!profile) return ['Pensando...', ''];
@@ -454,11 +465,21 @@ export default function ThinkingOfYouWidget({
             <p className="text-textSecondary text-sm leading-relaxed italic">
               "{partnerThoughts.lastMessage}"
             </p>
-            {partnerThoughts.count > 1 && (
-              <p className="text-textTertiary text-xs mt-2">
-                Última de {partnerThoughts.count} mensagens hoje
-              </p>
-            )}
+            <div className="flex items-center gap-2 mt-2">
+              {partnerThoughts.lastReceivedAt && (
+                <p className="text-textTertiary text-xs">
+                  Recebido às {formatTime(partnerThoughts.lastReceivedAt)}
+                </p>
+              )}
+              {partnerThoughts.count > 1 && (
+                <>
+                  <span className="text-textTertiary text-xs">•</span>
+                  <p className="text-textTertiary text-xs">
+                    {partnerThoughts.count} mensagens hoje
+                  </p>
+                </>
+              )}
+            </div>
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-center py-4">
