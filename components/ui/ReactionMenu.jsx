@@ -125,13 +125,21 @@ export default function ReactionMenu({
 
   const handleShowInput = () => {
     setShowEmojiInput(true);
+    // Small delay to ensure input is rendered
     setTimeout(() => {
-      inputRef.current?.focus();
-      // Trigger click to open emoji keyboard on mobile
-      if (inputRef.current && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
-        inputRef.current.click();
+      if (inputRef.current) {
+        inputRef.current.focus();
+        // Try to open emoji keyboard on mobile
+        if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+          // Trigger touch event to simulate user interaction
+          const touchEvent = new TouchEvent('touchstart', {
+            bubbles: true,
+            cancelable: true,
+          });
+          inputRef.current.dispatchEvent(touchEvent);
+        }
       }
-    }, 100);
+    }, 50);
   };
 
   const menuVariants = {
@@ -250,7 +258,6 @@ export default function ReactionMenu({
             <input
               ref={inputRef}
               type="text"
-              inputMode="none"
               value={newEmoji}
               onChange={handleEmojiInputChange}
               onKeyDown={(e) => {

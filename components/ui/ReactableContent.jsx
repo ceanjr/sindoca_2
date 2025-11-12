@@ -182,9 +182,14 @@ export default function ReactableContent({
     }
   };
 
-  // Desktop: Hover handlers
+  // Desktop: Hover handlers (only on desktop, not mobile)
   const handleMouseEnter = () => {
     if (!canReact) return;
+    
+    // Skip hover behavior on touch devices
+    if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
+      return;
+    }
 
     console.log('[ReactableContent] Mouse enter - starting 1s timer');
 

@@ -25,17 +25,17 @@ export default function ReactionDisplay({ contentId, className = '' }) {
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
           exit={{ scale: 0 }}
-          className={`bg-white/90 backdrop-blur-sm rounded-full flex items-center shadow-sm border border-gray-200 ${
+          className={`bg-white/95 backdrop-blur-md rounded-full flex items-center border border-white/50 ${
             isMobile
-              ? 'px-2 py-1' // Mobile: mais compacto
-              : 'px-1.5 py-0.5' // Desktop
-          } before:content-[''] before:absolute before:inset-0 before:bg-[#FF6B9D]/10 before:rounded-full before:pointer-events-none`}
+              ? 'px-1.5 py-1' // Mobile: mais compacto
+              : 'px-2 py-1' // Desktop
+          } before:content-[''] before:absolute before:inset-0 before:bg-primary/10 before:rounded-full before:pointer-events-none`}
         >
           <span
-            className={`leading-none opacity-90 ${
+            className={`leading-none ${
               isMobile
-                ? 'text-xs' // Mobile: menor
-                : 'text-base' // Desktop
+                ? 'text-xs' // Mobile: tamanho normal para boa visibilidade
+                : 'text-base' // Desktop: um pouco maior
             }`}
           >
             {emoji}

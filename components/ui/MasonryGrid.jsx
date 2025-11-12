@@ -424,14 +424,14 @@ const MasonryItem = React.memo(function MasonryItem({
               )}
             </>
           )}
+
+          {/* Reaction Display - Overlay on bottom left (only if not in delete mode) */}
+          {!isDeleteMode && (
+            <div className="absolute bottom-3 left-3 z-10">
+              <ReactionDisplay contentId={photo.id} />
+            </div>
+          )}
         </div>
-        
-        {/* Reaction Display - Show below image if not in delete mode */}
-        {!isDeleteMode && (
-          <div className="mt-2 px-1">
-            <ReactionDisplay contentId={photo.id} />
-          </div>
-        )}
         </motion.div>
       </ReactableContent>
     </>
