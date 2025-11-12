@@ -6,27 +6,35 @@ import { createClient } from '@/lib/supabase/server';
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('[Subscribe] POST request received');
     const supabase = await createClient();
 
     // Get authenticated user
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 
     if (authError || !user) {
+      console.error('[Subscribe] Auth error:', authError?.message || 'No user');
       return NextResponse.json(
-        { error: 'Unauthorized' },
+        { error: 'Unauthorized', details: authError?.message },
         { status: 401 }
       );
     }
+
+    console.log('[Subscribe] Authenticated user:', user.id, user.email);
 
     // Get subscription data from request
     const { subscription } = await request.json();
 
     if (!subscription || !subscription.endpoint) {
+      console.error('[Subscribe] Invalid subscription data:', subscription);
       return NextResponse.json(
         { error: 'Invalid subscription data' },
         { status: 400 }
       );
     }
+
+    console.log('[Subscribe] Saving subscription for user:', user.id);
+    console.log('[Subscribe] Endpoint:', subscription.endpoint?.substring(0, 50) + '...');
 
     // Save or update subscription in database
     const { data, error } = await supabase
@@ -42,12 +50,14 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) {
-      console.error('Error saving subscription:', error);
+      console.error('[Subscribe] Database error:', error);
       return NextResponse.json(
-        { error: 'Failed to save subscription' },
+        { error: 'Failed to save subscription', details: error.message },
         { status: 500 }
       );
     }
+
+    console.log('[Subscribe] Subscription saved successfully:', data.id);
 
     return NextResponse.json({
       success: true,

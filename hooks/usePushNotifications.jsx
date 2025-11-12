@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { toast } from 'sonner'
 import { logger } from '@/lib/utils/logger'
 import { fetchJSON } from '@/lib/utils/fetchWithTimeout'
+import { config } from '@/lib/config'
 
 /**
  * Hook para gerenciar Push Notifications
@@ -94,22 +95,32 @@ export function usePushNotifications() {
       let sub = await registration.pushManager.getSubscription()
 
       if (!sub) {
-        // Get VAPID public key from environment
-        const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
+        // Get VAPID public key from config
+        const vapidPublicKey = config.vapidPublicKey
 
         if (!vapidPublicKey) {
-          console.error('VAPID public key not configured')
+          console.error('[Push] VAPID public key not configured')
+          logger.error('[Push] VAPID key missing:', { config })
           return null
         }
+
+        logger.log('[Push] Creating subscription with VAPID key:', vapidPublicKey.substring(0, 20) + '...')
 
         // Create new subscription
         sub = await registration.pushManager.subscribe({
           userVisibleOnly: true,
           applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
         }).catch((error) => {
-          console.error('Error creating push subscription:', error)
+          console.error('[Push] Error creating push subscription:', error)
+          logger.error('[Push] Subscription error details:', error)
           return null
         })
+
+        if (sub) {
+          logger.log('[Push] Subscription created successfully!')
+        } else {
+          logger.error('[Push] Failed to create subscription')
+        }
       }
 
       if (sub) {
@@ -117,7 +128,8 @@ export function usePushNotifications() {
 
         // Send subscription to backend
         try {
-          await fetchJSON('/api/push/subscribe', {
+          logger.log('[Push] Saving subscription to database...')
+          const result = await fetchJSON('/api/push/subscribe', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             timeout: 10000, // 10 seconds timeout
@@ -125,8 +137,14 @@ export function usePushNotifications() {
               subscription: sub.toJSON(),
             }),
           })
+          logger.log('[Push] Subscription saved successfully:', result)
         } catch (error) {
-          console.error('Error saving subscription:', error)
+          console.error('[Push] Error saving subscription:', error)
+          logger.error('[Push] Failed to save subscription to database:', error)
+          // Show error to user
+          toast.error('Erro ao salvar notificações', {
+            description: 'Não foi possível registrar as notificações. Tente novamente mais tarde.',
+          })
         }
       }
 
