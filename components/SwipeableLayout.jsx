@@ -21,6 +21,9 @@ export default function SwipeableLayout({ children }) {
 
   const currentIndex = routes.indexOf(pathname);
 
+  // Disable swipe on /musica page to avoid conflicts with horizontal scrolling
+  const isSwipeDisabled = pathname === '/musica';
+
   const navigateNext = () => {
     if (currentIndex < routes.length - 1) {
       // Haptic feedback
@@ -42,8 +45,8 @@ export default function SwipeableLayout({ children }) {
   };
 
   const handlers = useSwipeable({
-    onSwipedLeft: () => navigateNext(),
-    onSwipedRight: () => navigatePrev(),
+    onSwipedLeft: () => !isSwipeDisabled && navigateNext(),
+    onSwipedRight: () => !isSwipeDisabled && navigatePrev(),
     trackMouse: false, // Desabilitar para mouse, apenas touch
     preventScrollOnSwipe: false,
     delta: 50, // Minimum swipe distance

@@ -22,6 +22,7 @@ import {
 import Button from '../ui/Button';
 import Badge from '../ui/Badge';
 import ConfirmDialog from '../ui/ConfirmDialog';
+import MarqueeText from '../ui/MarqueeText';
 import { useRealtimePlaylist } from '@/hooks/useRealtimePlaylist';
 import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '@/lib/supabase/client';
@@ -409,7 +410,7 @@ export default function MusicSection({ id }) {
         onError={() => setPlayingPreview(null)}
       />
 
-      <section id={id} className="min-h-screen px-3 sm:px-4 py-20 overflow-x-hidden" ref={ref}>
+      <section id={id} className="min-h-screen px-3 sm:px-4 py-20" ref={ref}>
         <div className="max-w-7xl mx-auto w-full">
           {/* Header */}
           <motion.div
@@ -620,14 +621,14 @@ export default function MusicSection({ id }) {
           {/* Track List */}
           {!loading && filteredTracks.length > 0 && (
             <>
-              <div className="grid gap-3 sm:gap-4 max-w-4xl mx-auto overflow-x-hidden w-full">
+              <div className="grid gap-3 sm:gap-4 max-w-4xl mx-auto w-full">
                 {filteredTracks.map((track, index) => (
                 <motion.div
                   key={track.id}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.05 }}
-                  className="flex items-center gap-2 sm:gap-4 p-3 sm:p-4 bg-white rounded-xl shadow-soft-sm hover:shadow-soft-md transition-all w-full max-w-full"
+                  className="flex items-center gap-2 sm:gap-4 p-3 sm:p-4 bg-white rounded-xl shadow-soft-sm hover:shadow-soft-md transition-all w-full"
                 >
                   {/* Album Cover - Clickable Player */}
                   <button
@@ -685,12 +686,12 @@ export default function MusicSection({ id }) {
 
                   {/* Track Info */}
                   <div className="flex-1 min-w-0 overflow-hidden">
-                    <h4 className="font-semibold text-sm sm:text-base text-textPrimary truncate">
+                    <MarqueeText className="font-semibold text-sm sm:text-base text-textPrimary">
                       {track.title}
-                    </h4>
-                    <p className="text-xs sm:text-sm text-textSecondary truncate">
+                    </MarqueeText>
+                    <MarqueeText className="text-xs sm:text-sm text-textSecondary">
                       {track.description}
-                    </p>
+                    </MarqueeText>
                     <p className="text-[10px] sm:text-xs text-textTertiary mt-1 truncate">
                       Adicionado por {track.profiles?.full_name || 'Alguém'} •{' '}
                       {formatDate(track.created_at)}
