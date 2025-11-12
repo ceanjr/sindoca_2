@@ -3,6 +3,8 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Heart, Maximize2, Trash2, CheckCircle, ImageIcon } from 'lucide-react';
+import ReactableContent from './ReactableContent';
+import ReactionDisplay from './ReactionDisplay';
 
 /**
  * Componente Masonry Grid (estilo Pinterest)
@@ -120,12 +122,22 @@ const MasonryItem = React.memo(function MasonryItem({
     };
     hasMoved.current = false;
     touchHandled.current = false;
+    
+    // Don't stopPropagation - let ReactableContent also receive this event
   };
 
   const handleTouchEnd = (e) => {
     if (!isMobile) return;
 
     const touchDuration = Date.now() - (touchStartTime.current || 0);
+    console.log('[MasonryItem] Touch end - duration:', touchDuration, 'ms');
+
+    // If it was a long press (>=500ms), don't handle it here
+    // Let ReactableContent handle reactions
+    if (touchDuration >= 500) {
+      console.log('[MasonryItem] Long press detected - letting ReactableContent handle');
+      return; // Let reaction menu handle this
+    }
 
     // In delete mode, toggle selection
     if (isDeleteMode && touchDuration < 600 && !hasMoved.current) {
@@ -142,10 +154,10 @@ const MasonryItem = React.memo(function MasonryItem({
     }
 
     // Only open photo if:
-    // 1. Quick tap (< 600ms)
+    // 1. Quick tap (< 600ms but < 500ms to avoid conflict with reactions)
     // 2. Didn't move (not scrolling)
     // 3. Not in delete mode
-    if (touchDuration < 600 && !hasMoved.current && !isDeleteMode) {
+    if (touchDuration < 500 && !hasMoved.current && !isDeleteMode) {
       e.preventDefault();
       e.stopPropagation();
       touchHandled.current = true;
@@ -171,36 +183,44 @@ const MasonryItem = React.memo(function MasonryItem({
     }
   };
 
-  // Handle click/tap in delete mode
+  // Handle click/tap
   const handlePhotoInteraction = (e) => {
-    // Prevent click if touch was already handled (mobile)
-    if (touchHandled.current) {
-      e.preventDefault();
-      e.stopPropagation();
+    // In delete mode, toggle selection
+    if (isDeleteMode) {
+      onToggleSelection(photo.id);
       return;
     }
 
-    if (isDeleteMode) {
-      onToggleSelection(photo.id);
-    } else if (!isMobile) {
-      onPhotoClick(photo);
-    }
+    // Open photo on click (both desktop and mobile)
+    // ReactableContent will prevent this if menu was opened via long press
+    onPhotoClick(photo);
   };
 
   return (
     <>
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: imageLoaded ? 1 : 0.3, y: 0 }}
-        transition={{ duration: 0.4, delay }}
-        className="relative group cursor-pointer"
-        onMouseEnter={() => !isMobile && !isDeleteMode && setIsHovered(true)}
-        onMouseLeave={() => !isMobile && setIsHovered(false)}
-        onClick={handlePhotoInteraction}
-        onTouchStart={handleTouchStart}
-        onTouchEnd={handleTouchEnd}
-        onTouchMove={handleTouchMove}
+      <ReactableContent
+        contentId={photo.id}
+        contentType="photo"
+        contentTitle={photo.caption}
+        authorId={photo.author_id}
+        url="/galeria"
       >
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: imageLoaded ? 1 : 0.3, y: 0 }}
+          transition={{ duration: 0.4, delay }}
+          className="relative group cursor-pointer"
+          onMouseEnter={() => !isMobile && !isDeleteMode && setIsHovered(true)}
+          onMouseLeave={() => !isMobile && setIsHovered(false)}
+          onClick={handlePhotoInteraction}
+          {...(isDeleteMode ? {
+            // Use MasonryItem touch handlers ONLY in delete mode
+            // Otherwise, let ReactableContent handle long press for reactions
+            onTouchStart: handleTouchStart,
+            onTouchEnd: handleTouchEnd,
+            onTouchMove: handleTouchMove,
+          } : {})}
+        >
         <div
           className={`relative rounded-2xl overflow-hidden bg-surfaceAlt shadow-soft-sm hover:shadow-soft-md transition-all duration-300 ${
             isSelected ? 'ring-4 ring-primary' : ''
@@ -236,9 +256,13 @@ const MasonryItem = React.memo(function MasonryItem({
             style={{
               backgroundColor: '#f3f4f6',
               minHeight: height,
+              WebkitTouchCallout: 'none',
+              WebkitUserSelect: 'none',
+              userSelect: 'none',
             }}
             loading="lazy"
             decoding="async"
+            draggable={false}
             onLoad={() => {
               setImageLoaded(true);
               setImageError(false);
@@ -246,6 +270,10 @@ const MasonryItem = React.memo(function MasonryItem({
             onError={() => {
               setImageError(true);
               setImageLoaded(false);
+            }}
+            onContextMenu={(e) => {
+              // Prevent context menu on long press
+              e.preventDefault();
             }}
           />
 
@@ -425,7 +453,15 @@ const MasonryItem = React.memo(function MasonryItem({
             </>
           )}
         </div>
-      </motion.div>
+        
+        {/* Reaction Display - Show below image if not in delete mode */}
+        {!isDeleteMode && (
+          <div className="mt-2 px-1">
+            <ReactionDisplay contentId={photo.id} />
+          </div>
+        )}
+        </motion.div>
+      </ReactableContent>
     </>
   );
 }, (prevProps, nextProps) => {
