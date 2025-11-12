@@ -163,18 +163,39 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to save track' }, { status: 500 });
     }
 
-    // Get partner ID to alternate turn
+    // Get all members to alternate turn properly (supports multiple users)
     const { data: members } = await supabase
       .from('workspace_members')
       .select('user_id')
-      .eq('workspace_id', workspaceId);
+      .eq('workspace_id', workspaceId)
+      .order('joined_at', { ascending: true }); // Ordem consistente
 
-    const partnerId = members?.find(m => m.user_id !== user.id)?.user_id;
+    // Find next user in rotation (circular)
+    let nextUserId: string | undefined;
 
-    // Send push notification to partner
-    if (partnerId) {
-      try {
-        const pushResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/push/send`, {
+    if (members && members.length > 0) {
+      const currentUserIndex = members.findIndex(m => m.user_id === user.id);
+
+      if (currentUserIndex !== -1) {
+        // Get next user in circular fashion
+        const nextIndex = (currentUserIndex + 1) % members.length;
+        nextUserId = members[nextIndex].user_id;
+
+        console.log(`[Music Turn] Current: ${user.id} (index ${currentUserIndex}), Next: ${nextUserId} (index ${nextIndex})`);
+      } else {
+        // Fallback: first user that's not current user
+        nextUserId = members.find(m => m.user_id !== user.id)?.user_id;
+      }
+    }
+
+    // Get all partners for notifications (everyone except current user)
+    const partnerIds = members?.filter(m => m.user_id !== user.id).map(m => m.user_id) || [];
+
+    // Send push notification to ALL partners
+    if (partnerIds.length > 0) {
+      // Send to all partners in parallel
+      const notificationPromises = partnerIds.map(partnerId =>
+        fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/push/send`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -188,30 +209,34 @@ export async function POST(request: NextRequest) {
             tag: 'new-music',
             data: { url: '/musica' },
           }),
-        });
+        }).catch(err => {
+          console.error(`Error sending push to ${partnerId}:`, err);
+          return null;
+        })
+      );
 
-        if (!pushResponse.ok) {
-          const errorData = await pushResponse.json();
-          console.error('Push notification failed:', errorData);
-        } else {
-          const result = await pushResponse.json();
-          console.log('Push notification sent:', result);
-        }
+      try {
+        await Promise.allSettled(notificationPromises);
+        console.log(`Push notifications sent to ${partnerIds.length} partner(s)`);
       } catch (error) {
-        console.error('Error sending push notification:', error);
+        console.error('Error sending push notifications:', error);
         // Don't fail the request if push fails
       }
+    }
 
-      // Update turn to partner (alternate turn)
+    // Update turn to NEXT user in rotation (circular)
+    if (nextUserId) {
       await supabase
         .from('workspaces')
         .update({
           data: {
             ...workspace.data,
-            current_music_turn_user_id: partnerId,
+            current_music_turn_user_id: nextUserId,
           },
         })
         .eq('id', workspaceId);
+
+      console.log(`[Music Turn] Updated to: ${nextUserId}`);
     }
 
     return NextResponse.json({ success: true, track: savedTrack });
