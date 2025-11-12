@@ -159,14 +159,26 @@ export default function ReactableContent({
   };
 
   const handleTouchEnd = () => {
+    // Clear timeout
     if (longPressTimeout.current) {
       clearTimeout(longPressTimeout.current);
+      longPressTimeout.current = null;
+    }
+
+    // If touch was too short, prevent menu from opening
+    const touchDuration = Date.now() - (touchStartTime.current || 0);
+    if (touchDuration < 450) {
+      // Was a tap, not a long press
+      console.log('[ReactableContent] Touch too short, canceling menu:', touchDuration, 'ms');
+      touchStartTime.current = null;
     }
   };
 
   const handleTouchMove = () => {
+    // User is scrolling/moving, cancel long press
     if (longPressTimeout.current) {
       clearTimeout(longPressTimeout.current);
+      longPressTimeout.current = null;
     }
   };
 

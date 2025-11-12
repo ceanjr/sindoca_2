@@ -27,15 +27,19 @@ export default function ReactionDisplay({ contentId, className = '' }) {
           exit={{ scale: 0 }}
           className={`bg-white/90 backdrop-blur-sm rounded-full flex items-center shadow-sm border border-gray-200 ${
             isMobile
-              ? 'px-1 py-0.5'  // Mobile: mais compacto
+              ? 'px-2 py-1' // Mobile: mais compacto
               : 'px-1.5 py-0.5' // Desktop
-          }`}
+          } before:content-[''] before:absolute before:inset-0 before:bg-[#FF6B9D]/10 before:rounded-full before:pointer-events-none`}
         >
-          <span className={`leading-none ${
-            isMobile
-              ? 'text-sm'   // Mobile: menor
-              : 'text-base' // Desktop
-          }`}>{emoji}</span>
+          <span
+            className={`leading-none opacity-90 ${
+              isMobile
+                ? 'text-xs' // Mobile: menor
+                : 'text-base' // Desktop
+            }`}
+          >
+            {emoji}
+          </span>
         </motion.div>
       ))}
     </div>

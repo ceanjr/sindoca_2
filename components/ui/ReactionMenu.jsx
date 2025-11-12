@@ -80,16 +80,18 @@ export default function ReactionMenu({
     }
   };
 
-  const handleAddEmoji = async () => {
-    if (!newEmoji.trim() || !user?.id) return;
+  const handleAddEmoji = async (emojiValue) => {
+    const emojiToAdd = emojiValue || newEmoji;
+
+    if (!emojiToAdd.trim() || !user?.id) return;
 
     // Extract first emoji from input (in case user typed multiple)
     const emojiRegex = /[\p{Emoji_Presentation}\p{Emoji}\uFE0F]/gu;
-    const matches = newEmoji.match(emojiRegex);
+    const matches = emojiToAdd.match(emojiRegex);
     const emoji = matches?.[0];
 
     if (!emoji) {
-      alert('Por favor, insira um emoji válido');
+      console.log('[ReactionMenu] No valid emoji found in:', emojiToAdd);
       return;
     }
 
@@ -99,11 +101,25 @@ export default function ReactionMenu({
       setNewEmoji('');
       setShowEmojiInput(false);
 
-      // Auto-select the new emoji
-      handleReaction(emoji);
+      // Auto-select the new emoji as reaction
+      await handleReaction(emoji);
     } catch (error) {
       console.error('Error adding custom emoji:', error);
-      alert('Erro ao adicionar emoji');
+    }
+  };
+
+  // Handle emoji input change - auto-add on emoji selection
+  const handleEmojiInputChange = (e) => {
+    const value = e.target.value;
+    setNewEmoji(value);
+
+    // Auto-detect emoji and add immediately
+    const emojiRegex = /[\p{Emoji_Presentation}\p{Emoji}\uFE0F]/gu;
+    const matches = value.match(emojiRegex);
+
+    if (matches && matches.length > 0) {
+      // Emoji detected, add it immediately
+      handleAddEmoji(value);
     }
   };
 
@@ -111,6 +127,10 @@ export default function ReactionMenu({
     setShowEmojiInput(true);
     setTimeout(() => {
       inputRef.current?.focus();
+      // Trigger click to open emoji keyboard on mobile
+      if (inputRef.current && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+        inputRef.current.click();
+      }
     }, 100);
   };
 
@@ -230,8 +250,9 @@ export default function ReactionMenu({
             <input
               ref={inputRef}
               type="text"
+              inputMode="none"
               value={newEmoji}
-              onChange={(e) => setNewEmoji(e.target.value)}
+              onChange={handleEmojiInputChange}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   handleAddEmoji();
@@ -242,16 +263,14 @@ export default function ReactionMenu({
               }}
               placeholder="😀"
               maxLength={2}
+              autoFocus
               className={`border border-gray-300 rounded-lg text-center focus:outline-none focus:ring-2 focus:ring-primary ${
                 isMobile ? 'w-10 h-8 text-xl' : 'w-12 h-9 text-2xl'
               }`}
+              style={{
+                fontSize: isMobile ? '1.25rem' : '1.5rem',
+              }}
             />
-            <button
-              onClick={handleAddEmoji}
-              className="px-2 py-1 bg-primary text-white rounded-lg text-xs font-medium hover:bg-primary/90 transition-colors"
-            >
-              OK
-            </button>
           </motion.div>
         )}
       </div>
