@@ -12,6 +12,7 @@ export default function ReactionMenu({
   disabled = false,
   position = 'auto', // 'auto', 'top', 'bottom'
   isOpen = true, // Controlled by parent
+  arrowOffset = 0, // Horizontal offset for arrow positioning
 }) {
   const [menuPosition, setMenuPosition] = useState('bottom');
   const menuRef = useRef(null);
@@ -131,14 +132,17 @@ export default function ReactionMenu({
           </motion.button>
         ))}
       </div>
-      
-      {/* Arrow pointer */}
+
+      {/* Arrow pointer - positioned based on offset */}
       <div
-        className={`absolute left-4 w-0 h-0 ${
+        className={`absolute w-0 h-0 ${
           menuPosition === 'bottom'
             ? '-top-2 border-l-8 border-r-8 border-b-8 border-l-transparent border-r-transparent border-b-white'
             : '-bottom-2 border-l-8 border-r-8 border-t-8 border-l-transparent border-r-transparent border-t-white'
         }`}
+        style={{
+          left: arrowOffset > 0 ? `${arrowOffset + 16}px` : '16px', // Center on the element
+        }}
       />
     </motion.div>
   );

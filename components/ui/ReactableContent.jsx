@@ -32,11 +32,33 @@ export default function ReactableContent({
   const { myReaction } = useReactions(contentId);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [menuPosition, setMenuPosition] = useState('bottom'); // 'top' or 'bottom'
+  const [menuCoords, setMenuCoords] = useState({ top: 0, left: 0 });
   const containerRef = useRef(null);
   const touchStartTime = useRef(null);
   const hoverTimeout = useRef(null);
   const longPressTimeout = useRef(null);
   const menuJustOpened = useRef(false);
+
+  // Global state to track currently open menu
+  useEffect(() => {
+    if (isMenuOpen) {
+      // Close any other open menus
+      const event = new CustomEvent('close-reaction-menus', { detail: { exceptId: contentId } });
+      window.dispatchEvent(event);
+    }
+  }, [isMenuOpen, contentId]);
+
+  // Listen for close events from other menus
+  useEffect(() => {
+    const handleCloseMenus = (e) => {
+      if (e.detail.exceptId !== contentId) {
+        setIsMenuOpen(false);
+      }
+    };
+
+    window.addEventListener('close-reaction-menus', handleCloseMenus);
+    return () => window.removeEventListener('close-reaction-menus', handleCloseMenus);
+  }, [contentId]);
 
   const handleReact = useCallback(
     async (emoji) => {
@@ -78,12 +100,30 @@ export default function ReactableContent({
     longPressTimeout.current = setTimeout(() => {
       const rect = containerRef.current?.getBoundingClientRect();
       if (rect) {
-        // Calculate if menu should appear above or below
-        const spaceBelow = window.innerHeight - rect.bottom;
-        const spaceAbove = rect.top;
-        const menuHeight = 60; // Approximate menu height
+        // Calculate menu position
+        const menuWidth = 300; // Approximate width of reaction menu
+        const menuHeight = 60;
 
-        setMenuPosition(spaceBelow >= menuHeight ? 'bottom' : 'top');
+        const spaceBelow = window.innerHeight - rect.bottom;
+
+        // Determine vertical position
+        const position = spaceBelow >= menuHeight ? 'bottom' : 'top';
+        setMenuPosition(position);
+
+        // Calculate horizontal position to keep menu on screen
+        let left = rect.left;
+        if (left + menuWidth > window.innerWidth) {
+          // Menu would go off right edge, align to right
+          left = window.innerWidth - menuWidth - 8;
+        }
+        if (left < 8) {
+          // Menu would go off left edge
+          left = 8;
+        }
+
+        let top = position === 'bottom' ? rect.bottom + 8 : rect.top - menuHeight - 8;
+
+        setMenuCoords({ top, left });
         setIsMenuOpen(true);
         menuJustOpened.current = true;
 
@@ -122,22 +162,42 @@ export default function ReactableContent({
   // Desktop: Hover handlers
   const handleMouseEnter = () => {
     if (!canReact) return;
-    
-    console.log('[ReactableContent] Mouse enter - starting 2s timer');
-    
+
+    console.log('[ReactableContent] Mouse enter - starting 1s timer');
+
     hoverTimeout.current = setTimeout(() => {
-      console.log('[ReactableContent] 2s elapsed - opening menu');
+      console.log('[ReactableContent] 1s elapsed - opening menu');
       const rect = containerRef.current?.getBoundingClientRect();
       if (rect) {
-        // Calculate if menu should appear above or below
-        const spaceBelow = window.innerHeight - rect.bottom;
-        const spaceAbove = rect.top;
+        // Calculate menu position
+        const menuWidth = 300; // Approximate width of reaction menu
         const menuHeight = 60;
-        
-        setMenuPosition(spaceBelow >= menuHeight ? 'bottom' : 'top');
+
+        const spaceBelow = window.innerHeight - rect.bottom;
+        const spaceLeft = rect.left;
+        const spaceRight = window.innerWidth - rect.right;
+
+        // Determine vertical position
+        const position = spaceBelow >= menuHeight ? 'bottom' : 'top';
+        setMenuPosition(position);
+
+        // Calculate horizontal position to keep menu on screen
+        let left = rect.left;
+        if (left + menuWidth > window.innerWidth) {
+          // Menu would go off right edge, align to right
+          left = window.innerWidth - menuWidth - 8;
+        }
+        if (left < 8) {
+          // Menu would go off left edge
+          left = 8;
+        }
+
+        let top = position === 'bottom' ? rect.bottom + 8 : rect.top - menuHeight - 8;
+
+        setMenuCoords({ top, left });
         setIsMenuOpen(true);
       }
-    }, 2000);
+    }, 1000); // Reduced from 2000ms to 1000ms
   };
 
   const handleMouseLeave = () => {
@@ -226,14 +286,14 @@ export default function ReactableContent({
         </div>
       )}
       
-      {/* Reaction Menu */}
+      {/* Reaction Menu - Fixed positioning */}
       {isMenuOpen && (
         <div
-          className={`absolute z-50 w-full flex ${
-            menuPosition === 'bottom' 
-              ? 'top-full mt-2 justify-end' 
-              : 'bottom-full mb-2 justify-start'
-          }`}
+          className="fixed z-[9999]"
+          style={{
+            top: `${menuCoords.top}px`,
+            left: `${menuCoords.left}px`,
+          }}
           onClick={(e) => e.stopPropagation()}
           onMouseLeave={() => {
             // Close menu when mouse leaves on desktop
@@ -248,6 +308,7 @@ export default function ReactableContent({
             onReact={handleReact}
             position={menuPosition}
             isOpen={isMenuOpen}
+            arrowOffset={containerRef.current ? containerRef.current.getBoundingClientRect().left - menuCoords.left : 0}
           />
         </div>
       )}

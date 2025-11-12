@@ -21,29 +21,19 @@ export default function PhotoMenu({
   const { user } = useAuth();
   const { myReaction } = useReactions(photo.id);
   const [isOpen, setIsOpen] = useState(false);
-  const [showReactionMenu, setShowReactionMenu] = useState(false);
   const [menuCoords, setMenuCoords] = useState({ top: 0, left: 0 });
   const dropdownMenuRef = useRef(null);
-  const reactionMenuRef = useRef(null);
   const buttonRef = useRef(null);
-
-  // Debug state changes
-  useEffect(() => {
-    console.log('[PhotoMenu] State changed:', { isOpen, showReactionMenu, photoId: photo.id });
-  }, [isOpen, showReactionMenu, photo.id]);
 
   // Close menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (e) => {
-      // Check if click is outside button and all menus
+      // Check if click is outside button and menu
       const isOutsideButton = buttonRef.current && !buttonRef.current.contains(e.target);
       const isOutsideDropdown = !dropdownMenuRef.current || !dropdownMenuRef.current.contains(e.target);
-      const isOutsideReaction = !reactionMenuRef.current || !reactionMenuRef.current.contains(e.target);
 
-      if (isOutsideButton && isOutsideDropdown && isOutsideReaction) {
-        console.log('[PhotoMenu] Click outside detected, closing menu');
+      if (isOutsideButton && isOutsideDropdown) {
         setIsOpen(false);
-        setShowReactionMenu(false);
       }
     };
 
@@ -83,7 +73,7 @@ export default function PhotoMenu({
     if (newState && buttonRef.current) {
       const rect = buttonRef.current.getBoundingClientRect();
       const menuWidth = 160;
-      const menuHeight = 100; // Approximate
+      const menuHeight = 60; // Single option menu
 
       let top = rect.bottom + 8; // 8px gap
       let left = rect.left;
@@ -101,7 +91,6 @@ export default function PhotoMenu({
     }
 
     setIsOpen(newState);
-    setShowReactionMenu(false);
   };
 
   const handleFavorite = (e) => {
@@ -111,75 +100,6 @@ export default function PhotoMenu({
     onToggleFavorite(photo.id);
     setIsOpen(false);
   };
-
-  const handleReact = (e) => {
-    e.stopPropagation();
-    e.preventDefault();
-
-    console.log('[PhotoMenu] handleReact called', { canReact, user: user?.id, author: photo.author_id });
-
-    // Check if user can react
-    if (!canReact) {
-      console.log('[PhotoMenu] User cannot react to own content');
-      setIsOpen(false);
-      return;
-    }
-
-    console.log('[PhotoMenu] Opening reaction menu');
-    triggerVibration(30);
-
-    // Recalculate menu position for reaction menu (may need different position)
-    if (buttonRef.current) {
-      const rect = buttonRef.current.getBoundingClientRect();
-      const menuWidth = 300; // Reaction menu is wider
-      const menuHeight = 60;
-
-      let top = rect.bottom + 8;
-      let left = rect.left;
-
-      // Adjust if menu goes off-screen
-      if (left + menuWidth > window.innerWidth) {
-        left = window.innerWidth - menuWidth - 8;
-      }
-      if (top + menuHeight > window.innerHeight) {
-        top = rect.top - menuHeight - 8;
-      }
-
-      setMenuCoords({ top, left });
-    }
-
-    setShowReactionMenu(true);
-  };
-
-  const handleReaction = async (emoji) => {
-    if (!user || !photo.id) return;
-
-    // User cannot react to their own content
-    if (photo.author_id === user.id) {
-      return;
-    }
-
-    // Vibrate when selecting emoji
-    triggerVibration(50);
-
-    if (emoji === null || myReaction === emoji) {
-      // Remove reaction
-      await removeReactionWithNotification(photo.id, user.id);
-    } else {
-      // Add or update reaction
-      await addReactionWithNotification(photo.id, user.id, emoji, {
-        type: 'photo',
-        title: photo.caption || 'Foto',
-        authorId: photo.author_id,
-        url: '/galeria',
-      });
-    }
-
-    setShowReactionMenu(false);
-    setIsOpen(false);
-  };
-
-  const canReact = user && photo.author_id && photo.author_id !== user.id;
 
   const buttonClasses = variant === 'desktop'
     ? 'w-7 h-7 flex items-center justify-center rounded-full backdrop-blur-md transition-colors bg-white/30 text-white hover:bg-white/50'
@@ -203,7 +123,7 @@ export default function PhotoMenu({
 
       {/* Dropdown Menu - Fixed positioning to avoid clipping */}
       <AnimatePresence>
-        {isOpen && !showReactionMenu && (
+        {isOpen && (
           <motion.div
             ref={dropdownMenuRef}
             initial={{ opacity: 0, scale: 0.95, y: -10 }}
@@ -217,7 +137,7 @@ export default function PhotoMenu({
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Favoritar */}
+            {/* Favoritar - única opção do menu */}
             <button
               onClick={handleFavorite}
               onTouchStart={(e) => e.stopPropagation()}
@@ -240,48 +160,6 @@ export default function PhotoMenu({
                 {photo.favorite ? 'Desfavoritar' : 'Favoritar'}
               </span>
             </button>
-
-            {/* Reagir - always show, check canReact inside */}
-            <button
-              onClick={handleReact}
-              onTouchStart={(e) => e.stopPropagation()}
-              onTouchEnd={(e) => {
-                e.stopPropagation();
-                e.preventDefault();
-                handleReact(e);
-              }}
-              className="w-full px-3 py-2 flex items-center gap-2 hover:bg-gray-50 text-gray-700 transition-colors border-t border-gray-100 text-left"
-            >
-              <Smile size={16} />
-              <span className="font-medium text-sm">
-                {myReaction ? `Mudar reação ${myReaction}` : 'Reagir'}
-              </span>
-            </button>
-          </motion.div>
-        )}
-
-        {/* Reaction Menu */}
-        {isOpen && showReactionMenu && (
-          <motion.div
-            ref={reactionMenuRef}
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            transition={{ duration: 0.15 }}
-            className="fixed z-[9999]"
-            style={{
-              top: `${menuCoords.top}px`,
-              left: `${menuCoords.left}px`,
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <ReactionMenu
-              contentId={photo.id}
-              currentReaction={myReaction}
-              onReact={handleReaction}
-              position="bottom"
-              isOpen={true}
-            />
           </motion.div>
         )}
       </AnimatePresence>
