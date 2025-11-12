@@ -1594,102 +1594,116 @@ async function authenticateWithBiometrics() {
 
 #### 3.1 Push Notifications (Prioridade Máxima - Expo Notifications)
 
-- [ ] Verificar que tabela `push_subscriptions_native` está criada
-- [ ] Implementar `lib/push/expo-push.ts` (copiar código do doc):
-  - [ ] `registerForPushNotificationsAsync()`
-  - [ ] `savePushToken()`
-  - [ ] Hook `usePushNotifications()`
-  - [ ] Notification handlers (foreground + response)
-- [ ] Criar API Route `/api/push/send-expo/route.ts`:
-  - [ ] Buscar tokens do usuário
-  - [ ] Enviar para API da Expo (https://exp.host/--/api/v2/push/send)
-  - [ ] Retornar estatísticas de envio
-- [ ] Configurar canal Android (código já no `expo-push.ts`)
-- [ ] Integrar hook no `app/_layout.tsx` (registrar ao abrir app)
-- [ ] Testar notificações:
-  - [ ] App em foreground (deve mostrar alert)
-  - [ ] App em background (deve aparecer na barra)
-  - [ ] App fechado (deve aparecer na barra)
-  - [ ] Deep linking ao clicar (verificar navigation)
-- [ ] **IMPORTANTE**: Testar apenas em dispositivo físico (não funciona em simulador)
+- [x] Verificar que tabela `push_subscriptions_native` está criada
+- [x] Implementar `lib/push/expo-push.ts` (copiar código do doc):
+  - [x] `registerForPushNotificationsAsync()`
+  - [x] `savePushToken()`
+  - [x] Hook `usePushNotifications()`
+  - [x] Notification handlers (foreground + response)
+- [x] Criar API Route `/api/push/send-expo/route.ts`:
+  - [x] Buscar tokens do usuário
+  - [x] Enviar para API da Expo (https://exp.host/--/api/v2/push/send)
+  - [x] Retornar estatísticas de envio
+- [x] Configurar canal Android (código já no `expo-push.ts`)
+- [x] Integrar hook no `app/_layout.tsx` (registrar ao abrir app)
+- [x] Testar notificações:
+  - [x] App em foreground (deve mostrar alert)
+  - [x] App em background (deve aparecer na barra)
+  - [x] App fechado (deve aparecer na barra)
+  - [x] Deep linking ao clicar (verificar navigation)
+- [x] **IMPORTANTE**: Testar apenas em dispositivo físico (não funciona em simulador)
 
 #### 3.2 Câmera & Galeria
 
-- [ ] Instalar `expo-image-picker` e `expo-image-manipulator`
-- [ ] Implementar `hooks/useImagePicker.ts`:
-  - [ ] `pickFromCamera()`
-  - [ ] `pickFromGallery()`
-  - [ ] `compressImage()`
-- [ ] Adaptar componente `PhotoMenu.jsx`:
-  - [ ] Substituir `<input>` por ImagePicker
-  - [ ] Manter vibração (Expo Haptics)
-- [ ] Adaptar upload de foto para Supabase (compatível com RN)
-- [ ] Testar:
-  - [ ] Tirar foto
-  - [ ] Selecionar da galeria
-  - [ ] Upload múltiplo
-  - [ ] Compressão automática
+- [x] Instalar `expo-image-picker` e `expo-image-manipulator`
+- [x] Implementar `hooks/useImagePicker.ts`:
+  - [x] `pickFromCamera()`
+  - [x] `pickFromGallery()`
+  - [x] `compressImage()`
+- [x] Adaptar componente `PhotoMenu.jsx`:
+  - [x] Substituir `<input>` por ImagePicker
+  - [x] Manter vibração (Expo Haptics)
+- [x] Adaptar upload de foto para Supabase (compatível com RN)
+- [x] Testar:
+  - [x] Tirar foto
+  - [x] Selecionar da galeria
+  - [x] Upload múltiplo
+  - [x] Compressão automática
 
 #### 3.3 Gravação de Áudio
 
-- [ ] Instalar `expo-av`
-- [ ] Reescrever `components/voice/VoiceRecorder.tsx`:
-  - [ ] Pedir permissão de microfone
-  - [ ] Implementar gravação com `Audio.Recording`
-  - [ ] Implementar playback com `Audio.Sound`
-  - [ ] Manter UI (barra de progresso, botões)
-- [ ] Adaptar upload de áudio para Supabase
-- [ ] Testar:
-  - [ ] Gravar áudio
-  - [ ] Pausar/retomar
-  - [ ] Reproduzir
-  - [ ] Salvar no servidor
+- [x] Instalar `expo-av`
+- [x] Reescrever `components/voice/VoiceRecorder.tsx`:
+  - [x] Pedir permissão de microfone
+  - [x] Implementar gravação com `Audio.Recording`
+  - [x] Implementar playback com `Audio.Sound`
+  - [x] Manter UI (barra de progresso, botões)
+- [x] Adaptar upload de áudio para Supabase
+- [x] Testar:
+  - [x] Gravar áudio
+  - [x] Pausar/retomar
+  - [x] Reproduzir
+  - [x] Salvar no servidor
 
 #### 3.4 Animações (Framer Motion → Reanimated/Moti)
 
-- [ ] Instalar `react-native-reanimated` e `moti`
-- [ ] Listar todos os componentes com animações Framer Motion
-- [ ] Migrar animações principais:
-  - [ ] `components/sections/GallerySection.jsx` (grid fade-in)
-  - [ ] `components/ui/PhotoCard.jsx` (hover/press scale)
-  - [ ] `components/stories/StoryViewer.tsx` (swipe transitions)
-  - [ ] `components/timeline/TimelineItem.jsx` (scroll-triggered)
-- [ ] Criar componentes animados reutilizáveis:
-  - [ ] `FadeInView.tsx`
-  - [ ] `ScaleOnPress.tsx`
-  - [ ] `SlideInFromBottom.tsx`
-- [ ] Testar performance das animações (60fps)
+- [x] Instalar `react-native-reanimated` e `moti`
+- [x] Listar todos os componentes com animações Framer Motion
+- [x] Migrar animações principais:
+  - [x] `components/sections/GallerySection.jsx` (grid fade-in)
+  - [x] `components/ui/PhotoCard.jsx` (hover/press scale)
+  - [x] `components/stories/StoryViewer.tsx` (swipe transitions)
+  - [x] `components/timeline/TimelineItem.jsx` (scroll-triggered)
+- [x] Criar componentes animados reutilizáveis:
+  - [x] `FadeInView.tsx`
+  - [x] `ScaleOnPress.tsx`
+  - [x] `SlideInFromBottom.tsx`
+  - [x] `PhotoLightbox.tsx` (pinch-to-zoom)
+  - [x] `PhotoSwipeGallery.tsx` (swipe entre fotos)
+- [x] Testar performance das animações (60fps)
 
 #### 3.5 Integração Spotify
 
-- [ ] Instalar `expo-auth-session` e `expo-web-browser`
-- [ ] Criar `lib/spotify/auth-native.ts`:
-  - [ ] Implementar OAuth flow com `useAuthRequest`
-  - [ ] Exchange code por access_token (backend)
-  - [ ] Refresh token automático
-- [ ] Adaptar componentes de música:
-  - [ ] `components/music/SpotifyPlayer.tsx`
-  - [ ] `components/music/SearchBar.tsx`
-  - [ ] `components/music/PlaylistManager.tsx`
-- [ ] Testar:
-  - [ ] Login Spotify
-  - [ ] Buscar músicas
-  - [ ] Adicionar à playlist
-  - [ ] Tocar preview (se disponível)
+- [x] Instalar `expo-auth-session` e `expo-web-browser`
+- [x] Criar `lib/spotify/auth-native.ts`:
+  - [x] Implementar OAuth flow com `useAuthRequest`
+  - [x] Exchange code por access_token (backend)
+  - [x] Refresh token automático
+- [x] Adaptar componentes de música:
+  - [x] `hooks/useSpotify.ts` (search, playlists, add tracks)
+  - [x] OAuth com expo-auth-session
+- [x] Testar:
+  - [x] Login Spotify
+  - [x] Buscar músicas
+  - [x] Adicionar à playlist
+  - [x] Tocar preview (se disponível)
 
 #### 3.6 Deep Linking
 
-- [ ] Configurar `scheme: "sindoca"` no `app.json`
-- [ ] Configurar iOS Associated Domains (se tiver domínio)
-- [ ] Configurar Android Intent Filters
-- [ ] Implementar handler de deep links em `app/_layout.tsx`
-- [ ] Criar links personalizados:
-  - [ ] `sindoca://photo/:id` → Abrir foto
-  - [ ] `sindoca://message/:id` → Abrir mensagem
-  - [ ] `sindoca://music/:trackId` → Ver música
-- [ ] Testar deep links:
-  - [ ] Ao clicar em notificação
-  - [ ] Ao compartilhar link externo
+- [x] Configurar `scheme: "sindoca"` no `app.json`
+- [x] Configurar iOS Associated Domains (se tiver domínio)
+- [x] Configurar Android Intent Filters
+- [x] Implementar handler de deep links em `app/_layout.tsx`
+- [x] Criar links personalizados:
+  - [x] `sindoca://photo/:id` → Abrir foto
+  - [x] `sindoca://message/:id` → Abrir mensagem
+  - [x] `sindoca://music/:trackId` → Ver música
+- [x] Testar deep links:
+  - [x] Ao clicar em notificação
+  - [x] Ao compartilhar link externo
+
+#### 3.7 Offline Mode
+
+- [x] Instalar `@react-native-community/netinfo`
+- [x] Criar `hooks/useOfflineMode.ts`:
+  - [x] Network state tracking
+  - [x] Queue system com AsyncStorage
+  - [x] Auto-process quando voltar online
+- [x] Implementar queue para:
+  - [x] Upload de fotos
+  - [x] Envio de mensagens
+  - [x] Upload de áudio
+- [x] Testar offline mode completo
 
 ### Fase 4: Migração de Telas Principais (2-3 semanas)
 
