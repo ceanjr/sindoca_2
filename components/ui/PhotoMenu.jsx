@@ -23,7 +23,8 @@ export default function PhotoMenu({
   const [isOpen, setIsOpen] = useState(false);
   const [showReactionMenu, setShowReactionMenu] = useState(false);
   const [menuCoords, setMenuCoords] = useState({ top: 0, left: 0 });
-  const menuRef = useRef(null);
+  const dropdownMenuRef = useRef(null);
+  const reactionMenuRef = useRef(null);
   const buttonRef = useRef(null);
 
   // Debug state changes
@@ -34,21 +35,31 @@ export default function PhotoMenu({
   // Close menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (e) => {
-      if (menuRef.current && !menuRef.current.contains(e.target)) {
+      // Check if click is outside button and all menus
+      const isOutsideButton = buttonRef.current && !buttonRef.current.contains(e.target);
+      const isOutsideDropdown = !dropdownMenuRef.current || !dropdownMenuRef.current.contains(e.target);
+      const isOutsideReaction = !reactionMenuRef.current || !reactionMenuRef.current.contains(e.target);
+
+      if (isOutsideButton && isOutsideDropdown && isOutsideReaction) {
+        console.log('[PhotoMenu] Click outside detected, closing menu');
         setIsOpen(false);
         setShowReactionMenu(false);
       }
     };
 
     if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-      document.addEventListener('touchstart', handleClickOutside);
-    }
+      // Use setTimeout to avoid immediate closure when opening
+      const timeoutId = setTimeout(() => {
+        document.addEventListener('mousedown', handleClickOutside);
+        document.addEventListener('touchstart', handleClickOutside);
+      }, 100);
 
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('touchstart', handleClickOutside);
-    };
+      return () => {
+        clearTimeout(timeoutId);
+        document.removeEventListener('mousedown', handleClickOutside);
+        document.removeEventListener('touchstart', handleClickOutside);
+      };
+    }
   }, [isOpen]);
 
   // Vibration helper
@@ -194,7 +205,7 @@ export default function PhotoMenu({
       <AnimatePresence>
         {isOpen && !showReactionMenu && (
           <motion.div
-            ref={menuRef}
+            ref={dropdownMenuRef}
             initial={{ opacity: 0, scale: 0.95, y: -10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: -10 }}
@@ -252,6 +263,7 @@ export default function PhotoMenu({
         {/* Reaction Menu */}
         {isOpen && showReactionMenu && (
           <motion.div
+            ref={reactionMenuRef}
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
