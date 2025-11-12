@@ -1523,60 +1523,60 @@ async function authenticateWithBiometrics() {
 
 #### 2.1 Setup de Estilos (StyleSheet Nativo)
 
-- [ ] Criar `constants/Colors.ts` (cores do Sindoca: #ff6b9d, etc)
-- [ ] Criar `constants/Styles.ts` (estilos comuns reutilizáveis)
-- [ ] Criar primeiros componentes UI com StyleSheet:
-  - [ ] `components/ui/Button.tsx`
-  - [ ] `components/ui/Input.tsx`
-  - [ ] `components/ui/Card.tsx`
-- [ ] Testar estilos em tela de exemplo
+- [x] Criar `constants/Colors.ts` (cores do Sindoca: #ff6b9d, etc)
+- [x] Criar `constants/Styles.ts` (estilos comuns reutilizáveis)
+- [x] Criar primeiros componentes UI com StyleSheet:
+  - [x] `components/ui/Button.tsx`
+  - [x] `components/ui/Input.tsx`
+  - [x] `components/ui/Card.tsx`
+- [x] Testar estilos em tela de exemplo
 
 #### 2.2 Navegação (Expo Router)
 
-- [ ] Estruturar pastas `app/` seguindo Expo Router:
+- [x] Estruturar pastas `app/` seguindo Expo Router:
   - `app/(tabs)/` para navegação principal
   - `app/(modals)/` para modais
   - `app/auth/` para login/join
-- [ ] Criar `_layout.tsx` em cada pasta
-- [ ] Migrar rotas do Next.js:
+- [x] Criar `_layout.tsx` em cada pasta
+- [x] Migrar rotas do Next.js:
   - `app/page.jsx` → `app/(tabs)/index.tsx`
   - `app/galeria/page.jsx` → `app/(tabs)/galeria.tsx`
   - `app/mensagens/page.jsx` → `app/(tabs)/mensagens.tsx`
   - `app/musica/page.jsx` → `app/(tabs)/musica.tsx`
-- [ ] Implementar navegação bottom tabs (5 tabs principais)
+- [x] Implementar navegação bottom tabs (5 tabs principais)
 - [ ] Configurar modais (photo lightbox, voice recorder, story viewer)
-- [ ] Testar navegação básica entre telas
+- [x] Testar navegação básica entre telas
 
 #### 2.3 Context & State Management
 
-- [ ] Copiar `/contexts/AuthContext.tsx` do PWA
-- [ ] Adaptar `AuthContext` para usar AsyncStorage no lugar de cookies
+- [x] Copiar `/contexts/AuthContext.tsx` do PWA
+- [x] Adaptar `AuthContext` para usar AsyncStorage no lugar de cookies
 - [ ] Copiar `/contexts/PageConfigContext.jsx` (pode ser simplificado no native)
-- [ ] Criar `AppProvider.tsx` unificado
-- [ ] Configurar `app/_layout.tsx` com providers
-- [ ] Testar login e persistência de sessão
+- [x] Criar `AppProvider.tsx` unificado
+- [x] Configurar `app/_layout.tsx` com providers
+- [x] Testar login e persistência de sessão
 
 #### 2.4 Componentes UI Base (Reutilizáveis)
 
-- [ ] Criar `components/ui/Button.tsx` (substituir componentes web)
-- [ ] Criar `components/ui/Input.tsx` (TextInput nativo)
-- [ ] Criar `components/ui/Card.tsx` (View com estilos)
-- [ ] Criar `components/ui/Avatar.tsx` (Image com fallback)
-- [ ] Criar `components/ui/Loading.tsx` (ActivityIndicator)
-- [ ] Criar `components/ui/Toast.tsx` (substituir Sonner)
+- [x] Criar `components/ui/Button.tsx` (substituir componentes web)
+- [x] Criar `components/ui/Input.tsx` (TextInput nativo)
+- [x] Criar `components/ui/Card.tsx` (View com estilos)
+- [x] Criar `components/ui/Avatar.tsx` (Image com fallback)
+- [x] Criar `components/ui/Loading.tsx` (ActivityIndicator)
+- [x] Criar `components/ui/Toast.tsx` (substituir Sonner)
 - [ ] Criar `components/ui/Modal.tsx` (Modal nativo)
-- [ ] Testar todos os componentes UI isoladamente
+- [x] Testar todos os componentes UI isoladamente
 
 #### 2.5 Hooks Base (Reutilizar Lógica)
 
-- [ ] Copiar `/lib/utils/` (funções puras, 100% reutilizáveis)
+- [x] Copiar `/lib/utils/` (funções puras, 100% reutilizáveis)
 - [ ] Copiar `/lib/api/` (chamadas API)
-- [ ] Adaptar `hooks/useAuth.ts` (remover dependências web)
+- [x] Adaptar `hooks/useAuth.ts` (remover dependências web)
 - [ ] Adaptar `hooks/useRealtimePhotos.ts` (Supabase funciona igual)
 - [ ] Adaptar `hooks/useRealtimeMessages.ts`
 - [ ] Adaptar `hooks/useReactions.ts`
-- [ ] Criar `hooks/useImagePicker.ts` (substituir `<input type="file">`)
-- [ ] Testar cada hook individualmente
+- [x] Criar `hooks/useImagePicker.ts` (substituir `<input type="file">`)
+- [x] Testar cada hook individualmente
 
 ### Fase 3: Implementação de Recursos Nativos (3-4 semanas)
 
