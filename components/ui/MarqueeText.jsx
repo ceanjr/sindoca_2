@@ -10,7 +10,7 @@ import React, { useRef, useEffect, useState } from 'react';
 export default function MarqueeText({
   children,
   className = '',
-  speed = 40, // pixels per second
+  speed = 25, // pixels per second (mais lento)
   pauseOnHover = true,
   delay = 1500 // delay before starting animation (ms)
 }) {

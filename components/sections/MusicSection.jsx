@@ -692,11 +692,9 @@ export default function MusicSection({ id }) {
                         {track.title}
                       </MarqueeText>
                     </div>
-                    <div className="w-full min-w-0 overflow-hidden">
-                      <MarqueeText className="text-xs sm:text-sm text-textSecondary leading-tight">
-                        {track.description}
-                      </MarqueeText>
-                    </div>
+                    <p className="text-xs sm:text-sm text-textSecondary leading-tight truncate">
+                      {track.description}
+                    </p>
                     <p className="text-[10px] sm:text-xs text-textTertiary mt-0.5 truncate">
                       Adicionado por {track.profiles?.full_name || 'Alguém'} •{' '}
                       {formatDate(track.created_at)}

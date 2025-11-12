@@ -143,7 +143,7 @@ export async function POST(request: NextRequest) {
         author_id: user.id,
         type: 'music',
         title: track.name,
-        description: `${track.artist} • ${track.album}`,
+        description: track.artist,
         data: {
           spotify_track_id: track.id,
           spotify_uri: track.uri,
