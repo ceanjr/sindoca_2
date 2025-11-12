@@ -10,6 +10,8 @@ import { createClient } from '@/lib/supabase/client';
 import { getUserWorkspaces } from '@/lib/api/workspace';
 import { useConfirm } from '@/hooks/useConfirm';
 import ConfirmDialog from '../ui/ConfirmDialog';
+import ReactableContent from '../ui/ReactableContent';
+import ReactionDisplay from '../ui/ReactionDisplay';
 import { toast } from 'sonner';
 import AddReasonModal from '@/components/ui/AddReasonModal';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
@@ -430,20 +432,27 @@ export default function LoveReasonsSection({ id }) {
                     item.subject === 'junior' ? 'Júnior' : 'Sindy';
 
                   return (
-                    <motion.div
+                    <ReactableContent
                       key={item.id}
-                      layout
-                      initial={{ opacity: 0, scale: 0.9 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.9 }}
-                      transition={{ duration: 0.3 }}
-                      className="group"
+                      contentId={item.id}
+                      contentType="love_reason"
+                      contentTitle={item.reason}
+                      authorId={item.author_id}
+                      url="/razoes"
                     >
                       <motion.div
-                        whileHover={{ x: 8 }}
-                        onClick={() => toggleSecret(item.id)}
-                        className="bg-surface rounded-2xl p-6 shadow-soft-sm hover:shadow-soft-md transition-all duration-300 cursor-pointer border-l-4 border-primary"
+                        layout
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.9 }}
+                        transition={{ duration: 0.3 }}
+                        className="group"
                       >
+                        <motion.div
+                          whileHover={{ x: 8 }}
+                          onClick={() => toggleSecret(item.id)}
+                          className="bg-surface rounded-2xl p-6 shadow-soft-sm hover:shadow-soft-md transition-all duration-300 cursor-pointer border-l-4 border-primary"
+                        >
                         <div className="flex items-start gap-4 relative">
                           <div className="flex flex-col gap-4">
                             {/* Subject Avatar - Optimized with priority */}
@@ -555,8 +564,14 @@ export default function LoveReasonsSection({ id }) {
                             </svg>
                           </motion.div>
                         </div>
+                        
+                        {/* Reaction Display */}
+                        <div className="mt-3 px-1">
+                          <ReactionDisplay contentId={item.id} />
+                        </div>
                       </motion.div>
-                    </motion.div>
+                      </motion.div>
+                    </ReactableContent>
                   );
                 })}
               </AnimatePresence>

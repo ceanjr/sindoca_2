@@ -23,6 +23,8 @@ import Button from '../ui/Button';
 import Badge from '../ui/Badge';
 import ConfirmDialog from '../ui/ConfirmDialog';
 import MarqueeText from '../ui/MarqueeText';
+import ReactableContent from '../ui/ReactableContent';
+import ReactionDisplay from '../ui/ReactionDisplay';
 import { useRealtimePlaylist } from '@/hooks/useRealtimePlaylist';
 import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '@/lib/supabase/client';
@@ -623,13 +625,21 @@ export default function MusicSection({ id }) {
             <>
               <div className="flex flex-col gap-3 sm:gap-4 max-w-4xl mx-auto w-full">
                 {filteredTracks.map((track, index) => (
-                <motion.div
+                <ReactableContent
                   key={track.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.05 }}
-                  className="flex items-center gap-2 sm:gap-3 p-3 sm:p-4 bg-white rounded-xl shadow-soft-sm hover:shadow-soft-md transition-all w-full min-w-0"
+                  contentId={track.id}
+                  contentType="music"
+                  contentTitle={track.title}
+                  authorId={track.author_id}
+                  url="/musica"
+                  className="w-full"
                 >
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                    className="flex items-center gap-2 sm:gap-3 p-3 sm:p-4 bg-white rounded-xl shadow-soft-sm hover:shadow-soft-md transition-all w-full min-w-0"
+                  >
                   {/* Album Cover - Clickable Player */}
                   <button
                     onClick={() =>
@@ -699,6 +709,8 @@ export default function MusicSection({ id }) {
                       Adicionado por {track.profiles?.full_name || 'Alguém'} •{' '}
                       {formatDate(track.created_at)}
                     </p>
+                    {/* Reaction Display */}
+                    <ReactionDisplay contentId={track.id} className="mt-1" />
                   </div>
 
                   {/* Actions Menu */}
@@ -785,7 +797,8 @@ export default function MusicSection({ id }) {
                       )}
                     </AnimatePresence>
                   </div>
-                </motion.div>
+                  </motion.div>
+                </ReactableContent>
               ))}
               </div>
 

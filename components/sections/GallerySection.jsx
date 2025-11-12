@@ -17,6 +17,8 @@ import imageCompression from 'browser-image-compression';
 import MasonryGrid from '../ui/MasonryGrid';
 import Button from '../ui/Button';
 import Badge from '../ui/Badge';
+import ReactableContent from '../ui/ReactableContent';
+import ReactionDisplay from '../ui/ReactionDisplay';
 import { useSupabasePhotos } from '@/hooks';
 
 // Lazy load Lightbox component for better performance

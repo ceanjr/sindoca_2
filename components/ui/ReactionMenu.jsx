@@ -2,8 +2,11 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Plus } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { getUserCustomEmojis, addCustomEmoji, updateEmojiUsage } from '@/lib/api/customEmojis';
 
-const AVAILABLE_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '🙏', '🤔'];
+const DEFAULT_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '🙏', '🤔'];
 
 export default function ReactionMenu({
   contentId,
@@ -14,8 +17,31 @@ export default function ReactionMenu({
   isOpen = true, // Controlled by parent
   arrowOffset = 0, // Horizontal offset for arrow positioning
 }) {
+  const { user } = useAuth();
   const [menuPosition, setMenuPosition] = useState('bottom');
+  const [customEmojis, setCustomEmojis] = useState([]);
+  const [showEmojiInput, setShowEmojiInput] = useState(false);
+  const [newEmoji, setNewEmoji] = useState('');
   const menuRef = useRef(null);
+  const inputRef = useRef(null);
+
+  // Load custom emojis
+  useEffect(() => {
+    if (user?.id && isOpen) {
+      loadCustomEmojis();
+    }
+  }, [user?.id, isOpen]);
+
+  const loadCustomEmojis = async () => {
+    try {
+      const emojis = await getUserCustomEmojis(user.id);
+      setCustomEmojis(emojis.map(e => e.emoji));
+    } catch (error) {
+      console.error('Error loading custom emojis:', error);
+    }
+  };
+
+  const allEmojis = [...DEFAULT_EMOJIS, ...customEmojis];
 
   // Calculate optimal menu position
   useEffect(() => {
@@ -24,7 +50,7 @@ export default function ReactionMenu({
     }
   }, [position]);
 
-  const handleReaction = (emoji) => {
+  const handleReaction = async (emoji) => {
     if (disabled) return;
 
     // Haptic feedback on emoji selection
@@ -37,12 +63,55 @@ export default function ReactionMenu({
       console.error('[ReactionMenu] Vibration error:', err);
     }
 
+    // Update last_used_at if it's a custom emoji
+    if (customEmojis.includes(emoji) && user?.id) {
+      try {
+        await updateEmojiUsage(user.id, emoji);
+      } catch (error) {
+        console.error('Error updating emoji usage:', error);
+      }
+    }
+
     // If same emoji clicked, remove reaction
     if (currentReaction === emoji) {
       onReact(null);
     } else {
       onReact(emoji);
     }
+  };
+
+  const handleAddEmoji = async () => {
+    if (!newEmoji.trim() || !user?.id) return;
+
+    // Extract first emoji from input (in case user typed multiple)
+    const emojiRegex = /[\p{Emoji_Presentation}\p{Emoji}\uFE0F]/gu;
+    const matches = newEmoji.match(emojiRegex);
+    const emoji = matches?.[0];
+
+    if (!emoji) {
+      alert('Por favor, insira um emoji válido');
+      return;
+    }
+
+    try {
+      await addCustomEmoji(user.id, emoji);
+      await loadCustomEmojis();
+      setNewEmoji('');
+      setShowEmojiInput(false);
+
+      // Auto-select the new emoji
+      handleReaction(emoji);
+    } catch (error) {
+      console.error('Error adding custom emoji:', error);
+      alert('Erro ao adicionar emoji');
+    }
+  };
+
+  const handleShowInput = () => {
+    setShowEmojiInput(true);
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 100);
   };
 
   const menuVariants = {
@@ -103,11 +172,12 @@ export default function ReactionMenu({
       style={{ pointerEvents: 'auto' }}
     >
       <div className={`bg-white rounded-2xl shadow-2xl flex items-center border border-gray-200 ${
-        isMobile 
+        isMobile
           ? 'px-2 py-1.5 gap-0.5' // Mobile: mais compacto
           : 'px-2.5 py-2 gap-1'    // Desktop: um pouco maior
-      }`}>
-        {AVAILABLE_EMOJIS.map((emoji, index) => (
+      } max-w-[90vw] overflow-x-auto scrollbar-hide`}>
+        {/* Existing and custom emojis */}
+        {allEmojis.map((emoji, index) => (
           <motion.button
             key={emoji}
             custom={index}
@@ -117,8 +187,8 @@ export default function ReactionMenu({
             whileHover={{ scale: 1.2 }}
             whileTap={{ scale: 0.9 }}
             onClick={() => handleReaction(emoji)}
-            className={`flex items-center justify-center rounded-full transition-all duration-200 ${
-              isMobile 
+            className={`flex items-center justify-center rounded-full transition-all duration-200 flex-shrink-0 ${
+              isMobile
                 ? 'w-8 h-8 text-xl'   // Mobile: menor
                 : 'w-9 h-9 text-2xl'   // Desktop: médio
             } ${
@@ -131,6 +201,59 @@ export default function ReactionMenu({
             {emoji}
           </motion.button>
         ))}
+
+        {/* Add emoji button or input */}
+        {!showEmojiInput ? (
+          <motion.button
+            variants={emojiVariants}
+            custom={allEmojis.length}
+            initial="hidden"
+            animate="visible"
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            onClick={handleShowInput}
+            className={`flex items-center justify-center rounded-full transition-all duration-200 bg-gray-100 hover:bg-gray-200 flex-shrink-0 ${
+              isMobile
+                ? 'w-8 h-8'
+                : 'w-9 h-9'
+            }`}
+            title="Adicionar emoji"
+          >
+            <Plus size={isMobile ? 16 : 18} className="text-gray-600" />
+          </motion.button>
+        ) : (
+          <motion.div
+            initial={{ width: 0, opacity: 0 }}
+            animate={{ width: 'auto', opacity: 1 }}
+            className="flex items-center gap-1 flex-shrink-0"
+          >
+            <input
+              ref={inputRef}
+              type="text"
+              value={newEmoji}
+              onChange={(e) => setNewEmoji(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handleAddEmoji();
+                } else if (e.key === 'Escape') {
+                  setShowEmojiInput(false);
+                  setNewEmoji('');
+                }
+              }}
+              placeholder="😀"
+              maxLength={2}
+              className={`border border-gray-300 rounded-lg text-center focus:outline-none focus:ring-2 focus:ring-primary ${
+                isMobile ? 'w-10 h-8 text-xl' : 'w-12 h-9 text-2xl'
+              }`}
+            />
+            <button
+              onClick={handleAddEmoji}
+              className="px-2 py-1 bg-primary text-white rounded-lg text-xs font-medium hover:bg-primary/90 transition-colors"
+            >
+              OK
+            </button>
+          </motion.div>
+        )}
       </div>
 
       {/* Arrow pointer - positioned based on offset */}
