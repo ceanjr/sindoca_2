@@ -1709,60 +1709,60 @@ async function authenticateWithBiometrics() {
 
 #### 4.1 Tela de Autenticação
 
-- [ ] Migrar `app/auth/login/page.jsx` → `app/auth/login.tsx`
-- [ ] Substituir componentes HTML por RN:
-  - [ ] `<form>` → State + handlers
-  - [ ] `<input>` → `<TextInput>`
-  - [ ] `<button>` → `<Button>` customizado
-- [ ] Manter validações e lógica de erro
-- [ ] Adaptar estilos (Tailwind classes → NativeWind)
-- [ ] Testar login completo
+- [x] Migrar `app/auth/login/page.jsx` → `app/auth/login.tsx`
+- [x] Substituir componentes HTML por RN:
+  - [x] `<form>` → State + handlers
+  - [x] `<input>` → `<TextInput>`
+  - [x] `<button>` → `<Button>` customizado
+- [x] Manter validações e lógica de erro
+- [x] Adaptar estilos (Tailwind classes → NativeWind)
+- [x] Testar login completo
 
 #### 4.2 Tela de Join (Convite)
 
-- [ ] Migrar `app/auth/join/[code]/page.jsx` → `app/auth/join/[code].tsx`
-- [ ] Adaptar formulário de pergunta secreta
-- [ ] Manter lógica de validação de convite
-- [ ] Testar fluxo completo de join
+- [x] Migrar `app/auth/join/[code]/page.jsx` → `app/auth/join/[code].tsx`
+- [x] Adaptar formulário de pergunta secreta
+- [x] Manter lógica de validação de convite
+- [x] Testar fluxo completo de join
 
 #### 4.3 Galeria de Fotos
 
-- [ ] Migrar `app/galeria/page.jsx` → `app/(tabs)/galeria.tsx`
-- [ ] Substituir grid Masonry:
-  - [ ] Usar `FlatList` com `numColumns={2}`
-  - [ ] Ou usar `@shopify/flash-list` (performance)
-- [ ] Migrar componente `PhotoCard`:
-  - [ ] Substituir `<img>` por `<Image>` do React Native
-  - [ ] Usar `expo-image` (caching automático)
-  - [ ] Manter reações e favoritos
-- [ ] Implementar lightbox modal:
-  - [ ] Swipe para fechar (react-native-gesture-handler)
-  - [ ] Pinch to zoom (react-native-reanimated)
-  - [ ] Navegação entre fotos (swipe lateral)
-- [ ] Testar:
-  - [ ] Grid responsivo
-  - [ ] Scroll performance
-  - [ ] Lightbox gestos
+- [x] Migrar `app/galeria/page.jsx` → `app/(tabs)/galeria.tsx`
+- [x] Substituir grid Masonry:
+  - [x] Usar `FlatList` com `numColumns={2}`
+  - [x] Ou usar `@shopify/flash-list` (performance)
+- [x] Migrar componente `PhotoCard`:
+  - [x] Substituir `<img>` por `<Image>` do React Native
+  - [x] Usar `expo-image` (caching automático)
+  - [x] Manter reações e favoritos
+- [x] Implementar lightbox modal:
+  - [x] Swipe para fechar (react-native-gesture-handler)
+  - [x] Pinch to zoom (react-native-reanimated)
+  - [x] Navegação entre fotos (swipe lateral)
+- [x] Testar:
+  - [x] Grid responsivo
+  - [x] Scroll performance
+  - [x] Lightbox gestos
 
 #### 4.4 Tela de Mensagens
 
-- [ ] Migrar `app/mensagens/page.jsx` → `app/(tabs)/mensagens.tsx`
-- [ ] Usar `FlatList` para lista de mensagens
-- [ ] Migrar componente de input de mensagem
-- [ ] Manter sistema de reações
-- [ ] Implementar pull-to-refresh
-- [ ] Testar:
-  - [ ] Enviar mensagem
-  - [ ] Receber em realtime
-  - [ ] Reagir com emoji
+- [x] Migrar `app/mensagens/page.jsx` → `app/(tabs)/mensagens.tsx`
+- [x] Usar `FlatList` para lista de mensagens
+- [x] Migrar componente de input de mensagem
+- [x] Manter sistema de reações
+- [x] Implementar pull-to-refresh
+- [x] Testar:
+  - [x] Enviar mensagem
+  - [x] Receber em realtime
+  - [x] Reagir com emoji
 
 #### 4.5 Tela de Música (Spotify)
 
-- [ ] Migrar `app/musica/page.jsx` → `app/(tabs)/musica.tsx`
-- [ ] Adaptar lista de músicas (FlatList)
-- [ ] Migrar componente de busca
-- [ ] Implementar player (se tiver preview_url)
-- [ ] Testar playlist colaborativa
+- [x] Migrar `app/musica/page.jsx` → `app/(tabs)/musica.tsx`
+- [x] Adaptar lista de músicas (FlatList)
+- [x] Migrar componente de busca
+- [x] Implementar player (se tiver preview_url)
+- [x] Testar playlist colaborativa
 
 #### 4.6 Outras Telas
 
