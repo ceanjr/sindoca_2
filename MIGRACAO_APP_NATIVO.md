@@ -8,17 +8,17 @@ Este documento foi **otimizado** para usar a stack mais simples, estável e grat
 
 ### ✅ O Que Mudou (vs Primeira Versão)
 
-| Antes                            | Agora (Otimizado)                                     | Por Quê                                     |
-| -------------------------------- | ----------------------------------------------------- | ------------------------------------------- |
-| Firebase/FCM para push           | **Expo Notifications** (nativo)                       | Sem configuração, 100% gratuito, mais fácil |
-| NativeWind (Tailwind para RN)    | **StyleSheet nativo**                                 | Mais estável, menos bugs, sem setup extra   |
-| Firebase Admin SDK no backend    | **API direta da Expo** (HTTP)                         | Sem dependências server-side                |
-| Notifee para notificações        | **Expo Notifications** (tudo integrado)               | Uma lib ao invés de duas                    |
-| react-query, zustand (opcionais) | **Removidos** (usar depois se necessário)             | Simplificar stack inicial                   |
+| Antes                            | Agora (Otimizado)                                     | Por Quê                                      |
+| -------------------------------- | ----------------------------------------------------- | -------------------------------------------- |
+| Firebase/FCM para push           | **Expo Notifications** (nativo)                       | Sem configuração, 100% gratuito, mais fácil  |
+| NativeWind (Tailwind para RN)    | **StyleSheet nativo**                                 | Mais estável, menos bugs, sem setup extra    |
+| Firebase Admin SDK no backend    | **API direta da Expo** (HTTP)                         | Sem dependências server-side                 |
+| Notifee para notificações        | **Expo Notifications** (tudo integrado)               | Uma lib ao invés de duas                     |
+| react-query, zustand (opcionais) | **Removidos** (usar depois se necessário)             | Simplificar stack inicial                    |
 | TestFlight requer $99/ano        | **EAS Build Internal Distribution** (gratuito)        | Instala direto via link, sem Apple Developer |
-| Build na nuvem pago              | **30 builds/mês grátis** + build local ilimitado      | 100% gratuito para sempre                   |
-| Push tokens separados (FCM/APNs) | **Token único Expo** funciona em Android e iOS        | Mais simples de gerenciar                   |
-| Curva de aprendizado alta        | **Stack 100% Expo** (docs consistentes, tudo integra) | Mais fácil de aprender e manter             |
+| Build na nuvem pago              | **30 builds/mês grátis** + build local ilimitado      | 100% gratuito para sempre                    |
+| Push tokens separados (FCM/APNs) | **Token único Expo** funciona em Android e iOS        | Mais simples de gerenciar                    |
+| Curva de aprendizado alta        | **Stack 100% Expo** (docs consistentes, tudo integra) | Mais fácil de aprender e manter              |
 
 ### 💰 Custo Final: **$0 para sempre**
 
@@ -477,7 +477,8 @@ export async function registerForPushNotificationsAsync() {
   }
 
   if (Device.isDevice) {
-    const { status: existingStatus } = await Notifications.getPermissionsAsync();
+    const { status: existingStatus } =
+      await Notifications.getPermissionsAsync();
     let finalStatus = existingStatus;
 
     if (existingStatus !== 'granted') {
@@ -504,19 +505,22 @@ export async function registerForPushNotificationsAsync() {
 }
 
 async function savePushToken(token: string) {
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   if (user) {
-    await supabase
-      .from('push_subscriptions_native')
-      .upsert({
+    await supabase.from('push_subscriptions_native').upsert(
+      {
         user_id: user.id,
         expo_push_token: token,
         platform: Platform.OS,
         updated_at: new Date().toISOString(),
-      }, {
-        onConflict: 'user_id'
-      });
+      },
+      {
+        onConflict: 'user_id',
+      }
+    );
   }
 }
 
@@ -528,26 +532,32 @@ export function usePushNotifications() {
 
   useEffect(() => {
     // Registrar e obter token
-    registerForPushNotificationsAsync().then(token => setExpoPushToken(token));
+    registerForPushNotificationsAsync().then((token) =>
+      setExpoPushToken(token)
+    );
 
     // Listener quando notificação chega (app aberto)
-    notificationListener.current = Notifications.addNotificationReceivedListener(notification => {
-      console.log('Notificação recebida:', notification);
-    });
+    notificationListener.current =
+      Notifications.addNotificationReceivedListener((notification) => {
+        console.log('Notificação recebida:', notification);
+      });
 
     // Listener quando usuário clica na notificação
-    responseListener.current = Notifications.addNotificationResponseReceivedListener(response => {
-      console.log('Notificação clicada:', response);
+    responseListener.current =
+      Notifications.addNotificationResponseReceivedListener((response) => {
+        console.log('Notificação clicada:', response);
 
-      // Deep linking baseado no data da notificação
-      const data = response.notification.request.content.data;
-      if (data.screen) {
-        router.push(data.screen); // Navegar para tela específica
-      }
-    });
+        // Deep linking baseado no data da notificação
+        const data = response.notification.request.content.data;
+        if (data.screen) {
+          router.push(data.screen); // Navegar para tela específica
+        }
+      });
 
     return () => {
-      Notifications.removeNotificationSubscription(notificationListener.current!);
+      Notifications.removeNotificationSubscription(
+        notificationListener.current!
+      );
       Notifications.removeNotificationSubscription(responseListener.current!);
     };
   }, []);
@@ -573,10 +583,10 @@ export async function POST(request: Request) {
     return Response.json({ error: 'No push tokens found' }, { status: 404 });
   }
 
-  const tokens = subscriptions.map(s => s.expo_push_token);
+  const tokens = subscriptions.map((s) => s.expo_push_token);
 
   // Criar mensagens para Expo Push API
-  const messages = tokens.map(token => ({
+  const messages = tokens.map((token) => ({
     to: token,
     sound: 'default',
     title,
@@ -590,7 +600,7 @@ export async function POST(request: Request) {
   const response = await fetch('https://exp.host/--/api/v2/push/send', {
     method: 'POST',
     headers: {
-      'Accept': 'application/json',
+      Accept: 'application/json',
       'Accept-encoding': 'gzip, deflate',
       'Content-Type': 'application/json',
     },
@@ -918,7 +928,9 @@ export function Button({ title, onPress, variant = 'primary' }: ButtonProps) {
       onPress={onPress}
       activeOpacity={0.7}
     >
-      <Text style={[styles.text, variant === 'secondary' && styles.textSecondary]}>
+      <Text
+        style={[styles.text, variant === 'secondary' && styles.textSecondary]}
+      >
         {title}
       </Text>
     </TouchableOpacity>
@@ -1173,6 +1185,7 @@ eas build --platform ios --profile preview
 ```
 
 **Como funciona**:
+
 1. EAS Build gera o `.ipa` na nuvem (gratuito)
 2. Link de download válido por 30 dias
 3. Instala diretamente no iPhone via Safari
@@ -1181,6 +1194,7 @@ eas build --platform ios --profile preview
 6. Limite: 30 builds/mês (mais que suficiente)
 
 **📱 Instalação no iPhone**:
+
 1. Abrir link do build no Safari do iPhone
 2. Clicar em "Install"
 3. Ir em Ajustes > Geral > VPN e Gerenciamento de Dispositivos
@@ -1482,10 +1496,8 @@ async function authenticateWithBiometrics() {
 
 - [x] Instalar Node.js 18+ e npm/yarn
 - [x] Instalar Expo CLI: `npm install -g expo-cli eas-cli`
-- [ ] Criar conta Expo (gratuita): https://expo.dev/signup
-- [ ] Instalar Expo Go no celular (iOS/Android) para testes
-- [ ] Instalar Android Studio (para emulador Android)
-- [ ] Instalar Xcode (macOS, para emulador iOS)
+- [x] Criar conta Expo (gratuita): https://expo.dev/signup
+- [x] Instalar Expo Go no celular (iOS/Android) para testes
 
 #### 1.2 Setup do Projeto
 
@@ -1544,14 +1556,14 @@ async function authenticateWithBiometrics() {
   - `app/mensagens/page.jsx` → `app/(tabs)/mensagens.tsx`
   - `app/musica/page.jsx` → `app/(tabs)/musica.tsx`
 - [x] Implementar navegação bottom tabs (5 tabs principais)
-- [ ] Configurar modais (photo lightbox, voice recorder, story viewer)
+- [x] Configurar modais (photo lightbox, voice recorder, story viewer)
 - [x] Testar navegação básica entre telas
 
 #### 2.3 Context & State Management
 
 - [x] Copiar `/contexts/AuthContext.tsx` do PWA
 - [x] Adaptar `AuthContext` para usar AsyncStorage no lugar de cookies
-- [ ] Copiar `/contexts/PageConfigContext.jsx` (pode ser simplificado no native)
+- [x] Copiar `/contexts/PageConfigContext.jsx` (pode ser simplificado no native)
 - [x] Criar `AppProvider.tsx` unificado
 - [x] Configurar `app/_layout.tsx` com providers
 - [x] Testar login e persistência de sessão
@@ -1564,17 +1576,17 @@ async function authenticateWithBiometrics() {
 - [x] Criar `components/ui/Avatar.tsx` (Image com fallback)
 - [x] Criar `components/ui/Loading.tsx` (ActivityIndicator)
 - [x] Criar `components/ui/Toast.tsx` (substituir Sonner)
-- [ ] Criar `components/ui/Modal.tsx` (Modal nativo)
+- [x] Criar `components/ui/Modal.tsx` (Modal nativo)
 - [x] Testar todos os componentes UI isoladamente
 
 #### 2.5 Hooks Base (Reutilizar Lógica)
 
 - [x] Copiar `/lib/utils/` (funções puras, 100% reutilizáveis)
-- [ ] Copiar `/lib/api/` (chamadas API)
+- [x] Copiar `/lib/api/` (chamadas API)
 - [x] Adaptar `hooks/useAuth.ts` (remover dependências web)
-- [ ] Adaptar `hooks/useRealtimePhotos.ts` (Supabase funciona igual)
-- [ ] Adaptar `hooks/useRealtimeMessages.ts`
-- [ ] Adaptar `hooks/useReactions.ts`
+- [x] Adaptar `hooks/useRealtimePhotos.ts` (Supabase funciona igual)
+- [x] Adaptar `hooks/useRealtimeMessages.ts`
+- [x] Adaptar `hooks/useReactions.ts`
 - [x] Criar `hooks/useImagePicker.ts` (substituir `<input type="file">`)
 - [x] Testar cada hook individualmente
 
@@ -2079,6 +2091,7 @@ A migração do Sindoca PWA para app nativo é **100% viável**, **100% gratuita
 ### Arquitetura do Projeto Atual
 
 O projeto está **muito bem estruturado**, com:
+
 - **Lógica de negócio modular** (100% reutilizável)
 - **Hooks customizados** (fácil adaptação)
 - **Supabase Realtime** (funciona idêntico em RN)
@@ -2089,6 +2102,7 @@ O maior esforço será na reescrita de **UI components** (HTML → React Native)
 ### Recomendação de Implementação
 
 **Abordagem Incremental** (recomendado):
+
 1. **MVP (2-3 semanas)**: Auth + Galeria + Push Notifications
 2. **Testar com vocês 2**: Validar experiência, coletar feedback
 3. **Expandir (4-6 semanas)**: Mensagens, Spotify, Stories, etc
@@ -2099,6 +2113,7 @@ O maior esforço será na reescrita de **UI components** (HTML → React Native)
 ### Quando Começar?
 
 **Agora é o momento ideal**:
+
 - Expo SDK 52 é estável e maduro
 - React Native 0.76 trouxe melhorias de performance
 - Vocês têm um projeto bem estruturado para migrar
