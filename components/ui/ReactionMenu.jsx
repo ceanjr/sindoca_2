@@ -35,30 +35,29 @@ export default function ReactionMenu({
     }
   }, [user?.id, isOpen]);
 
-  // Track previous showEmojiPicker state to detect when picker closes
-  const prevShowEmojiPicker = useRef(showEmojiPicker);
-  useEffect(() => {
-    // If picker was open and now is closed
-    if (prevShowEmojiPicker.current && !showEmojiPicker) {
-      console.log('[ReactionMenu] EmojiPicker closed');
+  // Handle emoji picker close
+  const handleEmojiPickerClose = () => {
+    console.log('[ReactionMenu] handleEmojiPickerClose called, emojiWasSelected:', emojiWasSelected.current);
 
-      // Check if an emoji was selected
-      if (!emojiWasSelected.current) {
-        console.log('[ReactionMenu] No emoji selected, will close menu after animation');
-        // Give time for picker close animation, then close the reaction menu
-        setTimeout(() => {
-          console.log('[ReactionMenu] Closing reaction menu via onClose');
-          if (onClose) {
-            onClose();
-          }
-        }, 300);
-      } else {
-        console.log('[ReactionMenu] Emoji was selected, keeping menu open for now');
-        // The menu will close via handleReact -> setIsMenuOpen(false) in ReactableContent
-      }
+    // First close the emoji picker
+    setShowEmojiPicker(false);
+
+    // If no emoji was selected, close the reaction menu after animation
+    if (!emojiWasSelected.current) {
+      console.log('[ReactionMenu] No emoji selected, closing reaction menu');
+      setTimeout(() => {
+        if (onClose) {
+          onClose();
+        }
+      }, 300);
+    } else {
+      console.log('[ReactionMenu] Emoji was selected, keeping reaction menu open');
+      // Reset flag after a delay
+      setTimeout(() => {
+        emojiWasSelected.current = false;
+      }, 500);
     }
-    prevShowEmojiPicker.current = showEmojiPicker;
-  }, [showEmojiPicker, onClose]);
+  };
 
   const loadCustomEmojis = async () => {
     try {
@@ -115,13 +114,10 @@ export default function ReactionMenu({
 
     console.log('[ReactionMenu] handleAddEmoji called with:', emoji);
 
-    // Mark that an emoji was selected
+    // Mark that an emoji was selected (before EmojiPicker calls onClose)
     emojiWasSelected.current = true;
 
     try {
-      // First close the emoji picker
-      setShowEmojiPicker(false);
-
       // Add the custom emoji
       await addCustomEmoji(user.id, emoji);
       await loadCustomEmojis();
@@ -130,13 +126,13 @@ export default function ReactionMenu({
       await handleReaction(emoji);
 
       console.log('[ReactionMenu] Emoji added and reaction triggered');
+
+      // Note: EmojiPicker will call onClose() automatically (handleEmojiPickerClose)
+      // which will detect emojiWasSelected.current = true and keep the reaction menu open
     } catch (error) {
       console.error('Error adding custom emoji:', error);
-    } finally {
-      // Reset the flag after processing
-      setTimeout(() => {
-        emojiWasSelected.current = false;
-      }, 500);
+      // Reset flag on error
+      emojiWasSelected.current = false;
     }
   };
 
@@ -304,7 +300,7 @@ export default function ReactionMenu({
       {/* Emoji Picker Modal */}
       <EmojiPicker
         isOpen={showEmojiPicker}
-        onClose={() => setShowEmojiPicker(false)}
+        onClose={handleEmojiPickerClose}
         onSelectEmoji={handleAddEmoji}
       />
     </motion.div>
