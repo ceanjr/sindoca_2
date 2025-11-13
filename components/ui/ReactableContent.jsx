@@ -29,7 +29,7 @@ export default function ReactableContent({
   className = '',
 }) {
   const { user } = useAuth();
-  const { myReaction } = useReactions(contentId);
+  const { myReaction, refresh: refreshReactions } = useReactions(contentId);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [menuPosition, setMenuPosition] = useState('bottom'); // 'top' or 'bottom'
   const [menuCoords, setMenuCoords] = useState({ top: 0, left: 0 });
@@ -38,6 +38,7 @@ export default function ReactableContent({
   const hoverTimeout = useRef(null);
   const longPressTimeout = useRef(null);
   const menuJustOpened = useRef(false);
+  const lastMenuOpenTime = useRef(0);
 
   // Global state to track currently open menu
   useEffect(() => {
@@ -81,10 +82,14 @@ export default function ReactableContent({
           url,
         });
       }
-      
+
+      // Refresh reactions immediately to show the update
+      console.log('[ReactableContent] Refreshing reactions after react');
+      await refreshReactions();
+
       setIsMenuOpen(false);
     },
-    [contentId, user, authorId, contentType, contentTitle, url]
+    [contentId, user, authorId, contentType, contentTitle, url, refreshReactions]
   );
 
   // Don't show reaction menu if user is the author
@@ -93,6 +98,20 @@ export default function ReactableContent({
   // Mobile: Long press handlers
   const handleTouchStart = (e) => {
     if (!canReact) return;
+
+    // Check if clicked on ignored element (like emoji picker button)
+    const isIgnored = e.target.closest('[data-ignore-reactable="true"]');
+    if (isIgnored) {
+      console.log('[ReactableContent] Touch start on ignored element, skipping');
+      return;
+    }
+
+    // Prevent new long press if menu was just opened (within 500ms)
+    const timeSinceLastOpen = Date.now() - lastMenuOpenTime.current;
+    if (timeSinceLastOpen < 500) {
+      console.log('[ReactableContent] Too soon after last menu open, skipping');
+      return;
+    }
 
     touchStartTime.current = Date.now();
     menuJustOpened.current = false;
@@ -137,6 +156,7 @@ export default function ReactableContent({
         setMenuCoords({ top, left });
         setIsMenuOpen(true);
         menuJustOpened.current = true;
+        lastMenuOpenTime.current = Date.now(); // Track when menu was opened
 
         // Strong haptic feedback when menu opens
         // The Vibration API works in mobile browsers, not just PWA
@@ -158,7 +178,18 @@ export default function ReactableContent({
     }, 500);
   };
 
-  const handleTouchEnd = () => {
+  const handleTouchEnd = (e) => {
+    // Check if clicked on ignored element (like emoji picker button)
+    const isIgnored = e.target.closest('[data-ignore-reactable="true"]');
+    if (isIgnored) {
+      console.log('[ReactableContent] Touch on ignored element, skipping');
+      if (longPressTimeout.current) {
+        clearTimeout(longPressTimeout.current);
+        longPressTimeout.current = null;
+      }
+      return;
+    }
+
     // Clear timeout
     if (longPressTimeout.current) {
       clearTimeout(longPressTimeout.current);
@@ -336,6 +367,10 @@ export default function ReactableContent({
             contentId={contentId}
             currentReaction={myReaction}
             onReact={handleReact}
+            onClose={() => {
+              console.log('[ReactableContent] Closing menu via ReactionMenu onClose');
+              setIsMenuOpen(false);
+            }}
             position={menuPosition}
             isOpen={isMenuOpen}
             arrowOffset={containerRef.current ? containerRef.current.getBoundingClientRect().left - menuCoords.left : 0}

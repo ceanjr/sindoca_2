@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Plus } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { getUserCustomEmojis, addCustomEmoji, updateEmojiUsage } from '@/lib/api/customEmojis';
+import EmojiPicker from './EmojiPicker';
 
 const DEFAULT_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '🙏', '🤔'];
 
@@ -12,6 +13,7 @@ export default function ReactionMenu({
   contentId,
   currentReaction,
   onReact,
+  onClose,
   disabled = false,
   position = 'auto', // 'auto', 'top', 'bottom'
   isOpen = true, // Controlled by parent
@@ -20,10 +22,11 @@ export default function ReactionMenu({
   const { user } = useAuth();
   const [menuPosition, setMenuPosition] = useState('bottom');
   const [customEmojis, setCustomEmojis] = useState([]);
-  const [showEmojiInput, setShowEmojiInput] = useState(false);
-  const [newEmoji, setNewEmoji] = useState('');
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [isOpening, setIsOpening] = useState(false);
   const menuRef = useRef(null);
-  const inputRef = useRef(null);
+  const scrollRef = useRef(null);
+  const emojiWasSelected = useRef(false);
 
   // Load custom emojis
   useEffect(() => {
@@ -31,6 +34,31 @@ export default function ReactionMenu({
       loadCustomEmojis();
     }
   }, [user?.id, isOpen]);
+
+  // Track previous showEmojiPicker state to detect when picker closes
+  const prevShowEmojiPicker = useRef(showEmojiPicker);
+  useEffect(() => {
+    // If picker was open and now is closed
+    if (prevShowEmojiPicker.current && !showEmojiPicker) {
+      console.log('[ReactionMenu] EmojiPicker closed');
+
+      // Check if an emoji was selected
+      if (!emojiWasSelected.current) {
+        console.log('[ReactionMenu] No emoji selected, will close menu after animation');
+        // Give time for picker close animation, then close the reaction menu
+        setTimeout(() => {
+          console.log('[ReactionMenu] Closing reaction menu via onClose');
+          if (onClose) {
+            onClose();
+          }
+        }, 300);
+      } else {
+        console.log('[ReactionMenu] Emoji was selected, keeping menu open for now');
+        // The menu will close via handleReact -> setIsMenuOpen(false) in ReactableContent
+      }
+    }
+    prevShowEmojiPicker.current = showEmojiPicker;
+  }, [showEmojiPicker, onClose]);
 
   const loadCustomEmojis = async () => {
     try {
@@ -42,6 +70,7 @@ export default function ReactionMenu({
   };
 
   const allEmojis = [...DEFAULT_EMOJIS, ...customEmojis];
+  const MAX_VISIBLE_EMOJIS = 5;
 
   // Calculate optimal menu position
   useEffect(() => {
@@ -49,6 +78,7 @@ export default function ReactionMenu({
       setMenuPosition(position);
     }
   }, [position]);
+
 
   const handleReaction = async (emoji) => {
     if (disabled) return;
@@ -80,66 +110,34 @@ export default function ReactionMenu({
     }
   };
 
-  const handleAddEmoji = async (emojiValue) => {
-    const emojiToAdd = emojiValue || newEmoji;
+  const handleAddEmoji = async (emoji) => {
+    if (!emoji || !user?.id) return;
 
-    if (!emojiToAdd.trim() || !user?.id) return;
+    console.log('[ReactionMenu] handleAddEmoji called with:', emoji);
 
-    // Extract first emoji from input (in case user typed multiple)
-    const emojiRegex = /[\p{Emoji_Presentation}\p{Emoji}\uFE0F]/gu;
-    const matches = emojiToAdd.match(emojiRegex);
-    const emoji = matches?.[0];
-
-    if (!emoji) {
-      console.log('[ReactionMenu] No valid emoji found in:', emojiToAdd);
-      return;
-    }
+    // Mark that an emoji was selected
+    emojiWasSelected.current = true;
 
     try {
+      // First close the emoji picker
+      setShowEmojiPicker(false);
+
+      // Add the custom emoji
       await addCustomEmoji(user.id, emoji);
       await loadCustomEmojis();
-      setNewEmoji('');
-      setShowEmojiInput(false);
 
-      // Auto-select the new emoji as reaction
+      // Auto-select the new emoji as reaction (this calls onReact from parent)
       await handleReaction(emoji);
+
+      console.log('[ReactionMenu] Emoji added and reaction triggered');
     } catch (error) {
       console.error('Error adding custom emoji:', error);
+    } finally {
+      // Reset the flag after processing
+      setTimeout(() => {
+        emojiWasSelected.current = false;
+      }, 500);
     }
-  };
-
-  // Handle emoji input change - auto-add on emoji selection
-  const handleEmojiInputChange = (e) => {
-    const value = e.target.value;
-    setNewEmoji(value);
-
-    // Auto-detect emoji and add immediately
-    const emojiRegex = /[\p{Emoji_Presentation}\p{Emoji}\uFE0F]/gu;
-    const matches = value.match(emojiRegex);
-
-    if (matches && matches.length > 0) {
-      // Emoji detected, add it immediately
-      handleAddEmoji(value);
-    }
-  };
-
-  const handleShowInput = () => {
-    setShowEmojiInput(true);
-    // Small delay to ensure input is rendered
-    setTimeout(() => {
-      if (inputRef.current) {
-        inputRef.current.focus();
-        // Try to open emoji keyboard on mobile
-        if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
-          // Trigger touch event to simulate user interaction
-          const touchEvent = new TouchEvent('touchstart', {
-            bubbles: true,
-            cancelable: true,
-          });
-          inputRef.current.dispatchEvent(touchEvent);
-        }
-      }
-    }, 50);
   };
 
   const menuVariants = {
@@ -201,85 +199,94 @@ export default function ReactionMenu({
     >
       <div className={`bg-white rounded-2xl shadow-2xl flex items-center border border-gray-200 ${
         isMobile
-          ? 'px-2 py-1.5 gap-0.5' // Mobile: mais compacto
-          : 'px-2.5 py-2 gap-1'    // Desktop: um pouco maior
-      } max-w-[90vw] overflow-x-auto scrollbar-hide`}>
-        {/* Existing and custom emojis */}
-        {allEmojis.map((emoji, index) => (
-          <motion.button
-            key={emoji}
-            custom={index}
-            variants={emojiVariants}
-            initial="hidden"
-            animate="visible"
-            whileHover={{ scale: 1.2 }}
-            whileTap={{ scale: 0.9 }}
-            onClick={() => handleReaction(emoji)}
-            className={`flex items-center justify-center rounded-full transition-all duration-200 flex-shrink-0 ${
-              isMobile
-                ? 'w-8 h-8 text-xl'   // Mobile: menor
-                : 'w-9 h-9 text-2xl'   // Desktop: médio
-            } ${
-              currentReaction === emoji
-                ? 'bg-primary/10 ring-2 ring-primary'
-                : 'hover:bg-gray-100'
-            }`}
-            aria-label={`React with ${emoji}`}
-          >
-            {emoji}
-          </motion.button>
-        ))}
-
-        {/* Add emoji button or input */}
-        {!showEmojiInput ? (
-          <motion.button
-            variants={emojiVariants}
-            custom={allEmojis.length}
-            initial="hidden"
-            animate="visible"
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-            onClick={handleShowInput}
-            className={`flex items-center justify-center rounded-full transition-all duration-200 bg-gray-100 hover:bg-gray-200 flex-shrink-0 ${
-              isMobile
-                ? 'w-8 h-8'
-                : 'w-9 h-9'
-            }`}
-            title="Adicionar emoji"
-          >
-            <Plus size={isMobile ? 16 : 18} className="text-gray-600" />
-          </motion.button>
-        ) : (
-          <motion.div
-            initial={{ width: 0, opacity: 0 }}
-            animate={{ width: 'auto', opacity: 1 }}
-            className="flex items-center gap-1 flex-shrink-0"
-          >
-            <input
-              ref={inputRef}
-              type="text"
-              value={newEmoji}
-              onChange={handleEmojiInputChange}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  handleAddEmoji();
-                } else if (e.key === 'Escape') {
-                  setShowEmojiInput(false);
-                  setNewEmoji('');
-                }
-              }}
-              placeholder="😀"
-              maxLength={2}
-              autoFocus
-              className={`border border-gray-300 rounded-lg text-center focus:outline-none focus:ring-2 focus:ring-primary ${
-                isMobile ? 'w-10 h-8 text-xl' : 'w-12 h-9 text-2xl'
+          ? 'py-1.5 pl-2 pr-1' // Mobile: mais compacto
+          : 'py-2 pl-2.5 pr-1.5'    // Desktop: um pouco maior
+      }`}>
+        {/* Scrollable emoji container - limited to MAX_VISIBLE_EMOJIS */}
+        <div
+          ref={scrollRef}
+          className={`flex items-center overflow-x-auto scrollbar-hide ${
+            isMobile ? 'gap-1 py-1 px-1' : 'gap-2 py-1.5 px-1.5'
+          }`}
+          style={{
+            maxWidth: isMobile
+              ? `${MAX_VISIBLE_EMOJIS * 36}px` // 36px = 32px (w-8) + 4px gap
+              : `${MAX_VISIBLE_EMOJIS * 44}px`, // 44px = 36px (w-9) + 8px gap
+            overflowX: 'auto',
+            overflowY: 'hidden',
+            WebkitOverflowScrolling: 'touch',
+          }}
+          onTouchStart={(e) => e.stopPropagation()}
+          onTouchMove={(e) => e.stopPropagation()}
+        >
+          {/* Existing and custom emojis */}
+          {allEmojis.map((emoji, index) => (
+            <motion.button
+              key={emoji}
+              custom={index}
+              variants={emojiVariants}
+              initial="hidden"
+              animate="visible"
+              whileHover={{ scale: 1.2 }}
+              whileTap={{ scale: 0.9 }}
+              onClick={() => handleReaction(emoji)}
+              className={`flex items-center justify-center rounded-full transition-all duration-200 flex-shrink-0 ${
+                isMobile
+                  ? 'w-8 h-8 text-xl'   // Mobile: menor
+                  : 'w-9 h-9 text-2xl'   // Desktop: médio
+              } ${
+                currentReaction === emoji
+                  ? 'bg-primary/10 ring-2 ring-primary'
+                  : 'hover:bg-gray-100'
               }`}
-              style={{
-                fontSize: isMobile ? '1.25rem' : '1.5rem',
-              }}
-            />
-          </motion.div>
-        )}
+              aria-label={`React with ${emoji}`}
+            >
+              {emoji}
+            </motion.button>
+          ))}
+        </div>
+
+        {/* Fixed add emoji button - stays on the right */}
+        <motion.button
+          variants={emojiVariants}
+          custom={allEmojis.length}
+          initial="hidden"
+          animate="visible"
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+          onClick={(e) => {
+            console.log('[ReactionMenu] Plus button clicked');
+            e.stopPropagation();
+            e.preventDefault();
+            if (isOpening) return;
+            setIsOpening(true);
+            console.log('[ReactionMenu] Setting showEmojiPicker to true');
+            setShowEmojiPicker(true);
+            setTimeout(() => setIsOpening(false), 500);
+          }}
+          onTouchStart={(e) => e.stopPropagation()}
+          onTouchEnd={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            if (isOpening) return;
+            setIsOpening(true);
+            setShowEmojiPicker(true);
+            setTimeout(() => setIsOpening(false), 500);
+          }}
+          type="button"
+          data-ignore-reactable="true"
+          className={`flex items-center justify-center rounded-full transition-all duration-200 bg-gray-100 hover:bg-gray-200 flex-shrink-0 ${
+            isMobile
+              ? 'w-8 h-8 ml-1'
+              : 'w-9 h-9 ml-2'
+          }`}
+          style={{
+            touchAction: 'manipulation'
+          }}
+          title="Adicionar emoji"
+        >
+          <Plus size={isMobile ? 16 : 18} className="text-gray-600" />
+        </motion.button>
       </div>
 
       {/* Arrow pointer - positioned based on offset */}
@@ -292,6 +299,13 @@ export default function ReactionMenu({
         style={{
           left: arrowOffset > 0 ? `${arrowOffset + 16}px` : '16px', // Center on the element
         }}
+      />
+
+      {/* Emoji Picker Modal */}
+      <EmojiPicker
+        isOpen={showEmojiPicker}
+        onClose={() => setShowEmojiPicker(false)}
+        onSelectEmoji={handleAddEmoji}
       />
     </motion.div>
   );

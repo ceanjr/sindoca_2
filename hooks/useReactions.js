@@ -19,6 +19,8 @@ export function useReactions(contentId) {
   const loadReactions = useCallback(async () => {
     if (!contentId) return;
 
+    console.log('[useReactions] Loading reactions for contentId:', contentId);
+
     try {
       const { data, error } = await supabase
         .from('reactions')
@@ -29,10 +31,12 @@ export function useReactions(contentId) {
 
       if (error) throw error;
 
+      console.log('[useReactions] Loaded reactions:', data);
       setReactions(data || []);
-      
+
       // Find current user's reaction
       const userReaction = data?.find((r) => r.user_id === user?.id);
+      console.log('[useReactions] Current user reaction:', userReaction);
       setMyReaction(userReaction?.emoji || null);
     } catch (error) {
       console.error('Error loading reactions:', error);
@@ -60,23 +64,36 @@ export function useReactions(contentId) {
           filter: `content_id=eq.${contentId}`,
         },
         (payload) => {
+          console.log('[useReactions] Realtime event:', payload.eventType, payload);
           if (payload.eventType === 'INSERT') {
+            console.log('[useReactions] INSERT - Adding reaction:', payload.new);
             setReactions((prev) => [...prev, payload.new]);
             if (payload.new.user_id === user?.id) {
+              console.log('[useReactions] Setting myReaction to:', payload.new.emoji);
               setMyReaction(payload.new.emoji);
             }
+            // Emit global event to trigger re-renders
+            window.dispatchEvent(new CustomEvent('reaction-updated', { detail: { contentId } }));
           } else if (payload.eventType === 'DELETE') {
+            console.log('[useReactions] DELETE - Removing reaction:', payload.old);
             setReactions((prev) => prev.filter((r) => r.id !== payload.old.id));
             if (payload.old.user_id === user?.id) {
+              console.log('[useReactions] Clearing myReaction');
               setMyReaction(null);
             }
+            // Emit global event to trigger re-renders
+            window.dispatchEvent(new CustomEvent('reaction-updated', { detail: { contentId } }));
           } else if (payload.eventType === 'UPDATE') {
+            console.log('[useReactions] UPDATE - Updating reaction:', payload.new);
             setReactions((prev) =>
               prev.map((r) => (r.id === payload.new.id ? payload.new : r))
             );
             if (payload.new.user_id === user?.id) {
+              console.log('[useReactions] Updating myReaction to:', payload.new.emoji);
               setMyReaction(payload.new.emoji);
             }
+            // Emit global event to trigger re-renders
+            window.dispatchEvent(new CustomEvent('reaction-updated', { detail: { contentId } }));
           }
         }
       )

@@ -3,7 +3,13 @@
  */
 'use client';
 
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useMemo,
+  useCallback,
+} from 'react';
 import dynamic from 'next/dynamic';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useInView } from 'react-intersection-observer';
@@ -34,10 +40,15 @@ import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { remoteLogger } from '@/lib/utils/remoteLogger';
 
 // Lazy load SpotifySearchModal for better performance
-const SpotifySearchModal = dynamic(() => import('../music/SpotifySearchModal'), {
-  ssr: false,
-  loading: () => <div className="flex items-center justify-center p-4">Carregando...</div>
-});
+const SpotifySearchModal = dynamic(
+  () => import('../music/SpotifySearchModal'),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex items-center justify-center p-4">Carregando...</div>
+    ),
+  }
+);
 
 export default function MusicSection({ id }) {
   const { user } = useAuth();
@@ -57,6 +68,7 @@ export default function MusicSection({ id }) {
   const [connectingSpotify, setConnectingSpotify] = useState(false);
   const [openMenuId, setOpenMenuId] = useState(null);
   const [showOnlyFavorites, setShowOnlyFavorites] = useState(false);
+  const [reactionUpdateTrigger, setReactionUpdateTrigger] = useState(0);
   const audioRef = useRef(null);
   const previousTracksCount = useRef(0);
   const { ref, inView } = useInView({ threshold: 0.1, triggerOnce: true });
@@ -70,6 +82,16 @@ export default function MusicSection({ id }) {
         audioRef.current = null;
       }
     };
+  }, []);
+
+  // Listen for reaction updates to force re-render
+  useEffect(() => {
+    const handleReactionUpdate = () => {
+      setReactionUpdateTrigger(prev => prev + 1);
+    };
+
+    window.addEventListener('reaction-updated', handleReactionUpdate);
+    return () => window.removeEventListener('reaction-updated', handleReactionUpdate);
   }, []);
 
   // Pagination state
@@ -148,13 +170,14 @@ export default function MusicSection({ id }) {
 
       // Mensagens de erro mais amigáveis
       const errorMessages = {
-        'callback_failed': 'Erro desconhecido no callback',
-        'token_exchange_failed': 'Erro ao obter tokens do Spotify',
-        'profile_fetch_failed': 'Erro ao buscar perfil do Spotify',
-        'save_failed': 'Erro ao salvar dados no banco',
-        'spotify_unauthorized': 'Você não está autorizado no Spotify (verifique o Dashboard)',
-        'state_mismatch': 'Erro de segurança (CSRF). Tente novamente.',
-        'unauthorized': 'Você precisa estar logado no Sindoca',
+        callback_failed: 'Erro desconhecido no callback',
+        token_exchange_failed: 'Erro ao obter tokens do Spotify',
+        profile_fetch_failed: 'Erro ao buscar perfil do Spotify',
+        save_failed: 'Erro ao salvar dados no banco',
+        spotify_unauthorized:
+          'Você não está autorizado no Spotify (verifique o Dashboard)',
+        state_mismatch: 'Erro de segurança (CSRF). Tente novamente.',
+        unauthorized: 'Você precisa estar logado no Sindoca',
       };
 
       const friendlyMessage = errorMessages[hasErrorParam] || hasErrorParam;
@@ -169,32 +192,49 @@ export default function MusicSection({ id }) {
     }
 
     if (hasConnectedParam) {
-      remoteLogger.info('spotify-callback', 'Parâmetro connected=true detectado!');
+      remoteLogger.info(
+        'spotify-callback',
+        'Parâmetro connected=true detectado!'
+      );
 
       // Polling com retry: tenta várias vezes até os dados estarem disponíveis
-      const checkConnectionWithRetry = async (maxAttempts = 5, delayMs = 300) => {
+      const checkConnectionWithRetry = async (
+        maxAttempts = 5,
+        delayMs = 300
+      ) => {
         if (!user) {
-          remoteLogger.warn('spotify-callback', 'Usuário não autenticado no recheck');
+          remoteLogger.warn(
+            'spotify-callback',
+            'Usuário não autenticado no recheck'
+          );
           return;
         }
 
-        remoteLogger.info('spotify-callback', 'Iniciando verificação com retry...', {
-          userId: user.id,
-          maxAttempts,
-          delayMs,
-        });
+        remoteLogger.info(
+          'spotify-callback',
+          'Iniciando verificação com retry...',
+          {
+            userId: user.id,
+            maxAttempts,
+            delayMs,
+          }
+        );
 
         const supabase = createClient();
 
         for (let attempt = 0; attempt < maxAttempts; attempt++) {
           // Aguardar antes da tentativa (exceto na primeira)
           if (attempt > 0) {
-            await new Promise(resolve => setTimeout(resolve, delayMs));
+            await new Promise((resolve) => setTimeout(resolve, delayMs));
           }
 
-          remoteLogger.info('spotify-callback', `Tentativa ${attempt + 1}/${maxAttempts}`, {
-            attemptNumber: attempt + 1,
-          });
+          remoteLogger.info(
+            'spotify-callback',
+            `Tentativa ${attempt + 1}/${maxAttempts}`,
+            {
+              attemptNumber: attempt + 1,
+            }
+          );
 
           const { data, error } = await supabase
             .from('profiles')
@@ -203,24 +243,35 @@ export default function MusicSection({ id }) {
             .single();
 
           if (error) {
-            remoteLogger.error('spotify-callback', `Erro na tentativa ${attempt + 1}`, {
-              error: error.message,
-              code: error.code,
-              attempt: attempt + 1,
-            });
+            remoteLogger.error(
+              'spotify-callback',
+              `Erro na tentativa ${attempt + 1}`,
+              {
+                error: error.message,
+                code: error.code,
+                attempt: attempt + 1,
+              }
+            );
             continue; // Tentar novamente
           }
 
-          remoteLogger.info('spotify-callback', `Dados recebidos na tentativa ${attempt + 1}`, {
-            hasTokens: !!data?.spotify_tokens,
-            spotifyUserId: data?.spotify_user_id,
-            spotifyDisplayName: data?.spotify_display_name,
-            attempt: attempt + 1,
-          });
+          remoteLogger.info(
+            'spotify-callback',
+            `Dados recebidos na tentativa ${attempt + 1}`,
+            {
+              hasTokens: !!data?.spotify_tokens,
+              spotifyUserId: data?.spotify_user_id,
+              spotifyDisplayName: data?.spotify_display_name,
+              attempt: attempt + 1,
+            }
+          );
 
           // Sucesso: tokens encontrados!
           if (data?.spotify_tokens) {
-            remoteLogger.info('spotify-callback', `✅ Conexão confirmada na tentativa ${attempt + 1}!`);
+            remoteLogger.info(
+              'spotify-callback',
+              `✅ Conexão confirmada na tentativa ${attempt + 1}!`
+            );
             setSpotifyConnected(true);
             toast.success('Spotify conectado com sucesso!');
             window.history.replaceState({}, '', '/musica');
@@ -229,10 +280,14 @@ export default function MusicSection({ id }) {
         }
 
         // Após todas as tentativas, tokens ainda não encontrados
-        remoteLogger.error('spotify-callback', '❌ Tokens não encontrados após todas as tentativas', {
-          attempts: maxAttempts,
-          totalTimeMs: maxAttempts * delayMs,
-        });
+        remoteLogger.error(
+          'spotify-callback',
+          '❌ Tokens não encontrados após todas as tentativas',
+          {
+            attempts: maxAttempts,
+            totalTimeMs: maxAttempts * delayMs,
+          }
+        );
         toast.error('Erro ao sincronizar conexão. Tente recarregar a página.');
         window.history.replaceState({}, '', '/musica');
       };
@@ -623,183 +678,215 @@ export default function MusicSection({ id }) {
           {/* Track List */}
           {!loading && filteredTracks.length > 0 && (
             <>
-              <div className="flex flex-col gap-3 sm:gap-4 max-w-4xl mx-auto w-full">
+              <div className="flex flex-col gap-8 sm:gap-10 max-w-4xl mx-auto w-full">
                 {filteredTracks.map((track, index) => (
-                <ReactableContent
-                  key={track.id}
-                  contentId={track.id}
-                  contentType="music"
-                  contentTitle={track.title}
-                  authorId={track.author_id}
-                  url="/musica"
-                  className="w-full"
-                >
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.05 }}
-                    className="flex items-center gap-2 sm:gap-3 p-3 sm:p-4 bg-white rounded-xl shadow-soft-sm hover:shadow-soft-md transition-all w-full min-w-0"
+                  <ReactableContent
+                    key={track.id}
+                    contentId={track.id}
+                    contentType="music"
+                    contentTitle={track.title}
+                    authorId={track.author_id}
+                    url="/musica"
+                    className="w-full"
                   >
-                  {/* Album Cover - Clickable Player */}
-                  <button
-                    onClick={() =>
-                      track.data?.preview_url && handlePlayPreview(track)
-                    }
-                    disabled={!track.data?.preview_url}
-                    className={`relative flex-shrink-0 w-14 h-14 sm:w-16 sm:h-16 bg-gray-200 rounded-lg overflow-hidden group ${
-                      track.data?.preview_url
-                        ? 'cursor-pointer'
-                        : 'cursor-default'
-                    }`}
-                    title={
-                      track.data?.preview_url
-                        ? 'Tocar preview'
-                        : 'Preview não disponível'
-                    }
-                    aria-label={track.data?.preview_url ? 'Reproduzir preview da música' : 'Preview não disponível'}
-                  >
-                    {track.data?.album_cover ? (
-                      <>
-                        <img
-                          src={track.data.album_cover}
-                          alt={`Capa do álbum de ${track.title}`}
-                          className="w-full h-full object-cover"
-                          style={{ backgroundColor: '#e5e7eb' }}
-                          loading="lazy"
-                          decoding="async"
-                        />
-                        {/* Playing indicator - subtle pulsing border */}
-                        {playingPreview === track.id && (
-                          <div className="absolute inset-0 border-2 border-green-500 rounded-lg animate-pulse" />
-                        )}
-                        {track.data?.preview_url && (
-                          <div
-                            className={`absolute inset-0 flex items-center justify-center transition-all ${
-                              playingPreview === track.id
-                                ? 'bg-black/60'
-                                : 'bg-black/40 opacity-0 group-hover:opacity-100'
-                            }`}
-                          >
-                            {playingPreview === track.id ? (
-                              <Pause size={20} className="text-white sm:w-6 sm:h-6" />
-                            ) : (
-                              <Play size={20} className="text-white sm:w-6 sm:h-6" />
-                            )}
-                          </div>
-                        )}
-                      </>
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <Music size={20} className="text-gray-400 sm:w-6 sm:h-6" />
-                      </div>
-                    )}
-                  </button>
-
-                  {/* Track Info - with proper width constraints */}
-                  <div className="flex-1 min-w-0 flex flex-col gap-0.5 sm:gap-1 overflow-hidden pr-1">
-                    <div className="w-full min-w-0 overflow-hidden">
-                      <MarqueeText className="font-semibold text-sm sm:text-base text-textPrimary leading-tight">
-                        {track.title}
-                      </MarqueeText>
-                    </div>
-                    <p className="text-xs sm:text-sm text-textSecondary leading-tight truncate">
-                      {track.description}
-                    </p>
-                    <p className="text-[10px] sm:text-xs text-textTertiary mt-0.5 truncate">
-                      Adicionado por {track.profiles?.full_name || 'Alguém'} •{' '}
-                      {formatDate(track.created_at)}
-                    </p>
-                    {/* Reaction Display */}
-                    <ReactionDisplay contentId={track.id} className="mt-1" />
-                  </div>
-
-                  {/* Actions Menu */}
-                  <div className="relative flex-shrink-0">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setOpenMenuId(
-                          openMenuId === track.id ? null : track.id
-                        );
-                      }}
-                      className="p-2 rounded-full hover:bg-gray-100 active:bg-gray-200 text-gray-600 transition-colors"
-                      title="Mais opções"
-                      aria-label="Menu de opções"
-                    >
-                      <MoreVertical size={18} className="sm:w-5 sm:h-5" />
-                    </button>
-
-                    {/* Dropdown Menu */}
-                    <AnimatePresence>
-                      {openMenuId === track.id && (
-                        <motion.div
-                          initial={{ opacity: 0, scale: 0.95, y: -10 }}
-                          animate={{ opacity: 1, scale: 1, y: 0 }}
-                          exit={{ opacity: 0, scale: 0.95, y: -10 }}
-                          transition={{ duration: 0.15 }}
-                          className="absolute right-0 top-full mt-1 w-48 sm:w-56 bg-white rounded-xl shadow-lg border border-gray-200 py-2 z-10"
-                          onClick={(e) => e.stopPropagation()}
+                    <div className="relative w-full">
+                      <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.05 }}
+                        className="flex items-center gap-2 sm:gap-3 p-3 sm:p-4 bg-white rounded-xl shadow-soft-sm hover:shadow-soft-md transition-all w-full min-w-0"
+                      >
+                        {/* Album Cover - Clickable Player */}
+                        <button
+                          onClick={() =>
+                            track.data?.preview_url && handlePlayPreview(track)
+                          }
+                          disabled={!track.data?.preview_url}
+                          className={`relative flex-shrink-0 w-14 h-14 sm:w-16 sm:h-16 bg-gray-200 rounded-lg overflow-hidden group ${
+                            track.data?.preview_url
+                              ? 'cursor-pointer'
+                              : 'cursor-default'
+                          }`}
+                          title={
+                            track.data?.preview_url
+                              ? 'Tocar preview'
+                              : 'Preview não disponível'
+                          }
+                          aria-label={
+                            track.data?.preview_url
+                              ? 'Reproduzir preview da música'
+                              : 'Preview não disponível'
+                          }
                         >
-                          {/* Favorite */}
+                          {track.data?.album_cover ? (
+                            <>
+                              <img
+                                src={track.data.album_cover}
+                                alt={`Capa do álbum de ${track.title}`}
+                                className="w-full h-full object-cover"
+                                style={{ backgroundColor: '#e5e7eb' }}
+                                loading="lazy"
+                                decoding="async"
+                              />
+                              {/* Playing indicator - subtle pulsing border */}
+                              {playingPreview === track.id && (
+                                <div className="absolute inset-0 border-2 border-green-500 rounded-lg animate-pulse" />
+                              )}
+                              {track.data?.preview_url && (
+                                <div
+                                  className={`absolute inset-0 flex items-center justify-center transition-all ${
+                                    playingPreview === track.id
+                                      ? 'bg-black/60'
+                                      : 'bg-black/40 opacity-0 group-hover:opacity-100'
+                                  }`}
+                                >
+                                  {playingPreview === track.id ? (
+                                    <Pause
+                                      size={20}
+                                      className="text-white sm:w-6 sm:h-6"
+                                    />
+                                  ) : (
+                                    <Play
+                                      size={20}
+                                      className="text-white sm:w-6 sm:h-6"
+                                    />
+                                  )}
+                                </div>
+                              )}
+                            </>
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <Music
+                                size={20}
+                                className="text-gray-400 sm:w-6 sm:h-6"
+                              />
+                            </div>
+                          )}
+                        </button>
+
+                        {/* Track Info - with proper width constraints */}
+                        <div className="flex-1 min-w-0 flex flex-col gap-0.5 sm:gap-1 overflow-hidden pr-1">
+                          <div className="w-full min-w-0 overflow-hidden">
+                            <MarqueeText className="font-semibold text-sm sm:text-base text-textPrimary leading-tight">
+                              {track.title}
+                            </MarqueeText>
+                          </div>
+                          <p className="text-xs sm:text-sm text-textSecondary leading-tight truncate">
+                            {track.description}
+                          </p>
+                          <p className="text-[10px] sm:text-xs text-textTertiary mt-0.5 truncate">
+                            Adicionado por{' '}
+                            {track.profiles?.full_name || 'Alguém'} •{' '}
+                            {formatDate(track.created_at)}
+                          </p>
+                        </div>
+
+                        {/* Actions Menu */}
+                        <div className="relative flex-shrink-0">
                           <button
-                            onClick={() => {
-                              handleToggleFavorite(track.id);
-                              setOpenMenuId(null);
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setOpenMenuId(
+                                openMenuId === track.id ? null : track.id
+                              );
                             }}
-                            className={`w-full px-3 sm:px-4 py-2.5 text-left flex items-center gap-2 sm:gap-3 transition-colors ${
-                              track.isFavorite
-                                ? 'hover:bg-red-50 text-red-600'
-                                : 'hover:bg-pink-50 text-pink-600'
-                            }`}
+                            className="p-2 rounded-full hover:bg-gray-100 active:bg-gray-200 text-gray-600 transition-colors"
+                            title="Mais opções"
+                            aria-label="Menu de opções"
                           >
-                            <Heart
-                              size={16}
-                              className="flex-shrink-0"
-                              fill={track.isFavorite ? 'currentColor' : 'none'}
-                            />
-                            <span className="text-xs sm:text-sm font-medium">
-                              {track.isFavorite ? 'Desfavoritar' : 'Favoritar'}
-                            </span>
+                            <MoreVertical size={18} className="sm:w-5 sm:h-5" />
                           </button>
 
-                          {/* Open in Spotify */}
-                          {track.data?.spotify_url && (
-                            <a
-                              href={track.data.spotify_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="w-full px-3 sm:px-4 py-2.5 flex items-center gap-2 sm:gap-3 hover:bg-green-50 text-green-600 transition-colors"
-                              onClick={() => setOpenMenuId(null)}
-                            >
-                              <ExternalLink size={16} className="flex-shrink-0" />
-                              <span className="text-xs sm:text-sm font-medium">
-                                Ouvir no Spotify
-                              </span>
-                            </a>
-                          )}
+                          {/* Dropdown Menu */}
+                          <AnimatePresence>
+                            {openMenuId === track.id && (
+                              <motion.div
+                                initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                                transition={{ duration: 0.15 }}
+                                className="absolute right-0 top-full mt-1 w-48 sm:w-56 bg-white rounded-xl shadow-lg border border-gray-200 py-2 z-10"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                {/* Favorite */}
+                                <button
+                                  onClick={() => {
+                                    handleToggleFavorite(track.id);
+                                    setOpenMenuId(null);
+                                  }}
+                                  className={`w-full px-3 sm:px-4 py-2.5 text-left flex items-center gap-2 sm:gap-3 transition-colors ${
+                                    track.isFavorite
+                                      ? 'hover:bg-red-50 text-red-600'
+                                      : 'hover:bg-pink-50 text-pink-600'
+                                  }`}
+                                >
+                                  <Heart
+                                    size={16}
+                                    className="flex-shrink-0"
+                                    fill={
+                                      track.isFavorite ? 'currentColor' : 'none'
+                                    }
+                                  />
+                                  <span className="text-xs sm:text-sm font-medium">
+                                    {track.isFavorite
+                                      ? 'Desfavoritar'
+                                      : 'Favoritar'}
+                                  </span>
+                                </button>
 
-                          {/* Remove (only for author) */}
-                          {track.author_id === user?.id && (
-                            <button
-                              onClick={() => {
-                                handleRemoveTrack(track.id);
-                                setOpenMenuId(null);
-                              }}
-                              className="w-full px-3 sm:px-4 py-2.5 text-left flex items-center gap-2 sm:gap-3 hover:bg-red-50 text-red-600 transition-colors"
-                            >
-                              <Trash2 size={16} className="flex-shrink-0" />
-                              <span className="text-xs sm:text-sm font-medium">
-                                Remover
-                              </span>
-                            </button>
-                          )}
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-                  </motion.div>
-                </ReactableContent>
-              ))}
+                                {/* Open in Spotify */}
+                                {track.data?.spotify_url && (
+                                  <a
+                                    href={track.data.spotify_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="w-full px-3 sm:px-4 py-2.5 flex items-center gap-2 sm:gap-3 hover:bg-green-50 text-green-600 transition-colors"
+                                    onClick={() => setOpenMenuId(null)}
+                                  >
+                                    <ExternalLink
+                                      size={16}
+                                      className="flex-shrink-0"
+                                    />
+                                    <span className="text-xs sm:text-sm font-medium">
+                                      Ouvir no Spotify
+                                    </span>
+                                  </a>
+                                )}
+
+                                {/* Remove (only for author) */}
+                                {track.author_id === user?.id && (
+                                  <button
+                                    onClick={() => {
+                                      handleRemoveTrack(track.id);
+                                      setOpenMenuId(null);
+                                    }}
+                                    className="w-full px-3 sm:px-4 py-2.5 text-left flex items-center gap-2 sm:gap-3 hover:bg-red-50 text-red-600 transition-colors"
+                                  >
+                                    <Trash2
+                                      size={16}
+                                      className="flex-shrink-0"
+                                    />
+                                    <span className="text-xs sm:text-sm font-medium">
+                                      Remover
+                                    </span>
+                                  </button>
+                                )}
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
+                      </motion.div>
+
+                      {/* Reaction Display - Positioned outside card, bottom left */}
+                      <div className="absolute -bottom-4 right-6 z-10">
+                        <ReactionDisplay
+                          key={`reaction-${track.id}-${reactionUpdateTrigger}`}
+                          contentId={track.id}
+                        />
+                      </div>
+                    </div>
+                  </ReactableContent>
+                ))}
               </div>
 
               {/* Load More Button */}
@@ -815,7 +902,8 @@ export default function MusicSection({ id }) {
                     size="md"
                     className="px-8"
                   >
-                    Carregar mais músicas ({allFilteredTracks.length - displayedCount} restantes)
+                    Carregar mais músicas (
+                    {allFilteredTracks.length - displayedCount} restantes)
                   </Button>
                 </motion.div>
               )}

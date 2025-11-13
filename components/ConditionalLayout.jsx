@@ -3,7 +3,6 @@
 import { usePathname } from 'next/navigation';
 import NavigationSidebar from './NavigationSidebar';
 import BottomTabBar from './BottomTabBar';
-import SwipeableLayout from './SwipeableLayout';
 import PWAActions from './PWAActions';
 
 export default function ConditionalLayout({ children }) {
@@ -23,7 +22,7 @@ export default function ConditionalLayout({ children }) {
 
       {/* Main Content with Swipe Support */}
       <main className="relative z-10 pb-20 lg:pb-0 lg:pl-[72px] overflow-x-hidden w-full">
-        <SwipeableLayout>{children}</SwipeableLayout>
+        {children}
       </main>
 
       {/* Mobile Bottom Tab Bar */}

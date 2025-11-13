@@ -30,6 +30,7 @@ export default function LoveReasonsSection({ id }) {
   const [workspaceId, setWorkspaceId] = useState(null);
   const [partnerId, setPartnerId] = useState(null);
   const [partnerProfile, setPartnerProfile] = useState(null);
+  const [reactionUpdateTrigger, setReactionUpdateTrigger] = useState(0);
   const { ref, inView } = useInView({ threshold: 0.1, triggerOnce: true });
 
   // New state for tabs and pagination
@@ -56,6 +57,17 @@ export default function LoveReasonsSection({ id }) {
       loadReasons();
     }
   }, [user]);
+
+  // Listen for reaction updates to force re-render
+  useEffect(() => {
+    const handleReactionUpdate = () => {
+      console.log('[LoveReasonsSection] Reaction update detected, incrementing trigger');
+      setReactionUpdateTrigger(prev => prev + 1);
+    };
+
+    window.addEventListener('reaction-updated', handleReactionUpdate);
+    return () => window.removeEventListener('reaction-updated', handleReactionUpdate);
+  }, []);
 
   const loadReasons = async () => {
     try {
@@ -420,10 +432,13 @@ export default function LoveReasonsSection({ id }) {
             </motion.div>
 
             {/* Reasons List */}
-            <div className="space-y-4">
+            <div className="space-y-8">
               <AnimatePresence mode="popLayout">
                 {visibleReasons.map((item, index) => {
+                  console.log('[LoveReasonsSection] Rendering item with id:', item.id);
                   const isRevealed = revealedSecrets.has(item.id);
+                  // Force a unique render by including reaction update trigger
+                  const renderKey = `${item.id}-${reactionUpdateTrigger}`;
                   const subjectImage =
                     item.subject === 'junior'
                       ? '/images/eu.png'
@@ -440,137 +455,143 @@ export default function LoveReasonsSection({ id }) {
                       authorId={item.author_id}
                       url="/razoes"
                     >
-                      <motion.div
-                        layout
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.9 }}
-                        transition={{ duration: 0.3 }}
-                        className="group"
-                      >
+                      <div className="relative">
                         <motion.div
-                          whileHover={{ x: 8 }}
-                          onClick={() => toggleSecret(item.id)}
-                          className="bg-surface rounded-2xl p-6 shadow-soft-sm hover:shadow-soft-md transition-all duration-300 cursor-pointer border-l-4 border-primary"
+                          layout
+                          initial={{ opacity: 0, scale: 0.9 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.9 }}
+                          transition={{ duration: 0.3 }}
+                          className="group"
                         >
-                        <div className="flex items-start gap-4 relative">
-                          <div className="flex flex-col gap-4">
-                            {/* Subject Avatar - Optimized with priority */}
-                            <div className="flex-shrink-0 w-12 h-12 rounded-full overflow-hidden border-2 border-primary">
-                              <Image
-                                src={subjectImage}
-                                alt={subjectName}
-                                width={48}
-                                height={48}
-                                className="object-cover"
-                                loading="lazy"
-                                placeholder="blur"
-                                blurDataURL="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDgiIGhlaWdodD0iNDgiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjQ4IiBoZWlnaHQ9IjQ4IiBmaWxsPSIjZjBmMGYwIi8+PC9zdmc+"
-                              />
-                            </div>
-
-                            {/* Edit/Delete buttons */}
-                            {isRevealed && canEditOrDelete(item) && (
-                              <div className="flex flex-col gap-2 items-center">
-                                <motion.button
-                                  whileHover={{ scale: 1.1 }}
-                                  whileTap={{ scale: 0.9 }}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleEditReason(item);
-                                  }}
-                                  className="w-8 h-8 flex items-center justify-center rounded-lg bg-blue-500/20 hover:bg-blue-500/30 text-blue-600 dark:text-blue-400 transition-colors"
-                                  title="Editar"
-                                >
-                                  <Pencil size={16} />
-                                </motion.button>
-
-                                <motion.button
-                                  whileHover={{ scale: 1.1 }}
-                                  whileTap={{ scale: 0.9 }}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDeleteReason(item.id);
-                                  }}
-                                  className="w-8 h-8 flex items-center justify-center rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-600 dark:text-red-400 transition-colors"
-                                  title="Apagar"
-                                >
-                                  <Trash2 size={16} />
-                                </motion.button>
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Content */}
-                          <div className="flex-1 min-w-0">
-                            {/* Main text */}
-                            <p className="text-textPrimary text-lg font-medium mb-1">
-                              {item.reason}
-                            </p>
-
-                            {/* Subject name badge */}
-                            <span className="inline-block text-xs text-textTertiary font-semibold uppercase tracking-wider">
-                              {subjectName}
-                            </span>
-
-                            {/* Description */}
-                            <AnimatePresence>
-                              {isRevealed && item.description && (
-                                <motion.div
-                                  initial={{
-                                    opacity: 0,
-                                    height: 0,
-                                    marginTop: 0,
-                                  }}
-                                  animate={{
-                                    opacity: 1,
-                                    height: 'auto',
-                                    marginTop: 12,
-                                  }}
-                                  exit={{ opacity: 0, height: 0, marginTop: 0 }}
-                                  transition={{ duration: 0.3 }}
-                                  className="overflow-hidden"
-                                >
-                                  <div className="bg-gradient-to-r bg-primary/10 rounded-xl p-4 border-l-2 border-primary">
-                                    <p className="text-textSecondary italic text-sm">
-                                      {item.description}
-                                    </p>
-                                  </div>
-                                </motion.div>
-                              )}
-                            </AnimatePresence>
-                          </div>
-
-                          {/* Indicator */}
                           <motion.div
-                            animate={{ rotate: isRevealed ? 90 : 0 }}
-                            transition={{ duration: 0.3 }}
-                            className="flex-shrink-0 text-textTertiary group-hover:text-primary transition-colors"
+                            whileHover={{ x: 8 }}
+                            onClick={() => toggleSecret(item.id)}
+                            className="bg-surface rounded-2xl p-6 shadow-soft-sm hover:shadow-soft-md transition-all duration-300 cursor-pointer border-l-4 border-primary"
                           >
-                            <svg
-                              width="20"
-                              height="20"
-                              viewBox="0 0 20 20"
-                              fill="none"
-                              xmlns="http://www.w3.org/2000/svg"
-                            >
-                              <path
-                                d="M7.5 5L12.5 10L7.5 15"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              />
-                            </svg>
+                            <div className="flex items-start gap-4 relative">
+                              <div className="flex flex-col gap-4">
+                                {/* Subject Avatar - Optimized with priority */}
+                                <div className="flex-shrink-0 w-12 h-12 rounded-full overflow-hidden border-2 border-primary">
+                                  <Image
+                                    src={subjectImage}
+                                    alt={subjectName}
+                                    width={48}
+                                    height={48}
+                                    className="object-cover"
+                                    loading="lazy"
+                                    placeholder="blur"
+                                    blurDataURL="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDgiIGhlaWdodD0iNDgiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjQ4IiBoZWlnaHQ9IjQ4IiBmaWxsPSIjZjBmMGYwIi8+PC9zdmc+"
+                                  />
+                                </div>
+
+                                {/* Edit/Delete buttons */}
+                                {isRevealed && canEditOrDelete(item) && (
+                                  <div className="flex flex-col gap-2 items-center">
+                                    <motion.button
+                                      whileHover={{ scale: 1.1 }}
+                                      whileTap={{ scale: 0.9 }}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleEditReason(item);
+                                      }}
+                                      className="w-8 h-8 flex items-center justify-center rounded-lg bg-blue-500/20 hover:bg-blue-500/30 text-blue-600 dark:text-blue-400 transition-colors"
+                                      title="Editar"
+                                    >
+                                      <Pencil size={16} />
+                                    </motion.button>
+
+                                    <motion.button
+                                      whileHover={{ scale: 1.1 }}
+                                      whileTap={{ scale: 0.9 }}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDeleteReason(item.id);
+                                      }}
+                                      className="w-8 h-8 flex items-center justify-center rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-600 dark:text-red-400 transition-colors"
+                                      title="Apagar"
+                                    >
+                                      <Trash2 size={16} />
+                                    </motion.button>
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Content */}
+                              <div className="flex-1 min-w-0">
+                                {/* Main text */}
+                                <p className="text-textPrimary text-lg font-medium mb-1">
+                                  {item.reason}
+                                </p>
+
+                                {/* Subject name badge */}
+                                <span className="inline-block text-xs text-textTertiary font-semibold uppercase tracking-wider">
+                                  {subjectName}
+                                </span>
+
+                                {/* Description */}
+                                <AnimatePresence>
+                                  {isRevealed && item.description && (
+                                    <motion.div
+                                      initial={{
+                                        opacity: 0,
+                                        height: 0,
+                                        marginTop: 0,
+                                      }}
+                                      animate={{
+                                        opacity: 1,
+                                        height: 'auto',
+                                        marginTop: 12,
+                                      }}
+                                      exit={{
+                                        opacity: 0,
+                                        height: 0,
+                                        marginTop: 0,
+                                      }}
+                                      transition={{ duration: 0.3 }}
+                                      className="overflow-hidden"
+                                    >
+                                      <div className="bg-gradient-to-r bg-primary/10 rounded-xl p-4 border-l-2 border-primary">
+                                        <p className="text-textSecondary italic text-sm">
+                                          {item.description}
+                                        </p>
+                                      </div>
+                                    </motion.div>
+                                  )}
+                                </AnimatePresence>
+                              </div>
+
+                              {/* Indicator */}
+                              <motion.div
+                                animate={{ rotate: isRevealed ? 90 : 0 }}
+                                transition={{ duration: 0.3 }}
+                                className="flex-shrink-0 text-textTertiary group-hover:text-primary transition-colors"
+                              >
+                                <svg
+                                  width="20"
+                                  height="20"
+                                  viewBox="0 0 20 20"
+                                  fill="none"
+                                  xmlns="http://www.w3.org/2000/svg"
+                                >
+                                  <path
+                                    d="M7.5 5L12.5 10L7.5 15"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                  />
+                                </svg>
+                              </motion.div>
+                            </div>
                           </motion.div>
+                        </motion.div>
+
+                        {/* Reaction Display - Positioned outside card, bottom left */}
+                        <div className="absolute -bottom-4 right-6 z-10">
+                          <ReactionDisplay key={renderKey} contentId={item.id} />
                         </div>
-                        
-                        {/* Reaction Display */}
-                        <div className="mt-3 px-1">
-                          <ReactionDisplay contentId={item.id} />
-                        </div>
-                      </motion.div>
-                      </motion.div>
+                      </div>
                     </ReactableContent>
                   );
                 })}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   Home,
@@ -42,7 +42,37 @@ export default function BottomTabBar() {
   const pathname = usePathname();
   const router = useRouter();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
   const { isPageActive, isAdmin } = usePageConfig();
+
+  // Monitor emoji picker state via CSS variable
+  useEffect(() => {
+    let lastValue = null;
+
+    const checkEmojiPicker = () => {
+      const isOpen = getComputedStyle(document.documentElement).getPropertyValue('--emoji-picker-open').trim() === '1';
+
+      // Only update if value changed from last check
+      if (lastValue !== isOpen) {
+        lastValue = isOpen;
+        setIsEmojiPickerOpen(isOpen);
+      }
+    };
+
+    // Initial check
+    checkEmojiPicker();
+
+    // Set up a mutation observer to watch for CSS variable changes
+    const observer = new MutationObserver(checkEmojiPicker);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['style'],
+    });
+
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
 
   const handleLogout = async () => {
     const supabase = createClient();
@@ -84,7 +114,13 @@ export default function BottomTabBar() {
 
   return (
     <>
-      <nav className="fixed bottom-0 left-0 right-0 z-50 lg:hidden">
+      <nav
+        className="fixed bottom-0 left-0 right-0 z-50 lg:hidden transition-opacity duration-200"
+        style={{
+          opacity: isEmojiPickerOpen ? 0 : 1,
+          pointerEvents: isEmojiPickerOpen ? 'none' : 'auto',
+        }}
+      >
         {/* Glassmorphism Background */}
         <div
           className="bg-surface/95 backdrop-blur-xl border-t border-textPrimary/10 shadow-soft-xl"
