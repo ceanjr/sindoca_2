@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useReactions } from '@/hooks/useReactions';
 
@@ -9,6 +10,23 @@ import { useReactions } from '@/hooks/useReactions';
  */
 export default function ReactionDisplay({ contentId, className = '' }) {
   console.log('[ReactionDisplay] Component called with contentId:', contentId);
+
+  // Force re-render when reactions are updated
+  const [updateTrigger, setUpdateTrigger] = useState(0);
+
+  // Listen for global reaction updates
+  useEffect(() => {
+    const handleReactionUpdate = (event) => {
+      // Only re-render if the update is for this content
+      if (event.detail?.contentId === contentId) {
+        console.log('[ReactionDisplay] Received reaction-updated event for contentId:', contentId);
+        setUpdateTrigger(prev => prev + 1);
+      }
+    };
+
+    window.addEventListener('reaction-updated', handleReactionUpdate);
+    return () => window.removeEventListener('reaction-updated', handleReactionUpdate);
+  }, [contentId]);
 
   const { reactionCounts, loading, reactions } = useReactions(contentId);
 
