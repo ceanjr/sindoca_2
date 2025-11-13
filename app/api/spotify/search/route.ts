@@ -18,8 +18,26 @@ export async function GET(request: NextRequest) {
     }
 
     // Get authenticated user
+    // Try to get from cookies first (web), then from header (native app)
     const supabase = await createClient();
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    let user = null;
+    let userError = null;
+
+    // Try cookies first (web)
+    const cookieAuth = await supabase.auth.getUser();
+    user = cookieAuth.data.user;
+    userError = cookieAuth.error;
+
+    // If no user from cookies, try Authorization header (native app)
+    if (!user) {
+      const authHeader = request.headers.get('authorization');
+      if (authHeader?.startsWith('Bearer ')) {
+        const token = authHeader.substring(7);
+        const headerAuth = await supabase.auth.getUser(token);
+        user = headerAuth.data.user;
+        userError = headerAuth.error;
+      }
+    }
 
     if (userError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

@@ -1521,7 +1521,7 @@ async function authenticateWithBiometrics() {
 - [x] Criar arquivo `lib/push/expo-push.ts` (copiar do doc)
 - [x] Criar tabela `push_subscriptions_native` no Supabase (migration fornecida no doc)
 - [x] Criar API Route `/api/push/send-expo/route.ts` (copiar do doc)
-- [x] Testar permissões de notificação no dispositivo físico
+- [ ] Testar permissões de notificação no dispositivo físico
 
 #### 1.5 Análise de Código para Migração
 
@@ -1766,19 +1766,19 @@ async function authenticateWithBiometrics() {
 
 #### 4.6 Outras Telas
 
-- [x] Migrar Conquistas (`app/conquistas`)
-- [x] Migrar Razões (`app/razoes`)
-- [x] Migrar Surpresas (`app/surpresas`)
-- [x] Migrar Dashboard (`app/dashboard`)
-- [x] Migrar Legado (`app/legado`)
+- [ ] Migrar Conquistas (`app/conquistas`)
+- [ ] Migrar Razões (`app/razoes`)
+- [ ] Migrar Surpresas (`app/surpresas`)
+- [ ] Migrar Dashboard (`app/dashboard`)
+- [ ] Migrar Legado (`app/legado`)
 
 #### 4.7 Stories
 
-- [x] Migrar componente de Stories completo
-- [x] Implementar swipe between stories (PanGestureHandler)
-- [x] Barra de progresso animada (Reanimated)
-- [x] Tap para pausar/avançar
-- [x] Testar transições fluidas
+- [ ] Migrar componente de Stories completo
+- [ ] Implementar swipe between stories (PanGestureHandler)
+- [ ] Barra de progresso animada (Reanimated)
+- [ ] Tap para pausar/avançar
+- [ ] Testar transições fluidas
 
 ### Fase 5: Polimento e Otimização (1-2 semanas)
 
@@ -1839,34 +1839,19 @@ async function authenticateWithBiometrics() {
 
 #### 7.1 Preparação para Build
 
-- [x] Configurar ícone do app (1024x1024 PNG)
-- [x] Configurar splash screen (2732x2732 PNG)
-- [x] Definir versão (1.0.0) e build number (1)
-- [x] Configurar `app.json`:
-  - [x] `name`, `slug`, `description`
-  - [x] `bundleIdentifier` (iOS)
-  - [x] `package` (Android)
-  - [x] `permissions` (câmera, microfone, notificações)
-  - [x] `scheme` para deep linking
-  - [x] OTA updates configurado
-  - [x] Runtime version policy
-- [x] Configurar `eas.json`:
-  - [x] Perfil `development`
-  - [x] Perfil `preview` (APK)
-  - [x] Perfil `production`
-  - [x] Channels (preview/production)
-- [x] Revisar `.env` (remover secrets de development)
-  - [x] `.env.example` criado
-  - [x] `.gitignore` atualizado
-- [x] Assets preparados:
-  - [x] Icon, splash, adaptive-icon
-  - [x] Notification icon
-  - [x] Favicon
-- [x] Documentação de build criada (`BUILD_GUIDE.md`)
-- [x] TypeScript sem erros (`npx tsc --noEmit`)
-- [x] Testar build local primeiro:
-  - [x] `npx expo run:android`
-  - [x] `npx expo run:ios`
+- [ ] Configurar ícone do app (1024x1024 PNG)
+- [ ] Configurar splash screen (2732x2732 PNG)
+- [ ] Definir versão (1.0.0) e build number (1)
+- [ ] Configurar `app.json`:
+  - [ ] `name`, `slug`, `description`
+  - [ ] `bundleIdentifier` (iOS)
+  - [ ] `package` (Android)
+  - [ ] `permissions` (câmera, microfone, notificações)
+  - [ ] `scheme` para deep linking
+- [ ] Revisar `.env` (remover secrets de development)
+- [ ] Testar build local primeiro:
+  - [ ] `npx expo run:android`
+  - [ ] `npx expo run:ios`
 
 #### 7.2 Build Android (APK)
 
@@ -1890,7 +1875,8 @@ async function authenticateWithBiometrics() {
   - ⚙️ Se usar 2FA, gerar **App-Specific Password** em [appleid.apple.com](https://appleid.apple.com/)
 - [ ] Certificar que o projeto **tem o bundleIdentifier fixo** (ex: `"com.seunome.app"`)
 - [ ] Build iOS `.ipa` (usando EAS local ou Xcode):
-  - [ ] `eas build --platform ios --profile development --local`
+  - [ ] `eas build --platform ios --profile development --local`  
+         _(ou usar `expo run:ios` no Xcode e exportar o .ipa manualmente)_
 - [ ] Localizar o arquivo `.ipa` gerado (ex: `dist/*.ipa`)
 - [ ] Instalar o **AltServer** no computador ([altstore.io](https://altstore.io))
 - [ ] Conectar o iPhone via USB e instalar **AltStore** nele
