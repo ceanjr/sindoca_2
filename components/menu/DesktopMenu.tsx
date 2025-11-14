@@ -10,6 +10,7 @@ import {
   X,
   Bug,
   LogOut as LogOutIcon,
+  FileText,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '@/lib/supabase/client';
@@ -101,22 +102,31 @@ export default function DesktopMenu({ isOpen, onClose }: DesktopMenuProps) {
                   </h3>
 
                   <div className="space-y-3">
-                    {/* Em Breve... */}
-                    <div className="bg-gradient-to-r from-primary/5 to-lavender/5 rounded-xl p-4 border-2 border-dashed border-primary/20 cursor-not-allowed">
+                    {/* Burocracias a Dois */}
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => {
+                        router.push('/burocracias');
+                        onClose();
+                      }}
+                      className="w-full bg-gradient-to-r from-primary/10 to-lavender/10 rounded-xl p-4 hover:from-primary/20 hover:to-lavender/20 transition-colors border border-primary/20"
+                    >
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-gradient-to-br from-primary/20 to-lavender/20 rounded-full flex items-center justify-center flex-shrink-0">
-                          <span className="text-xl">✨</span>
+                          <FileText size={20} className="text-primary" />
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <h4 className="font-semibold text-textSecondary text-sm">
-                            Em Breve...
+                        <div className="flex-1 min-w-0 text-left">
+                          <h4 className="font-semibold text-textPrimary text-sm">
+                            Burocracias a Dois
                           </h4>
-                          <p className="text-xs text-textSecondary/70">
-                            Novidades chegando!
+                          <p className="text-xs text-textSecondary">
+                            Discussões documentadas
                           </p>
                         </div>
+                        <ChevronRight size={16} className="text-textSecondary flex-shrink-0" />
                       </div>
-                    </div>
+                    </motion.button>
                   </div>
                 </div>
 

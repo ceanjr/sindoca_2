@@ -14,6 +14,7 @@ import {
   Settings,
   LogOut,
   Users,
+  FileText,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { usePageConfig } from '@/hooks/usePageConfig';
@@ -28,6 +29,7 @@ const navItems = [
   { id: 'galeria', path: '/galeria', label: 'Galeria', icon: Image },
   { id: 'razoes', path: '/razoes', label: 'Razões', icon: Heart },
   { id: 'musica', path: '/musica', label: 'Música', icon: Music },
+  { id: 'burocracias', path: '/burocracias', label: 'Burocracias', icon: FileText },
   // { id: 'conquistas', path: '/conquistas', label: 'Conquistas', icon: Trophy },
   // {
   //   id: 'mensagens',

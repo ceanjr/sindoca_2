@@ -92,7 +92,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
 
       // Filtrar e transformar dados
       const workspaces = (members || [])
-        .map(m => m.workspaces)
+        .flatMap(m => m.workspaces || [])
         .filter(w => w && w.status !== 'archived') as Workspace[];
 
       console.log('✅ Loaded workspaces:', workspaces.length);
