@@ -37,11 +37,11 @@ module.exports = {
 
       // Espaçamento consistente
       spacing: {
-        '18': '4.5rem',
-        '88': '22rem',
-        '100': '25rem',
-        '112': '28rem',
-        '128': '32rem',
+        18: '4.5rem',
+        88: '22rem',
+        100: '25rem',
+        112: '28rem',
+        128: '32rem',
       },
 
       // Border radius arredondados
@@ -52,25 +52,30 @@ module.exports = {
 
       // Sombras suaves e sutis
       boxShadow: {
-        'soft-xs': '0 1px 2px rgba(0, 0, 0, 0.04), 0 1px 4px rgba(0, 0, 0, 0.04)',
-        'soft-sm': '0 2px 4px rgba(0, 0, 0, 0.06), 0 4px 12px rgba(0, 0, 0, 0.06)',
-        'soft-md': '0 4px 6px rgba(0, 0, 0, 0.07), 0 8px 24px rgba(0, 0, 0, 0.07)',
-        'soft-lg': '0 8px 12px rgba(0, 0, 0, 0.08), 0 16px 48px rgba(0, 0, 0, 0.08)',
-        'soft-xl': '0 12px 24px rgba(0, 0, 0, 0.1), 0 24px 64px rgba(0, 0, 0, 0.1)',
+        'soft-xs':
+          '0 1px 2px rgba(0, 0, 0, 0.04), 0 1px 4px rgba(0, 0, 0, 0.04)',
+        'soft-sm':
+          '0 2px 4px rgba(0, 0, 0, 0.06), 0 4px 12px rgba(0, 0, 0, 0.06)',
+        'soft-md':
+          '0 4px 6px rgba(0, 0, 0, 0.07), 0 8px 24px rgba(0, 0, 0, 0.07)',
+        'soft-lg':
+          '0 8px 12px rgba(0, 0, 0, 0.08), 0 16px 48px rgba(0, 0, 0, 0.08)',
+        'soft-xl':
+          '0 12px 24px rgba(0, 0, 0, 0.1), 0 24px 64px rgba(0, 0, 0, 0.1)',
         'glow-primary': '0 0 20px rgba(255, 107, 157, 0.3)',
         'glow-accent': '0 0 20px rgba(107, 207, 127, 0.3)',
       },
 
       // Animações modernas e suaves
       animation: {
-        'float': 'float 3s ease-in-out infinite',
+        float: 'float 3s ease-in-out infinite',
         'float-slow': 'float 6s ease-in-out infinite',
         'fade-in': 'fadeIn 0.5s ease-out',
         'fade-in-up': 'fadeInUp 0.6s ease-out',
         'slide-in-right': 'slideInRight 0.5s ease-out',
         'scale-in': 'scaleIn 0.3s ease-out',
         'pulse-glow': 'pulseGlow 2s ease-in-out infinite',
-        'shimmer': 'shimmer 2s infinite',
+        shimmer: 'shimmer 2s infinite',
         'bounce-subtle': 'bounceSubtle 2s ease-in-out infinite',
         'spin-slow': 'spin 3s linear infinite',
       },
@@ -112,8 +117,8 @@ module.exports = {
 
       // Transições suaves
       transitionTimingFunction: {
-        'smooth': 'cubic-bezier(0.4, 0, 0.2, 1)',
-        'spring': 'cubic-bezier(0.34, 1.56, 0.64, 1)',
+        smooth: 'cubic-bezier(0.4, 0, 0.2, 1)',
+        spring: 'cubic-bezier(0.34, 1.56, 0.64, 1)',
       },
 
       // Backdrop blur para glassmorphism
@@ -123,4 +128,4 @@ module.exports = {
     },
   },
   plugins: [],
-}
+};

@@ -90,11 +90,12 @@ export default function RootLayout({ children }) {
                   closeButton
                   toastOptions={{
                     style: {
-                      background: 'var(--surface)',
-                      color: 'var(--textPrimary)',
+                      background: '#FFFFFF',
+                      color: '#2D2D2D',
                       border: '1px solid rgba(255, 107, 157, 0.2)',
+                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
                     },
-                    className: 'glass-strong',
+                    className: 'backdrop-blur-xl',
                   }}
                 />
 

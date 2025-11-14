@@ -75,10 +75,13 @@ export default function DaysCounter({
       };
 
       // Store for the day
-      localStorage.setItem('dailyQuote', JSON.stringify({
-        date: today,
-        quote: newQuote,
-      }));
+      localStorage.setItem(
+        'dailyQuote',
+        JSON.stringify({
+          date: today,
+          quote: newQuote,
+        })
+      );
 
       return newQuote;
     };
@@ -143,7 +146,7 @@ export default function DaysCounter({
         </div>
         <div className="flex text-center pt-8 pb-2 md:pt-12 font-['Patrick_Hand'] italic text-lg md:text-xl justify-center gap-1">
           <p className="">E cada segundo vale ouro... </p>
-          <span className={`${COUNTER_COLORS.seconds} font-bold`}>
+          <span className={`${COUNTER_COLORS.seconds} font-bold text-primary`}>
             {timeData.seconds}
           </span>
         </div>

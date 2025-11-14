@@ -17,11 +17,35 @@ export function usePushNotifications() {
   useEffect(() => {
     // Check if Push API is supported
     try {
-      if (typeof window !== 'undefined' &&
-          'Notification' in window &&
-          'serviceWorker' in navigator &&
-          'PushManager' in window) {
-        setIsSupported(true)
+      if (typeof window === 'undefined') {
+        setIsSupported(false)
+        return
+      }
+
+      // Basic checks
+      const hasNotification = 'Notification' in window
+      const hasServiceWorker = 'serviceWorker' in navigator
+      const hasPushManager = 'PushManager' in window
+
+      // Safari iOS specific checks
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+      const isSafari = /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent)
+
+      // Safari on iOS 16.4+ supports push notifications, but only when installed as PWA
+      let isPWAInstalled = false
+      if (isIOS && isSafari) {
+        // Check if running as standalone (PWA installed)
+        isPWAInstalled = window.matchMedia('(display-mode: standalone)').matches ||
+                         window.navigator.standalone === true
+      }
+
+      // Determine support
+      const supported = hasNotification && hasServiceWorker && hasPushManager &&
+                       (!isIOS || isPWAInstalled)
+
+      setIsSupported(supported)
+
+      if (supported) {
         setPermission(Notification.permission)
 
         // Load existing subscription from browser
@@ -40,6 +64,10 @@ export function usePushNotifications() {
         }
 
         loadExistingSubscription()
+      } else {
+        if (isIOS && !isPWAInstalled) {
+          console.log('[Push] Safari iOS detectado - Notificações requerem instalação como PWA')
+        }
       }
     } catch (error) {
       console.log('Push: Erro ao verificar suporte:', error.message)

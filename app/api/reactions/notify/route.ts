@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { sendPushToPartner } from '@/lib/push/sendToPartner';
+import { sendToPartnerWithPreferences } from '@/lib/push/sendToPartnerWithPreferences';
 
 export async function POST(request: Request) {
   try {
@@ -47,12 +47,35 @@ export async function POST(request: Request) {
     const contentTypeName = contentTypeNames[contentInfo.type] || 'conteúdo';
     const contentTitle = contentInfo.title ? ` "${contentInfo.title}"` : '';
 
-    // Send push notification to content author
-    const result = await sendPushToPartner(user.id, {
+    // Get content author (recipient of notification)
+    const { data: content } = await supabase
+      .from('content')
+      .select('author_id')
+      .eq('id', contentId)
+      .single();
+
+    if (!content || !content.author_id) {
+      return NextResponse.json(
+        { error: 'Content not found or has no author' },
+        { status: 404 }
+      );
+    }
+
+    // Don't send notification if user reacted to their own content
+    if (content.author_id === user.id) {
+      return NextResponse.json({
+        success: true,
+        notificationSent: false,
+        reason: 'Self-reaction',
+      });
+    }
+
+    // Send push notification to content author with preference check
+    const result = await sendToPartnerWithPreferences({
+      recipientUserId: content.author_id,
       title: `${emoji} Nova reação!`,
       body: `${userName} reagiu com ${emoji} à sua ${contentTypeName}${contentTitle}`,
       icon: '/icon-192x192.png',
-      badge: '/badge-72x72.png',
       tag: `reaction-${contentId}`,
       data: {
         type: 'reaction',
@@ -60,6 +83,7 @@ export async function POST(request: Request) {
         emoji,
         url: contentInfo.url || '/',
       },
+      preferenceKey: 'notify_new_reactions',
     });
 
     return NextResponse.json({

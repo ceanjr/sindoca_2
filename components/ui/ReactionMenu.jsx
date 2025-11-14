@@ -24,9 +24,11 @@ export default function ReactionMenu({
   const [customEmojis, setCustomEmojis] = useState([]);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [isOpening, setIsOpening] = useState(false);
+  const [isClosingPicker, setIsClosingPicker] = useState(false);
   const menuRef = useRef(null);
   const scrollRef = useRef(null);
   const emojiWasSelected = useRef(false);
+  const closeTimeoutRef = useRef(null);
 
   // Load custom emojis
   useEffect(() => {
@@ -37,27 +39,45 @@ export default function ReactionMenu({
 
   // Handle emoji picker close
   const handleEmojiPickerClose = () => {
-    console.log('[ReactionMenu] handleEmojiPickerClose called, emojiWasSelected:', emojiWasSelected.current);
+    // Clear any pending close timeout
+    if (closeTimeoutRef.current) {
+      clearTimeout(closeTimeoutRef.current);
+      closeTimeoutRef.current = null;
+    }
+
+    // Set closing state to prevent button clicks during animation
+    setIsClosingPicker(true);
 
     // First close the emoji picker
     setShowEmojiPicker(false);
 
     // If no emoji was selected, close the reaction menu after animation
     if (!emojiWasSelected.current) {
-      console.log('[ReactionMenu] No emoji selected, closing reaction menu');
-      setTimeout(() => {
+      closeTimeoutRef.current = setTimeout(() => {
         if (onClose) {
           onClose();
         }
+        setIsClosingPicker(false);
+        closeTimeoutRef.current = null;
       }, 300);
     } else {
-      console.log('[ReactionMenu] Emoji was selected, keeping reaction menu open');
-      // Reset flag after a delay
-      setTimeout(() => {
+      // Reset flags after picker is fully closed
+      closeTimeoutRef.current = setTimeout(() => {
         emojiWasSelected.current = false;
-      }, 500);
+        setIsClosingPicker(false);
+        closeTimeoutRef.current = null;
+      }, 300);
     }
   };
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (closeTimeoutRef.current) {
+        clearTimeout(closeTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const loadCustomEmojis = async () => {
     try {
@@ -86,7 +106,6 @@ export default function ReactionMenu({
     try {
       if ('vibrate' in navigator) {
         navigator.vibrate(40); // Short vibration on emoji tap
-        console.log('[ReactionMenu] Vibration triggered: 40ms');
       }
     } catch (err) {
       console.error('[ReactionMenu] Vibration error:', err);
@@ -112,8 +131,6 @@ export default function ReactionMenu({
   const handleAddEmoji = async (emoji) => {
     if (!emoji || !user?.id) return;
 
-    console.log('[ReactionMenu] handleAddEmoji called with:', emoji);
-
     // Mark that an emoji was selected (before EmojiPicker calls onClose)
     emojiWasSelected.current = true;
 
@@ -124,8 +141,6 @@ export default function ReactionMenu({
 
       // Auto-select the new emoji as reaction (this calls onReact from parent)
       await handleReaction(emoji);
-
-      console.log('[ReactionMenu] Emoji added and reaction triggered');
 
       // Note: EmojiPicker will call onClose() automatically (handleEmojiPickerClose)
       // which will detect emojiWasSelected.current = true and keep the reaction menu open
@@ -251,12 +266,15 @@ export default function ReactionMenu({
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.9 }}
           onClick={(e) => {
-            console.log('[ReactionMenu] Plus button clicked');
             e.stopPropagation();
             e.preventDefault();
-            if (isOpening) return;
+
+            // Prevent opening if already opening or if picker is currently closing
+            if (isOpening || isClosingPicker || showEmojiPicker) {
+              return;
+            }
+
             setIsOpening(true);
-            console.log('[ReactionMenu] Setting showEmojiPicker to true');
             setShowEmojiPicker(true);
             setTimeout(() => setIsOpening(false), 500);
           }}
@@ -264,7 +282,12 @@ export default function ReactionMenu({
           onTouchEnd={(e) => {
             e.stopPropagation();
             e.preventDefault();
-            if (isOpening) return;
+
+            // Prevent opening if already opening or if picker is currently closing
+            if (isOpening || isClosingPicker || showEmojiPicker) {
+              return;
+            }
+
             setIsOpening(true);
             setShowEmojiPicker(true);
             setTimeout(() => setIsOpening(false), 500);

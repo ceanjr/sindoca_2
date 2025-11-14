@@ -2,40 +2,30 @@
 
 import { useState, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import {
-  Home,
-  Image,
-  Heart,
-  Music,
-  Trophy,
-  MessageCircle,
-  Gift,
-  Archive,
-  MoreHorizontal,
-  LogOut,
-} from 'lucide-react';
+import { Home, Image, Heart, Music, MoreHorizontal } from 'lucide-react';
 import { motion } from 'framer-motion';
-import BottomSheet from '@/components/ui/BottomSheet';
 import { usePageConfig } from '@/hooks/usePageConfig';
 import { createClient } from '@/lib/supabase/client';
+import MenuSheet from '@/components/menu/MenuSheet';
 
-const mainTabs = [
+/**
+ * Detecta o sistema operacional do usuário
+ */
+function detectOS() {
+  if (typeof window === 'undefined') return 'other';
+  const ua = navigator.userAgent;
+  if (/iPad|iPhone|iPod/.test(ua)) return 'ios';
+  if (/Android/.test(ua)) return 'android';
+  return 'other';
+}
+
+// 5 tabs principais visíveis na bottom tab bar
+const tabs = [
   { id: 'inicio', path: '/', label: 'Início', icon: Home },
   { id: 'galeria', path: '/galeria', label: 'Galeria', icon: Image },
   { id: 'razoes', path: '/razoes', label: 'Razões', icon: Heart },
-];
-
-const moreTabs = [
   { id: 'musica', path: '/musica', label: 'Música', icon: Music },
-  // { id: 'conquistas', path: '/conquistas', label: 'Conquistas', icon: Trophy },
-  // {
-  //   id: 'mensagens',
-  //   path: '/mensagens',
-  //   label: 'Mensagens',
-  //   icon: MessageCircle,
-  // },
-  // { id: 'surpresas', path: '/surpresas', label: 'Surpresas', icon: Gift },
-  // { id: 'legado', path: '/legado', label: 'Legado', icon: Archive },
+  { id: 'menu', path: null, label: 'Menu', icon: MoreHorizontal }, // null = abre sheet
 ];
 
 export default function BottomTabBar() {
@@ -43,14 +33,23 @@ export default function BottomTabBar() {
   const router = useRouter();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
+  const [os, setOs] = useState('other');
   const { isPageActive, isAdmin } = usePageConfig();
+
+  // Detectar OS no mount
+  useEffect(() => {
+    setOs(detectOS());
+  }, []);
 
   // Monitor emoji picker state via CSS variable
   useEffect(() => {
     let lastValue = null;
 
     const checkEmojiPicker = () => {
-      const isOpen = getComputedStyle(document.documentElement).getPropertyValue('--emoji-picker-open').trim() === '1';
+      const isOpen =
+        getComputedStyle(document.documentElement)
+          .getPropertyValue('--emoji-picker-open')
+          .trim() === '1';
 
       // Only update if value changed from last check
       if (lastValue !== isOpen) {
@@ -81,9 +80,18 @@ export default function BottomTabBar() {
     router.push('/auth/login');
   };
 
-  const handleTabClick = (path, pageId) => {
+  const handleTabClick = (tab) => {
+    // Se for tab de menu, abre o sheet
+    if (tab.id === 'menu') {
+      if ('vibrate' in navigator) {
+        navigator.vibrate(10);
+      }
+      setIsMenuOpen(true);
+      return;
+    }
+
     // Admin can access all pages, even disabled ones
-    const canAccess = isAdmin || isPageActive(pageId);
+    const canAccess = isAdmin || isPageActive(tab.id);
 
     if (!canAccess) {
       // Haptic feedback for denied access
@@ -97,212 +105,214 @@ export default function BottomTabBar() {
     if ('vibrate' in navigator) {
       navigator.vibrate(10);
     }
-    setIsMenuOpen(false);
-    router.push(path);
+    router.push(tab.path);
   };
 
-  const handleMenuClick = () => {
-    // Haptic feedback
-    if ('vibrate' in navigator) {
-      navigator.vibrate(10);
-    }
-    setIsMenuOpen(true);
-  };
-
-  // Check if current path is in moreTabs
-  const isMoreTabActive = moreTabs.some((tab) => tab.path === pathname);
+  // Estilos dinâmicos baseados no OS
+  const isIOS = os === 'ios';
+  const isAndroid = os === 'android';
 
   return (
     <>
-      <nav
-        className="fixed bottom-0 left-0 right-0 z-50 lg:hidden transition-opacity duration-200"
+      <motion.nav
+        className={`fixed z-[1000] lg:hidden ${
+          isIOS ? 'bottom-2' : 'bottom-4'
+        }`}
         style={{
-          opacity: isEmojiPickerOpen ? 0 : 1,
-          pointerEvents: isEmojiPickerOpen ? 'none' : 'auto',
+          left: '12px',
+          right: '12px',
+        }}
+        animate={{
+          y: isEmojiPickerOpen || isMenuOpen ? 120 : 0,
+          opacity: isEmojiPickerOpen || isMenuOpen ? 0 : 1,
+        }}
+        transition={{
+          type: 'spring',
+          stiffness: 300,
+          damping: 30,
         }}
       >
-        {/* Glassmorphism Background */}
         <div
-          className="bg-surface/95 backdrop-blur-xl border-t border-textPrimary/10 shadow-soft-xl"
           style={{
-            paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))',
+            maxWidth: '500px',
+            margin: '0 auto',
           }}
         >
-          <div className="flex items-center justify-around px-2 pt-2">
-            {mainTabs.map((tab) => {
-              const Icon = tab.icon;
-              const isActive = pathname === tab.path;
-              const pageIsActive = isPageActive(tab.id);
-              const canAccess = isAdmin || pageIsActive;
+          {/* Floating Tab Bar Container */}
+          <div
+            className={`relative overflow-hidden ${
+              isIOS
+                ? 'rounded-[28px] shadow-[0_10px_40px_rgba(0,0,0,0.12)]'
+                : 'rounded-[24px] shadow-[0_8px_24px_rgba(0,0,0,0.18)]'
+            }`}
+            style={{
+              backdropFilter: isIOS
+                ? 'blur(20px) saturate(180%)'
+                : 'blur(10px)',
+              backgroundColor: isIOS
+                ? 'rgba(255, 255, 255, 0.85)'
+                : 'rgba(255, 255, 255, 0.95)',
+              border: `1px solid ${
+                isIOS ? 'rgba(255, 107, 157, 0.15)' : 'rgba(255, 107, 157, 0.2)'
+              }`,
+            }}
+          >
+            {/* Tab Buttons */}
+            <div
+              className={`flex items-center justify-around ${
+                isIOS ? 'px-3 py-3 gap-1.5' : 'px-2 py-2 gap-1'
+              }`}
+              style={{
+                paddingBottom: isIOS
+                  ? 'max(12px, env(safe-area-inset-bottom))'
+                  : 'max(8px, env(safe-area-inset-bottom))',
+              }}
+            >
+              {tabs.map((tab) => {
+                const Icon = tab.icon;
+                const isActive = tab.path ? pathname === tab.path : false;
+                const isMenuTab = tab.id === 'menu';
+                const pageIsActive = isPageActive(tab.id);
+                const canAccess = isMenuTab || isAdmin || pageIsActive;
 
-              return (
-                <motion.button
-                  key={tab.id}
-                  onClick={() => handleTabClick(tab.path, tab.id)}
-                  whileTap={canAccess ? { scale: 0.95 } : {}}
-                  disabled={!canAccess}
-                  className={`relative flex flex-col items-center justify-center px-4 py-2 rounded-xl transition-all duration-300 touch-manipulation ${
-                    !canAccess
-                      ? 'opacity-40 cursor-not-allowed text-gray-400'
-                      : isActive
-                      ? 'text-primary'
-                      : 'text-textSecondary'
-                  }`}
-                >
-                  {/* Active Indicator */}
-                  {isActive && canAccess && (
+                return (
+                  <motion.button
+                    key={tab.id}
+                    onClick={() => handleTabClick(tab)}
+                    whileTap={canAccess ? { scale: isIOS ? 0.92 : 0.95 } : {}}
+                    disabled={!canAccess && !isMenuTab}
+                    className={`relative flex flex-col items-center justify-center flex-1 ${
+                      isIOS ? 'py-2 px-1' : 'py-1.5 px-1'
+                    } rounded-xl transition-all touch-manipulation ${
+                      !canAccess && !isMenuTab
+                        ? 'opacity-40 cursor-not-allowed'
+                        : ''
+                    }`}
+                    style={{
+                      transitionDuration: isIOS ? '350ms' : '250ms',
+                      transitionTimingFunction: isIOS
+                        ? 'cubic-bezier(0.4, 0, 0.2, 1)'
+                        : 'cubic-bezier(0.4, 0, 0.6, 1)',
+                    }}
+                  >
+                    {/* Android: Top indicator */}
+                    {isAndroid && isActive && canAccess && (
+                      <div
+                        className="absolute top-0 left-3 right-3 h-[3px] bg-primary rounded-b-full"
+                        style={{
+                          boxShadow: '0 2px 4px rgba(255, 107, 157, 0.4)',
+                        }}
+                      />
+                    )}
+
+                    {/* Icon Container */}
                     <motion.div
-                      layoutId="activeTab"
-                      className="absolute inset-0 bg-primary/10 rounded-xl"
+                      animate={{
+                        y: isIOS && isActive && canAccess ? -4 : 0,
+                        scale: isIOS && isActive && canAccess ? 1.15 : 1,
+                      }}
                       transition={{
                         type: 'spring',
-                        stiffness: 380,
-                        damping: 30,
+                        stiffness: 400,
+                        damping: 25,
                       }}
-                    />
-                  )}
+                      className="relative"
+                    >
+                      <Icon
+                        size={24}
+                        className={`${
+                          isActive && canAccess
+                            ? 'text-primary stroke-[2.5]'
+                            : !canAccess && !isMenuTab
+                            ? 'text-gray-400 stroke-[2]'
+                            : 'text-textSecondary stroke-[2]'
+                        }`}
+                      />
 
-                  {/* Icon */}
-                  <Icon
-                    size={24}
-                    className={`relative z-10 mb-1 ${
-                      isActive ? 'stroke-[2.5]' : 'stroke-[2]'
-                    }`}
-                  />
+                      {/* iOS: Glow effect on active */}
+                      {isIOS && isActive && canAccess && (
+                        <div
+                          className="absolute inset-0 bg-primary/20 rounded-full blur-md -z-10"
+                          style={{ transform: 'scale(1.5)' }}
+                        />
+                      )}
+                    </motion.div>
 
-                  {/* Label */}
-                  <span
-                    className={`relative z-10 text-xs font-medium ${
-                      isActive ? 'font-semibold' : ''
-                    }`}
-                  >
-                    {tab.label}
-                    {isAdmin && !pageIsActive && canAccess && (
-                      <span className="ml-1 text-yellow-300 text-[10px]">
-                        ⚠️
+                    {/* Label */}
+                    <motion.span
+                      animate={{
+                        opacity: isIOS ? (isActive && canAccess ? 1 : 0.7) : 1,
+                      }}
+                      className={`mt-1 ${
+                        isIOS ? 'text-[11px] font-medium' : 'text-[12px]'
+                      } ${
+                        isActive && canAccess
+                          ? isAndroid
+                            ? 'text-primary font-bold'
+                            : 'text-primary font-semibold'
+                          : !canAccess && !isMenuTab
+                          ? 'text-gray-400 font-medium'
+                          : 'text-textSecondary font-medium'
+                      }`}
+                    >
+                      {tab.label}
+                      {isAdmin && !pageIsActive && canAccess && !isMenuTab && (
+                        <span className="ml-1 text-yellow-500 text-[10px]">
+                          ⚠️
+                        </span>
+                      )}
+                    </motion.span>
+
+                    {/* Android: Ripple effect */}
+                    {isAndroid && (
+                      <span className="absolute inset-0 overflow-hidden rounded-xl">
+                        <span className="ripple" />
                       </span>
                     )}
-                  </span>
-
-                  {/* Glow Effect for Active Tab */}
-                  {isActive && canAccess && (
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.8 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.8 }}
-                      className="absolute inset-0 bg-gradient-to-t from-primary/20 to-transparent rounded-xl blur-sm -z-10"
-                    />
-                  )}
-                </motion.button>
-              );
-            })}
-
-            {/* Menu Button */}
-            <motion.button
-              onClick={handleMenuClick}
-              whileTap={{ scale: 0.95 }}
-              className={`relative flex flex-col items-center justify-center px-4 py-2 rounded-xl transition-all duration-300 touch-manipulation ${
-                isMoreTabActive ? 'text-primary' : 'text-textSecondary'
-              }`}
-            >
-              {/* Active Indicator */}
-              {isMoreTabActive && (
-                <motion.div
-                  className="absolute inset-0 bg-primary/10 rounded-xl"
-                  transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-                />
-              )}
-
-              {/* Icon */}
-              <MoreHorizontal
-                size={24}
-                className={`relative z-10 mb-1 ${
-                  isMoreTabActive ? 'stroke-[2.5]' : 'stroke-[2]'
-                }`}
-              />
-
-              {/* Label */}
-              <span
-                className={`relative z-10 text-xs font-medium ${
-                  isMoreTabActive ? 'font-semibold' : ''
-                }`}
-              >
-                Menu
-              </span>
-
-              {/* Glow Effect */}
-              {isMoreTabActive && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.8 }}
-                  className="absolute inset-0 bg-gradient-to-t from-primary/20 to-transparent rounded-xl blur-sm -z-10"
-                />
-              )}
-            </motion.button>
+                  </motion.button>
+                );
+              })}
+            </div>
           </div>
         </div>
-      </nav>
+      </motion.nav>
 
-      {/* Bottom Sheet Menu */}
-      <BottomSheet
+      {/* Menu Sheet */}
+      <MenuSheet
         isOpen={isMenuOpen}
         onClose={() => setIsMenuOpen(false)}
-        title="Menu"
-      >
-        <div className="space-y-2">
-          {moreTabs.map((tab) => {
-            const Icon = tab.icon;
-            const isActive = pathname === tab.path;
-            const pageIsActive = isPageActive(tab.id);
-            const canAccess = isAdmin || pageIsActive;
+        onLogout={handleLogout}
+      />
 
-            return (
-              <motion.button
-                key={tab.id}
-                onClick={() => handleTabClick(tab.path, tab.id)}
-                whileTap={canAccess ? { scale: 0.98 } : {}}
-                disabled={!canAccess}
-                className={`w-full flex items-center gap-4 px-4 py-4 rounded-xl transition-all duration-300 touch-manipulation ${
-                  !canAccess
-                    ? 'opacity-40 cursor-not-allowed text-gray-400'
-                    : isActive
-                    ? 'bg-primary/10 text-primary'
-                    : 'hover:bg-textPrimary/5 text-textPrimary'
-                }`}
-              >
-                <Icon
-                  size={24}
-                  className={isActive ? 'stroke-[2.5]' : 'stroke-[2]'}
-                />
-                <span
-                  className={`text-base font-medium ${
-                    isActive ? 'font-semibold' : ''
-                  }`}
-                >
-                  {tab.label}
-                  {isAdmin && !pageIsActive && canAccess && (
-                    <span className="ml-2 text-yellow-300 text-sm">⚠️</span>
-                  )}
-                </span>
-              </motion.button>
+      {/* Android Ripple Effect Styles */}
+      {isAndroid && (
+        <style jsx>{`
+          @keyframes ripple {
+            0% {
+              transform: scale(0);
+              opacity: 0.5;
+            }
+            100% {
+              transform: scale(2);
+              opacity: 0;
+            }
+          }
+          .ripple {
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(
+              circle,
+              rgba(255, 107, 157, 0.3) 0%,
+              transparent 70%
             );
-          })}
-
-          {/* Divider */}
-          <div className="border-t border-textPrimary/10 my-2" />
-
-          {/* Logout Button */}
-          <motion.button
-            onClick={handleLogout}
-            whileTap={{ scale: 0.98 }}
-            className="w-full flex items-center gap-4 px-4 py-4 rounded-xl transition-all duration-300 touch-manipulation bg-red-500/10 hover:bg-red-500/20 text-red-600"
-          >
-            <LogOut size={24} className="stroke-[2]" />
-            <span className="text-base font-medium">Sair</span>
-          </motion.button>
-        </div>
-      </BottomSheet>
+            transform: scale(0);
+            pointer-events: none;
+          }
+          button:active .ripple {
+            animation: ripple 0.6s ease-out;
+          }
+        `}</style>
+      )}
     </>
   );
 }

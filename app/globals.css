@@ -76,6 +76,23 @@
     opacity: 1;
     transform: translateY(0);
   }
+
+  /* Glassmorphism effects */
+  .glass {
+    @apply bg-white/80 backdrop-blur-xl border border-white/20;
+  }
+
+  .glass-strong {
+    @apply bg-white/90 backdrop-blur-2xl border border-white/30;
+  }
+
+  .dark .glass {
+    @apply bg-darkSurface/80 border-white/10;
+  }
+
+  .dark .glass-strong {
+    @apply bg-darkSurface/90 border-white/20;
+  }
 }
 
 /* Custom Scrollbar minimalista */

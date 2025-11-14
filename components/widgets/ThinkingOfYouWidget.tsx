@@ -7,7 +7,11 @@ import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
-import { fetchJSON, FetchTimeoutError, FetchNetworkError } from '@/lib/utils/fetchWithTimeout';
+import {
+  fetchJSON,
+  FetchTimeoutError,
+  FetchNetworkError,
+} from '@/lib/utils/fetchWithTimeout';
 
 interface ThinkingOfYouWidgetProps {
   workspaceId: string;
@@ -388,7 +392,7 @@ export default function ThinkingOfYouWidget({
         whileTap={{ scale: 0.98 }}
         onClick={sendNotification}
         disabled={isSending || !canSend()}
-        className="w-full md:flex-[0_0_calc(33.333%-0.5rem)] bg-gradient-to-br from-pink-500 to-pink-600 rounded-3xl p-6 text-white shadow-soft-md hover:shadow-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex flex-col items-center justify-center gap-3 min-h-[120px]"
+        className="w-full md:flex-[0_0_calc(33.333%-0.5rem)] bg-primary rounded-3xl p-6 text-white shadow-soft-md hover:shadow-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex flex-col items-center justify-center gap-3 min-h-[120px]"
       >
         <motion.div
           animate={

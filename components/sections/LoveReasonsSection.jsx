@@ -30,6 +30,7 @@ export default function LoveReasonsSection({ id }) {
   const [workspaceId, setWorkspaceId] = useState(null);
   const [partnerId, setPartnerId] = useState(null);
   const [partnerProfile, setPartnerProfile] = useState(null);
+  const [userProfiles, setUserProfiles] = useState({});
   const [reactionUpdateTrigger, setReactionUpdateTrigger] = useState(0);
   const { ref, inView } = useInView({ threshold: 0.1, triggerOnce: true });
 
@@ -58,15 +59,30 @@ export default function LoveReasonsSection({ id }) {
     }
   }, [user]);
 
+  // Listen for profile updates (when avatar changes)
+  useEffect(() => {
+    const handleProfileUpdate = () => {
+      console.log('[LoveReasonsSection] Profile updated, reloading reasons');
+      loadReasons();
+    };
+
+    window.addEventListener('profile-updated', handleProfileUpdate);
+    return () =>
+      window.removeEventListener('profile-updated', handleProfileUpdate);
+  }, []);
+
   // Listen for reaction updates to force re-render
   useEffect(() => {
     const handleReactionUpdate = () => {
-      console.log('[LoveReasonsSection] Reaction update detected, incrementing trigger');
-      setReactionUpdateTrigger(prev => prev + 1);
+      console.log(
+        '[LoveReasonsSection] Reaction update detected, incrementing trigger'
+      );
+      setReactionUpdateTrigger((prev) => prev + 1);
     };
 
     window.addEventListener('reaction-updated', handleReactionUpdate);
-    return () => window.removeEventListener('reaction-updated', handleReactionUpdate);
+    return () =>
+      window.removeEventListener('reaction-updated', handleReactionUpdate);
   }, []);
 
   const loadReasons = async () => {
@@ -102,6 +118,21 @@ export default function LoveReasonsSection({ id }) {
 
         setPartnerProfile(profile);
       }
+
+      // Get all user profiles (current user + partner) for avatar display
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, full_name, avatar_url')
+        .in(
+          'id',
+          members.map((m) => m.user_id)
+        );
+
+      const profilesMap = {};
+      profiles?.forEach((p) => {
+        profilesMap[p.id] = p;
+      });
+      setUserProfiles(profilesMap);
 
       // Load love reasons from content table
       const { data, error } = await supabase
@@ -306,7 +337,7 @@ export default function LoveReasonsSection({ id }) {
   const showRandomButton = filteredReasons.length >= MIN_REASONS_FOR_RANDOM;
 
   return (
-    <section id={id} className="min-h-screen px-4 py-20" ref={ref}>
+    <section id={id} className="min-h-screen px-4 py-6" ref={ref}>
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <motion.div
@@ -432,19 +463,24 @@ export default function LoveReasonsSection({ id }) {
             </motion.div>
 
             {/* Reasons List */}
-            <div className="space-y-8">
+            <div className="space-y-6">
               <AnimatePresence mode="popLayout">
                 {visibleReasons.map((item, index) => {
-                  console.log('[LoveReasonsSection] Rendering item with id:', item.id);
+                  console.log(
+                    '[LoveReasonsSection] Rendering item with id:',
+                    item.id
+                  );
                   const isRevealed = revealedSecrets.has(item.id);
                   // Force a unique render by including reaction update trigger
                   const renderKey = `${item.id}-${reactionUpdateTrigger}`;
+
+                  // Get author profile for avatar
+                  const authorProfile = userProfiles[item.author_id];
                   const subjectImage =
-                    item.subject === 'junior'
-                      ? '/images/eu.png'
-                      : '/images/sindy.png';
+                    authorProfile?.avatar_url || '/images/default-avatar.svg';
                   const subjectName =
-                    item.subject === 'junior' ? 'Júnior' : 'Sindy';
+                    authorProfile?.full_name ||
+                    (item.subject === 'junior' ? 'Júnior' : 'Sindy');
 
                   return (
                     <ReactableContent
@@ -589,7 +625,10 @@ export default function LoveReasonsSection({ id }) {
 
                         {/* Reaction Display - Positioned outside card, bottom left */}
                         <div className="absolute -bottom-4 right-6 z-10">
-                          <ReactionDisplay key={renderKey} contentId={item.id} />
+                          <ReactionDisplay
+                            key={renderKey}
+                            contentId={item.id}
+                          />
                         </div>
                       </div>
                     </ReactableContent>
@@ -675,21 +714,27 @@ export default function LoveReasonsSection({ id }) {
                   <div className="mb-6">
                     <div className="flex justify-center mb-4">
                       <div className="w-16 h-16 rounded-full overflow-hidden border-4 border-primary">
-                        <Image
-                          src={
-                            randomReason.subject === 'junior'
-                              ? '/images/eu.png'
-                              : '/images/sindy.png'
-                          }
-                          alt={
-                            randomReason.subject === 'junior'
+                        {(() => {
+                          const authorProfile =
+                            userProfiles[randomReason.author_id];
+                          const avatarUrl =
+                            authorProfile?.avatar_url ||
+                            '/images/default-avatar.svg';
+                          const authorName =
+                            authorProfile?.full_name ||
+                            (randomReason.subject === 'junior'
                               ? 'Júnior'
-                              : 'Sindy'
-                          }
-                          width={64}
-                          height={64}
-                          className="object-cover"
-                        />
+                              : 'Sindy');
+                          return (
+                            <Image
+                              src={avatarUrl}
+                              alt={authorName}
+                              width={64}
+                              height={64}
+                              className="object-cover"
+                            />
+                          );
+                        })()}
                       </div>
                     </div>
                     <p className="text-xl font-medium text-textPrimary mb-2">

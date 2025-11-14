@@ -6,6 +6,7 @@ import { Heart, Maximize2, Trash2, CheckCircle, ImageIcon } from 'lucide-react';
 import ReactableContent from './ReactableContent';
 import ReactionDisplay from './ReactionDisplay';
 import PhotoMenu from './PhotoMenu';
+import { useAuth } from '@/contexts/AuthContext';
 
 /**
  * Componente Masonry Grid (estilo Pinterest)
@@ -94,6 +95,7 @@ const MasonryItem = React.memo(
     onToggleSelection,
     delay,
   }) {
+    const { user } = useAuth();
     const [imageLoaded, setImageLoaded] = useState(false);
     const [imageError, setImageError] = useState(false);
     const [isHovered, setIsHovered] = useState(false);
@@ -103,6 +105,14 @@ const MasonryItem = React.memo(
     const hasMoved = useRef(false);
     const [isMobile, setIsMobile] = useState(false);
     const touchHandled = useRef(false);
+
+    // Filtra favoritedBy para remover o próprio usuário
+    const partnerFavorites = useMemo(() => {
+      return photo.favoritedBy?.filter(u => u.userId !== user?.id) || [];
+    }, [photo.favoritedBy, user?.id]);
+
+    // Verifica se algum parceiro favoritou (não conta você mesmo)
+    const isFavoritedByPartner = partnerFavorites.length > 0;
 
     // Detect if device is mobile
     useEffect(() => {
@@ -133,14 +143,10 @@ const MasonryItem = React.memo(
       if (!isMobile) return;
 
       const touchDuration = Date.now() - (touchStartTime.current || 0);
-      console.log('[MasonryItem] Touch end - duration:', touchDuration, 'ms');
 
       // If it was a long press (>=500ms), don't handle it here
       // Let ReactableContent handle reactions
       if (touchDuration >= 500) {
-        console.log(
-          '[MasonryItem] Long press detected - letting ReactableContent handle'
-        );
         return; // Let reaction menu handle this
       }
 
@@ -291,10 +297,10 @@ const MasonryItem = React.memo(
                 />
 
                 {/* Favorite indicators (always visible) - Desktop */}
-                {!isMobile && !isDeleteMode && photo.isFavoritedByAnyone && (
+                {!isMobile && !isDeleteMode && isFavoritedByPartner && (
                   <div className="absolute top-3 left-3 flex gap-1.5 z-10">
-                    {/* Avatars of who favorited */}
-                    {photo.favoritedBy?.map((user) => (
+                    {/* Avatars of who favorited (only partners, not yourself) */}
+                    {partnerFavorites.map((user) => (
                       <div
                         key={user.userId}
                         className="w-8 h-8 rounded-full shadow-lg overflow-hidden bg-white border-2 border-white"
@@ -416,9 +422,9 @@ const MasonryItem = React.memo(
                           />
                         </div>
                         {/* Avatars of who favorited - Mobile */}
-                        {photo.isFavoritedByAnyone && (
+                        {isFavoritedByPartner && (
                           <div className="absolute top-3 left-3 flex gap-1 z-10">
-                            {photo.favoritedBy?.map((user) => (
+                            {partnerFavorites.map((user) => (
                               <div
                                 key={user.userId}
                                 className="w-7 h-7 rounded-full shadow-lg overflow-hidden bg-white border-2 border-white"

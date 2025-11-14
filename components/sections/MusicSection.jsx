@@ -87,11 +87,12 @@ export default function MusicSection({ id }) {
   // Listen for reaction updates to force re-render
   useEffect(() => {
     const handleReactionUpdate = () => {
-      setReactionUpdateTrigger(prev => prev + 1);
+      setReactionUpdateTrigger((prev) => prev + 1);
     };
 
     window.addEventListener('reaction-updated', handleReactionUpdate);
-    return () => window.removeEventListener('reaction-updated', handleReactionUpdate);
+    return () =>
+      window.removeEventListener('reaction-updated', handleReactionUpdate);
   }, []);
 
   // Pagination state
@@ -467,7 +468,7 @@ export default function MusicSection({ id }) {
         onError={() => setPlayingPreview(null)}
       />
 
-      <section id={id} className="min-h-screen px-3 sm:px-4 py-20" ref={ref}>
+      <section id={id} className="min-h-screen px-3 sm:px-4 py-6" ref={ref}>
         <div className="max-w-7xl mx-auto w-full">
           {/* Header */}
           <motion.div
@@ -545,7 +546,7 @@ export default function MusicSection({ id }) {
                     href={playlistUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded-xl hover:bg-green-600 transition-colors"
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-xl hover:bg-green-600 transition-colors"
                   >
                     <ExternalLink size={16} />
                     Abrir no Spotify
@@ -678,7 +679,7 @@ export default function MusicSection({ id }) {
           {/* Track List */}
           {!loading && filteredTracks.length > 0 && (
             <>
-              <div className="flex flex-col gap-8 sm:gap-10 max-w-4xl mx-auto w-full">
+              <div className="flex flex-col gap-6 sm:gap-10 max-w-4xl mx-auto w-full">
                 {filteredTracks.map((track, index) => (
                   <ReactableContent
                     key={track.id}

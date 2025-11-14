@@ -247,7 +247,6 @@ export default function EmojiPicker({ isOpen, onClose, onSelectEmoji }) {
   // Prevent body scroll and hide bottom nav when picker is open
   useEffect(() => {
     if (isOpen) {
-      console.log('[EmojiPicker] Picker opened - isOpen:', isOpen);
       const originalOverflow = document.body.style.overflow;
       const originalTouchAction = document.body.style.touchAction;
       const originalPosition = document.body.style.position;
@@ -275,14 +274,11 @@ export default function EmojiPicker({ isOpen, onClose, onSelectEmoji }) {
 
   // Handle emoji selection - ONLY place that closes the picker besides backdrop/handle
   const handleEmojiSelect = useCallback((emoji) => {
-    console.log('[EmojiPicker] handleEmojiSelect called with:', emoji);
     const updated = [emoji, ...recentEmojis.filter(e => e !== emoji)].slice(0, 20);
     setRecentEmojis(updated);
     localStorage.setItem('recentEmojis', JSON.stringify(updated));
 
-    console.log('[EmojiPicker] Calling onSelectEmoji');
     onSelectEmoji(emoji);
-    console.log('[EmojiPicker] Calling onClose');
     onClose();
   }, [recentEmojis, onSelectEmoji, onClose]);
 
@@ -316,13 +312,9 @@ export default function EmojiPicker({ isOpen, onClose, onSelectEmoji }) {
             exit={{ opacity: 0 }}
             className="fixed inset-0 bg-black/60 z-[999998]"
             onClick={(e) => {
-              console.log('[EmojiPicker] Backdrop clicked', e.target, e.currentTarget);
               // Só fecha se clicou diretamente no backdrop
               if (e.target === e.currentTarget) {
-                console.log('[EmojiPicker] Closing via backdrop');
                 onClose();
-              } else {
-                console.log('[EmojiPicker] Backdrop click ignored - not on backdrop itself');
               }
             }}
             onMouseDown={(e) => {
@@ -340,7 +332,7 @@ export default function EmojiPicker({ isOpen, onClose, onSelectEmoji }) {
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-            className="fixed bottom-0 left-0 right-0 z-[999999] w-full bg-[#1C1C1E] rounded-t-3xl shadow-2xl"
+            className="fixed bottom-0 left-0 right-0 z-[999999] w-full bg-surfaceAlt rounded-t-3xl shadow-2xl"
             style={{
               height: '75vh',
               maxHeight: '75vh',
@@ -357,13 +349,13 @@ export default function EmojiPicker({ isOpen, onClose, onSelectEmoji }) {
               className="py-3 flex justify-center cursor-pointer w-full flex-shrink-0"
               onClick={onClose}
             >
-              <div className="w-10 h-1 bg-gray-600 rounded-full" />
+              <div className="w-10 h-1 bg-gray-300 rounded-full" />
             </button>
 
             {/* 2. Search bar - FIXO NO TOPO */}
             <div className="px-4 py-2 flex-shrink-0">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                 <input
                   ref={searchInputRef}
                   type="text"
@@ -373,14 +365,14 @@ export default function EmojiPicker({ isOpen, onClose, onSelectEmoji }) {
                   onClick={(e) => e.stopPropagation()}
                   onMouseDown={(e) => e.stopPropagation()}
                   onTouchStart={(e) => e.stopPropagation()}
-                  className="w-full bg-[#2C2C2E] text-white rounded-lg pl-10 pr-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="w-full bg-white text-textPrimary rounded-lg pl-10 pr-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary border border-gray-200"
                 />
               </div>
             </div>
 
             {/* 3. Category name - FIXO NO TOPO */}
             <div className="px-4 py-2 flex-shrink-0">
-              <h3 className="text-gray-400 text-sm font-medium uppercase tracking-wide">
+              <h3 className="text-textSecondary text-sm font-medium uppercase tracking-wide">
                 {searchQuery ? 'Resultados' : EMOJI_CATEGORIES[activeCategory]?.name}
               </h3>
             </div>
@@ -407,7 +399,7 @@ export default function EmojiPicker({ isOpen, onClose, onSelectEmoji }) {
                         handleEmojiSelect(emoji);
                       }}
                       onMouseDown={(e) => e.stopPropagation()}
-                      className="aspect-square flex items-center justify-center text-3xl active:bg-gray-700 rounded-lg transition-colors"
+                      className="aspect-square flex items-center justify-center text-3xl active:bg-gray-200 hover:bg-gray-100 rounded-lg transition-colors"
                       style={{
                         minHeight: '48px',
                         WebkitTapHighlightColor: 'transparent',
@@ -420,7 +412,7 @@ export default function EmojiPicker({ isOpen, onClose, onSelectEmoji }) {
                 </div>
               ) : (
                 <div className="flex items-center justify-center h-full">
-                  <p className="text-gray-500">
+                  <p className="text-textSecondary">
                     {activeCategory === 'frequentes'
                       ? 'Nenhum emoji usado recentemente'
                       : 'Nenhum emoji encontrado'}
@@ -431,7 +423,7 @@ export default function EmojiPicker({ isOpen, onClose, onSelectEmoji }) {
 
             {/* 5. Category tabs - FIXO NO BOTTOM */}
             <div
-              className="border-t border-gray-700 bg-[#1C1C1E] flex-shrink-0"
+              className="border-t border-gray-200 bg-surfaceAlt flex-shrink-0"
               style={{
                 paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))'
               }}
@@ -449,7 +441,7 @@ export default function EmojiPicker({ isOpen, onClose, onSelectEmoji }) {
                     onMouseDown={(e) => e.stopPropagation()}
                     onTouchStart={(e) => e.stopPropagation()}
                     className={`flex-shrink-0 p-2 text-2xl transition-colors rounded-lg ${
-                      activeCategory === key ? 'bg-gray-700' : 'hover:bg-gray-800'
+                      activeCategory === key ? 'bg-gray-200' : 'hover:bg-gray-100'
                     }`}
                     style={{
                       WebkitTapHighlightColor: 'transparent',

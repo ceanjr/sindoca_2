@@ -3,7 +3,6 @@
 import { useCallback, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useReactions } from '@/hooks/useReactions';
-import { addReactionWithNotification, removeReactionWithNotification } from '@/lib/api/reactions';
 import { Smile } from 'lucide-react';
 
 const AVAILABLE_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '🙏', '🤔'];
@@ -21,34 +20,47 @@ export default function ReactableContentSimple({
   className = '',
 }) {
   const { user } = useAuth();
-  const { myReaction } = useReactions(contentId);
+  const { myReaction, addReaction, removeReaction } = useReactions(contentId);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const handleReact = useCallback(
     async (emoji) => {
       if (!user || !contentId) return;
 
-      if (authorId === user.id) {
-        return;
+      if (emoji === null || myReaction === emoji) {
+        // Remove reaction using hook (optimistic update)
+        await removeReaction();
+      } else {
+        // Add or update reaction using hook (optimistic update)
+        await addReaction(emoji);
+
+        // Send notification in background (only if not author)
+        if (authorId && authorId !== user.id) {
+          fetch('/api/reactions/notify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contentId,
+              emoji,
+              contentInfo: {
+                type: contentType,
+                title: contentTitle,
+                authorId,
+                url,
+              },
+            }),
+          }).catch(err => {
+            console.error('Failed to send notification:', err);
+          });
+        }
       }
 
-      if (emoji === null || myReaction === emoji) {
-        await removeReactionWithNotification(contentId, user.id);
-      } else {
-        await addReactionWithNotification(contentId, user.id, emoji, {
-          type: contentType,
-          title: contentTitle,
-          authorId,
-          url,
-        });
-      }
-      
       setIsMenuOpen(false);
     },
-    [contentId, user, authorId, contentType, contentTitle, url, myReaction]
+    [contentId, user, authorId, contentType, contentTitle, url, myReaction, addReaction, removeReaction]
   );
 
-  const canReact = user && authorId && authorId !== user.id;
+  const canReact = !!user;
 
   if (!canReact) {
     return <div className={className}>{children}</div>;

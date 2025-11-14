@@ -19,8 +19,6 @@ export function useReactions(contentId) {
   const loadReactions = useCallback(async () => {
     if (!contentId) return;
 
-    console.log('[useReactions] Loading reactions for contentId:', contentId);
-
     try {
       const { data, error } = await supabase
         .from('reactions')
@@ -31,12 +29,10 @@ export function useReactions(contentId) {
 
       if (error) throw error;
 
-      console.log('[useReactions] Loaded reactions:', data);
       setReactions(data || []);
 
       // Find current user's reaction
       const userReaction = data?.find((r) => r.user_id === user?.id);
-      console.log('[useReactions] Current user reaction:', userReaction);
       setMyReaction(userReaction?.emoji || null);
     } catch (error) {
       console.error('Error loading reactions:', error);
@@ -64,35 +60,25 @@ export function useReactions(contentId) {
           filter: `content_id=eq.${contentId}`,
         },
         (payload) => {
-          console.log('[useReactions] Realtime event:', payload.eventType, payload);
           if (payload.eventType === 'INSERT') {
-            console.log('[useReactions] INSERT - Adding reaction:', payload.new);
             setReactions((prev) => [...prev, payload.new]);
             if (payload.new.user_id === user?.id) {
-              console.log('[useReactions] Setting myReaction to:', payload.new.emoji);
               setMyReaction(payload.new.emoji);
             }
-            // Emit global event to trigger re-renders
             window.dispatchEvent(new CustomEvent('reaction-updated', { detail: { contentId } }));
           } else if (payload.eventType === 'DELETE') {
-            console.log('[useReactions] DELETE - Removing reaction:', payload.old);
             setReactions((prev) => prev.filter((r) => r.id !== payload.old.id));
             if (payload.old.user_id === user?.id) {
-              console.log('[useReactions] Clearing myReaction');
               setMyReaction(null);
             }
-            // Emit global event to trigger re-renders
             window.dispatchEvent(new CustomEvent('reaction-updated', { detail: { contentId } }));
           } else if (payload.eventType === 'UPDATE') {
-            console.log('[useReactions] UPDATE - Updating reaction:', payload.new);
             setReactions((prev) =>
               prev.map((r) => (r.id === payload.new.id ? payload.new : r))
             );
             if (payload.new.user_id === user?.id) {
-              console.log('[useReactions] Updating myReaction to:', payload.new.emoji);
               setMyReaction(payload.new.emoji);
             }
-            // Emit global event to trigger re-renders
             window.dispatchEvent(new CustomEvent('reaction-updated', { detail: { contentId } }));
           }
         }
@@ -114,26 +100,79 @@ export function useReactions(contentId) {
         const existingReaction = reactions.find((r) => r.user_id === user.id);
 
         if (existingReaction) {
-          // Update existing reaction
+          // OPTIMISTIC UPDATE: Update local state immediately
+          setReactions((prev) =>
+            prev.map((r) =>
+              r.id === existingReaction.id
+                ? { ...r, emoji }
+                : r
+            )
+          );
+          setMyReaction(emoji);
+
+          // Update existing reaction in DB
           const { error } = await supabase
             .from('reactions')
-            .update({ emoji, updated_at: new Date().toISOString() })
+            .update({ emoji })
             .eq('id', existingReaction.id);
 
-          if (error) throw error;
+          if (error) {
+            // ROLLBACK on error
+            console.error('[useReactions] Update failed, rolling back optimistic update');
+            setReactions((prev) =>
+              prev.map((r) =>
+                r.id === existingReaction.id
+                  ? { ...r, emoji: existingReaction.emoji }
+                  : r
+              )
+            );
+            setMyReaction(existingReaction.emoji);
+            throw error;
+          }
         } else {
-          // Insert new reaction
-          const { error } = await supabase
+          // OPTIMISTIC INSERT: Add to local state immediately with temporary ID
+          const tempReaction = {
+            id: `temp-${Date.now()}`,
+            content_id: contentId,
+            user_id: user.id,
+            type: 'emoji',
+            emoji,
+            created_at: new Date().toISOString(),
+          };
+
+          setReactions((prev) => [...prev, tempReaction]);
+          setMyReaction(emoji);
+
+          // Insert new reaction in DB
+          const { data, error } = await supabase
             .from('reactions')
             .insert({
               content_id: contentId,
               user_id: user.id,
               type: 'emoji',
               emoji,
-            });
+            })
+            .select()
+            .single();
 
-          if (error) throw error;
+          if (error) {
+            // ROLLBACK on error
+            console.error('[useReactions] Insert failed, rolling back optimistic insert');
+            setReactions((prev) => prev.filter((r) => r.id !== tempReaction.id));
+            setMyReaction(null);
+            throw error;
+          }
+
+          // Replace temp reaction with real one from DB
+          if (data) {
+            setReactions((prev) =>
+              prev.map((r) => (r.id === tempReaction.id ? data : r))
+            );
+          }
         }
+
+        // Emit global event to trigger re-renders
+        window.dispatchEvent(new CustomEvent('reaction-updated', { detail: { contentId } }));
 
         return { success: true };
       } catch (error) {
@@ -151,17 +190,30 @@ export function useReactions(contentId) {
 
     try {
       const existingReaction = reactions.find((r) => r.user_id === user.id);
-      
+
       if (!existingReaction) {
         return { success: true }; // Nothing to remove
       }
+
+      // OPTIMISTIC DELETE: Remove from local state immediately
+      setReactions((prev) => prev.filter((r) => r.id !== existingReaction.id));
+      setMyReaction(null);
 
       const { error } = await supabase
         .from('reactions')
         .delete()
         .eq('id', existingReaction.id);
 
-      if (error) throw error;
+      if (error) {
+        // ROLLBACK on error
+        console.error('[useReactions] Delete failed, rolling back optimistic delete');
+        setReactions((prev) => [...prev, existingReaction]);
+        setMyReaction(existingReaction.emoji);
+        throw error;
+      }
+
+      // Emit global event to trigger re-renders
+      window.dispatchEvent(new CustomEvent('reaction-updated', { detail: { contentId } }));
 
       return { success: true };
     } catch (error) {

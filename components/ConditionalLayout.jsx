@@ -21,7 +21,7 @@ export default function ConditionalLayout({ children }) {
       <NavigationSidebar />
 
       {/* Main Content with Swipe Support */}
-      <main className="relative z-10 pb-20 lg:pb-0 lg:pl-[72px] overflow-x-hidden w-full">
+      <main className="relative z-10 pb-28 lg:pb-0 lg:pl-[72px] overflow-x-hidden w-full">
         {children}
       </main>
 

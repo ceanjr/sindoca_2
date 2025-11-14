@@ -126,7 +126,7 @@ export default function PWAActions() {
       </AnimatePresence>
 
       {/* Floating Action Button */}
-      <div className="fixed bottom-24 right-4 z-[100] lg:bottom-6">
+      <div className="fixed bottom-[104px] right-4 z-[100] lg:bottom-6">
         {/* Options Menu */}
         <AnimatePresence>
           {isOpen && (

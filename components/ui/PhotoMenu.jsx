@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { MoreVertical, Heart, Smile } from 'lucide-react';
 import ReactionMenu from './ReactionMenu';
 import { useReactions } from '@/hooks/useReactions';
-import { addReactionWithNotification, removeReactionWithNotification } from '@/lib/api/reactions';
 import { useAuth } from '@/contexts/AuthContext';
 
 /**

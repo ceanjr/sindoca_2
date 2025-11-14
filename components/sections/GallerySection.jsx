@@ -1,6 +1,12 @@
 'use client';
 
-import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import React, {
+  useState,
+  useMemo,
+  useRef,
+  useEffect,
+  useCallback,
+} from 'react';
 import dynamic from 'next/dynamic';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useInView } from 'react-intersection-observer';
@@ -24,7 +30,9 @@ import { useSupabasePhotos } from '@/hooks';
 // Lazy load Lightbox component for better performance
 const Lightbox = dynamic(() => import('../Lightbox'), {
   ssr: false,
-  loading: () => <div className="flex items-center justify-center p-4">Carregando...</div>
+  loading: () => (
+    <div className="flex items-center justify-center p-4">Carregando...</div>
+  ),
 });
 
 const filterOptions = [
@@ -115,7 +123,7 @@ export default function GallerySection({ id }) {
   // Filtra as fotos baseado no filtro ativo
   const allFilteredPhotos = useMemo(() => {
     if (activeFilter === 'all') return photos;
-    if (activeFilter === 'favorites') return photos.filter((p) => p.isFavoritedByAnyone);
+    if (activeFilter === 'favorites') return photos.filter((p) => p.favorite);
     return photos.filter((p) => p.category === activeFilter);
   }, [photos, activeFilter]);
 
@@ -240,7 +248,8 @@ export default function GallerySection({ id }) {
       files.map(async (file) => {
         return new Promise((resolve) => {
           const reader = new FileReader();
-          reader.onload = (e) => resolve({ url: e.target.result, name: file.name });
+          reader.onload = (e) =>
+            resolve({ url: e.target.result, name: file.name });
           reader.readAsDataURL(file);
         });
       })
@@ -296,7 +305,7 @@ export default function GallerySection({ id }) {
 
   return (
     <>
-      <section id={id} className="min-h-screen px-2 md:px-4 py-20" ref={ref}>
+      <section id={id} className="min-h-screen px-2 md:px-4 py-6" ref={ref}>
         <div className="max-w-7xl mx-auto">
           <input
             ref={fileInputRef}
@@ -337,7 +346,7 @@ export default function GallerySection({ id }) {
               <Badge variant="primary">{photos.length} fotos</Badge>
               <Badge variant="accent">
                 <Heart size={14} className="inline mr-1" />
-                {photos.filter((p) => p.isFavoritedByAnyone).length} favoritas
+                {photos.filter((p) => p.favorite).length} favoritas
               </Badge>
               <Badge variant="lavender">
                 <Calendar size={14} className="inline mr-1" />
