@@ -5,6 +5,7 @@ export interface SignUpData {
   email: string
   password: string
   fullName: string
+  inviteCode?: string  // Opcional: código de convite para entrar em workspace existente
 }
 
 export interface ProfileData {
@@ -16,14 +17,32 @@ export interface ProfileData {
 }
 
 /**
+ * Get redirect URL helper (reusable)
+ * Returns the correct callback URL based on environment
+ */
+function getRedirectUrl(): string {
+  // Em produção, usar NEXT_PUBLIC_SITE_URL se configurado
+  if (typeof window !== 'undefined') {
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL
+    // Se está em produção (não localhost), usar a URL configurada
+    if (siteUrl && !window.location.origin.includes('localhost')) {
+      return `${siteUrl}/auth/callback`
+    }
+    // Caso contrário, usar origin atual (desenvolvimento)
+    return `${window.location.origin}/auth/callback`
+  }
+  return `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/callback`
+}
+
+/**
  * Sign up a new user
  * Profile is automatically created by database trigger
+ * Workspace handling: Creates default workspace or joins via invite code
  */
-export async function signUp({ email, password, fullName }: SignUpData) {
+export async function signUp({ email, password, fullName, inviteCode }: SignUpData) {
   const supabase = createClient()
 
-  // Sign up with Supabase Auth
-  // The database trigger will automatically create the profile
+  // 1. Sign up with Supabase Auth
   const { data: authData, error: authError } = await supabase.auth.signUp({
     email,
     password,
@@ -31,13 +50,67 @@ export async function signUp({ email, password, fullName }: SignUpData) {
       data: {
         full_name: fullName,
       },
-      emailRedirectTo: `${window.location.origin}/auth/callback`,
+      emailRedirectTo: getRedirectUrl(),
     },
   })
 
   if (authError) throw authError
 
+  const userId = authData.user?.id
+  if (!userId) throw new Error('User ID not found')
+
+  console.log('✅ User created in Auth, profile should be auto-created by trigger')
+
+  // 2. Handle workspace
+  if (inviteCode?.trim()) {
+    // Join existing workspace via invite code
+    try {
+      const response = await fetch('/api/workspaces/join', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ inviteCode: inviteCode.trim() }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        console.error('Failed to join workspace:', errorData)
+        // Não falhar o signup se join falhar
+        // Criar workspace padrão como fallback
+        await createDefaultWorkspaceForUser(userId, fullName)
+      }
+    } catch (error) {
+      console.error('Error joining workspace:', error)
+      // Criar workspace padrão como fallback
+      await createDefaultWorkspaceForUser(userId, fullName)
+    }
+  } else {
+    // Create default workspace
+    await createDefaultWorkspaceForUser(userId, fullName)
+  }
+
   return authData
+}
+
+/**
+ * Create default workspace for new user
+ */
+async function createDefaultWorkspaceForUser(userId: string, userName: string) {
+  try {
+    const response = await fetch('/api/workspaces/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: `${userName} - Espaço` }),
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      console.error('Failed to create default workspace:', errorData)
+    } else {
+      console.log('✅ Created default workspace for user')
+    }
+  } catch (error) {
+    console.error('Error creating default workspace:', error)
+  }
 }
 
 /**
@@ -244,7 +317,7 @@ export async function signInWithGoogle() {
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: `${window.location.origin}/auth/callback`,
+      redirectTo: getRedirectUrl(),
     },
   })
 
@@ -262,7 +335,7 @@ export async function sendMagicLink(email: string) {
   const { data, error } = await supabase.auth.signInWithOtp({
     email,
     options: {
-      emailRedirectTo: `${window.location.origin}/auth/callback`,
+      emailRedirectTo: getRedirectUrl(),
     },
   })
 

@@ -1,11 +1,11 @@
 import './globals.css';
 import AppProvider from '@/components/AppProvider';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { WorkspaceProvider } from '@/contexts/WorkspaceContext';
 import { PageConfigProvider } from '@/contexts/PageConfigContext';
 import ConditionalLayout from '@/components/ConditionalLayout';
 import { Toaster } from 'sonner';
 import GlobalErrorBoundary from '@/components/GlobalErrorBoundary';
-import InstallPWABanner from '@/components/InstallPWABanner';
 
 export const metadata = {
   title: 'Uma Sindoca para a Todos Governar',
@@ -87,31 +87,30 @@ export default function RootLayout({ children }) {
       <body className="antialiased" suppressHydrationWarning>
         <GlobalErrorBoundary>
           <AuthProvider>
-            <PageConfigProvider>
-              <AppProvider>
-                {/* Toast Notifications */}
-                <Toaster
-                  position="top-center"
-                  richColors
-                  closeButton
-                  toastOptions={{
-                    style: {
-                      background: '#FFFFFF',
-                      color: '#2D2D2D',
-                      border: '1px solid rgba(255, 107, 157, 0.2)',
-                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-                    },
-                    className: 'backdrop-blur-xl',
-                  }}
-                />
+            <WorkspaceProvider>
+              <PageConfigProvider>
+                <AppProvider>
+                  {/* Toast Notifications */}
+                  <Toaster
+                    position="top-center"
+                    richColors
+                    closeButton
+                    toastOptions={{
+                      style: {
+                        background: '#FFFFFF',
+                        color: '#2D2D2D',
+                        border: '1px solid rgba(255, 107, 157, 0.2)',
+                        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                      },
+                      className: 'backdrop-blur-xl',
+                    }}
+                  />
 
-                {/* Conditional Layout - hides sidebar/footer on auth pages */}
-                <ConditionalLayout>{children}</ConditionalLayout>
-
-                {/* Install PWA Banner */}
-                <InstallPWABanner />
-              </AppProvider>
-            </PageConfigProvider>
+                  {/* Conditional Layout - hides sidebar/footer on auth pages */}
+                  <ConditionalLayout>{children}</ConditionalLayout>
+                </AppProvider>
+              </PageConfigProvider>
+            </WorkspaceProvider>
           </AuthProvider>
         </GlobalErrorBoundary>
       </body>

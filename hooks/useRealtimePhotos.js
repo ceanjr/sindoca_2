@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { useWorkspace } from '@/contexts/WorkspaceContext';
 
 /**
  * Hook para sincronização de fotos com realtime do Supabase
@@ -14,9 +15,11 @@ export function useRealtimePhotos(pollInterval = 10000) {
   const [error, setError] = useState(null);
   const [supabase] = useState(() => createClient());
   const [userId, setUserId] = useState(null);
-  const [workspaceId, setWorkspaceId] = useState(null);
 
-  // Get current user and workspace
+  // Use WorkspaceContext para obter workspace atual
+  const { currentWorkspaceId } = useWorkspace();
+
+  // Get current user
   useEffect(() => {
     const initAuth = async () => {
       const {
@@ -24,17 +27,6 @@ export function useRealtimePhotos(pollInterval = 10000) {
       } = await supabase.auth.getUser();
       if (user) {
         setUserId(user.id);
-
-        // Get user's workspace
-        const { data: members } = await supabase
-          .from('workspace_members')
-          .select('workspace_id')
-          .eq('user_id', user.id)
-          .single();
-
-        if (members) {
-          setWorkspaceId(members.workspace_id);
-        }
       }
     };
 
@@ -43,7 +35,7 @@ export function useRealtimePhotos(pollInterval = 10000) {
 
   // Load favorites from Supabase reactions table
   const loadFavorites = async () => {
-    if (!userId || !workspaceId) return {};
+    if (!userId || !currentWorkspaceId) return {};
 
     try {
       const { data: reactions } = await supabase
@@ -135,14 +127,27 @@ export function useRealtimePhotos(pollInterval = 10000) {
 
   // Initial load
   useEffect(() => {
-    if (userId && workspaceId) {
+    if (userId && currentWorkspaceId) {
       loadPhotos();
     }
-  }, [userId, workspaceId]);
+  }, [userId, currentWorkspaceId]);
+
+  // Ouvir evento de troca de workspace
+  useEffect(() => {
+    const handleWorkspaceChange = () => {
+      console.log('🔄 Workspace changed, reloading photos...');
+      if (userId && currentWorkspaceId) {
+        loadPhotos();
+      }
+    };
+
+    window.addEventListener('workspace-changed', handleWorkspaceChange);
+    return () => window.removeEventListener('workspace-changed', handleWorkspaceChange);
+  }, [userId, currentWorkspaceId]);
 
   // Realtime subscription to reactions (favorites) changes
   useEffect(() => {
-    if (!userId || !workspaceId) return;
+    if (!userId || !currentWorkspaceId) return;
 
     const channel = supabase
       .channel('photo-favorites')
@@ -164,7 +169,7 @@ export function useRealtimePhotos(pollInterval = 10000) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [userId, workspaceId, supabase]);
+  }, [userId, currentWorkspaceId, supabase]);
 
   // ❌ POLLING REMOVIDO - Realtime Subscription já cuida das atualizações
 

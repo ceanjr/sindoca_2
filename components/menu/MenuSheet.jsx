@@ -9,6 +9,7 @@ import {
   LogOut as LogOutIcon,
   X,
   Bug,
+  Users,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
@@ -16,15 +17,19 @@ import AvatarPicker from '@/components/ui/AvatarPicker';
 import ProfileSheet from './ProfileSheet';
 import NotificationsSheet from './NotificationsSheet';
 import DebugSheet from './DebugSheet';
+import WorkspaceSheet from '@/components/workspace/WorkspaceSheet';
+import { useRouter } from 'next/navigation';
 
 /**
  * MenuSheet - Menu principal do app
  */
 export default function MenuSheet({ isOpen, onClose, onLogout }) {
   const { user, profile } = useAuth();
+  const router = useRouter();
   const [showProfileSheet, setShowProfileSheet] = useState(false);
   const [showNotificationsSheet, setShowNotificationsSheet] = useState(false);
   const [showDebugSheet, setShowDebugSheet] = useState(false);
+  const [showWorkspaceSheet, setShowWorkspaceSheet] = useState(false);
 
   const handleClose = () => {
     if ('vibrate' in navigator) {
@@ -61,6 +66,13 @@ export default function MenuSheet({ isOpen, onClose, onLogout }) {
     setShowDebugSheet(true);
   };
 
+  const handleOpenWorkspaces = () => {
+    if ('vibrate' in navigator) {
+      navigator.vibrate(10);
+    }
+    setShowWorkspaceSheet(true);
+  };
+
   const handleLogout = () => {
     if ('vibrate' in navigator) {
       navigator.vibrate(20);
@@ -87,14 +99,26 @@ export default function MenuSheet({ isOpen, onClose, onLogout }) {
 
   // Garantir safe area branca mesmo com sub-sheets abertos
   useEffect(() => {
-    if (isOpen || showProfileSheet || showNotificationsSheet || showDebugSheet) {
+    if (
+      isOpen ||
+      showProfileSheet ||
+      showNotificationsSheet ||
+      showDebugSheet ||
+      showWorkspaceSheet
+    ) {
       // Força safe area branca
       const metaTheme = document.querySelector('meta[name="theme-color"]');
       if (metaTheme) {
         metaTheme.setAttribute('content', '#ffffff');
       }
     }
-  }, [isOpen, showProfileSheet, showNotificationsSheet, showDebugSheet]);
+  }, [
+    isOpen,
+    showProfileSheet,
+    showNotificationsSheet,
+    showDebugSheet,
+    showWorkspaceSheet,
+  ]);
 
   return (
     <>
@@ -220,6 +244,33 @@ export default function MenuSheet({ isOpen, onClose, onLogout }) {
                     </h3>
 
                     <div className="space-y-3">
+                      {/* Espaços */}
+                      <motion.button
+                        whileTap={{ scale: 0.98 }}
+                        onClick={handleOpenWorkspaces}
+                        className="w-full bg-gradient-to-r from-primary/10 to-lavender/10 rounded-2xl p-4 hover:from-primary/20 hover:to-lavender/20 transition-colors border border-primary/20"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 bg-primary/20 rounded-full flex items-center justify-center">
+                              <Users size={24} className="text-primary" />
+                            </div>
+                            <div className="text-left">
+                              <h4 className="font-semibold text-textPrimary">
+                                Espaços
+                              </h4>
+                              <p className="text-sm text-textSecondary">
+                                Gerenciar seus espaços
+                              </p>
+                            </div>
+                          </div>
+                          <ChevronRight
+                            size={20}
+                            className="text-textSecondary"
+                          />
+                        </div>
+                      </motion.button>
+
                       {/* Perfil */}
                       <motion.button
                         whileTap={{ scale: 0.98 }}
@@ -331,6 +382,11 @@ export default function MenuSheet({ isOpen, onClose, onLogout }) {
       </AnimatePresence>
 
       {/* Sub-sheets */}
+      <WorkspaceSheet
+        isOpen={showWorkspaceSheet}
+        onClose={() => setShowWorkspaceSheet(false)}
+      />
+
       <ProfileSheet
         isOpen={showProfileSheet}
         onClose={() => setShowProfileSheet(false)}

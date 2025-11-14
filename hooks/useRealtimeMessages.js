@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { getUserWorkspaces } from '@/lib/api/workspace';
+import { useWorkspace } from '@/contexts/WorkspaceContext';
 
 /**
  * Hook para sincronização em tempo real de mensagens via Supabase Realtime
@@ -11,26 +11,26 @@ import { getUserWorkspaces } from '@/lib/api/workspace';
  */
 export function useRealtimeMessages() {
   const { user } = useAuth();
+  const { currentWorkspaceId } = useWorkspace();
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  
+
   // ✅ Refs para manter estado persistente
   const supabaseRef = useRef(null);
-  const workspaceRef = useRef(null);
   const channelRef = useRef(null);
   const initializingRef = useRef(false);
   const initializedRef = useRef(false);
 
   // ✅ Load messages com timeout
   const loadMessages = useCallback(async () => {
-    if (!supabaseRef.current || !workspaceRef.current) {
+    if (!supabaseRef.current || !currentWorkspaceId) {
       return;
     }
 
     try {
       setLoading(true);
-      
+
       // ✅ Timeout de 8 segundos
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 8000);
@@ -38,7 +38,7 @@ export function useRealtimeMessages() {
       const { data, error: fetchError } = await supabaseRef.current
         .from('content')
         .select('*')
-        .eq('workspace_id', workspaceRef.current)
+        .eq('workspace_id', currentWorkspaceId)
         .eq('type', 'message')
         .order('created_at', { ascending: false })
         .abortSignal(controller.signal);
@@ -68,7 +68,7 @@ export function useRealtimeMessages() {
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [currentWorkspaceId]);
 
   useEffect(() => {
     // ✅ Prevenir múltiplas inicializações
@@ -76,7 +76,7 @@ export function useRealtimeMessages() {
       return;
     }
 
-    if (!user) {
+    if (!user || !currentWorkspaceId) {
       setLoading(false);
       return;
     }
@@ -89,16 +89,12 @@ export function useRealtimeMessages() {
         if (!supabaseRef.current) {
           supabaseRef.current = createClient();
         }
-        
-        const workspacesData = await getUserWorkspaces(user.id);
-        if (workspacesData.length > 0) {
-          workspaceRef.current = workspacesData[0].workspace_id;
-          await loadMessages();
 
-          // ✅ Setup subscription apenas se não existir
-          if (!channelRef.current) {
-            setupRealtimeSubscription(supabaseRef.current, workspaceRef.current);
-          }
+        await loadMessages();
+
+        // ✅ Setup subscription apenas se não existir
+        if (!channelRef.current) {
+          setupRealtimeSubscription(supabaseRef.current, currentWorkspaceId);
         }
 
         initializedRef.current = true;
@@ -122,6 +118,29 @@ export function useRealtimeMessages() {
       }
     };
   }, []); // ✅ SEM DEPENDÊNCIAS - executa apenas uma vez
+
+  // ✅ Ouvir evento de troca de workspace
+  useEffect(() => {
+    const handleWorkspaceChange = () => {
+      console.log('🔄 Workspace changed, reloading messages...');
+      initializedRef.current = false; // Reset initialization flag
+      if (user && currentWorkspaceId) {
+        loadMessages();
+
+        // Recriar subscription
+        if (channelRef.current && supabaseRef.current) {
+          supabaseRef.current.removeChannel(channelRef.current);
+          channelRef.current = null;
+        }
+        if (supabaseRef.current) {
+          setupRealtimeSubscription(supabaseRef.current, currentWorkspaceId);
+        }
+      }
+    };
+
+    window.addEventListener('workspace-changed', handleWorkspaceChange);
+    return () => window.removeEventListener('workspace-changed', handleWorkspaceChange);
+  }, [user, currentWorkspaceId, loadMessages]);
 
   const setupRealtimeSubscription = (supabase, workspaceId) => {
     const channel = supabase

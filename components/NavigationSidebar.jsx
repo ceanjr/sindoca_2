@@ -13,11 +13,15 @@ import {
   Archive,
   Settings,
   LogOut,
+  Users,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { usePageConfig } from '@/hooks/usePageConfig';
 import { createClient } from '@/lib/supabase/client';
 import AdminModal from './AdminModal';
+import WorkspaceSwitcher from './workspace/WorkspaceSwitcher';
+import { Menu as MenuIcon } from 'lucide-react';
+import DesktopMenu from './menu/DesktopMenu';
 
 const navItems = [
   { id: 'inicio', path: '/', label: 'Início', icon: Home },
@@ -40,6 +44,7 @@ export default function NavigationSidebar() {
   const router = useRouter();
   const { isPageActive, isAdmin, user } = usePageConfig();
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
+  const [isDesktopMenuOpen, setIsDesktopMenuOpen] = useState(false);
 
   // Debug: Log admin status
   useEffect(() => {
@@ -87,6 +92,11 @@ export default function NavigationSidebar() {
         animate={{ x: 0, opacity: 1 }}
         className="hidden lg:flex fixed left-0 top-0 h-screen w-[72px] bg-white shadow-soft-lg z-40 flex-col py-8"
       >
+        {/* Workspace Switcher no topo */}
+        <div className="mb-4 px-2">
+          <WorkspaceSwitcher />
+        </div>
+
         <div className="flex flex-col items-center gap-2 flex-1">
           {navItems.map((item) => {
             const Icon = item.icon;
@@ -137,6 +147,25 @@ export default function NavigationSidebar() {
 
         {/* Action Buttons */}
         <div className="flex flex-col items-center pt-4 border-t border-gray-200 gap-2">
+          {/* Menu Button */}
+          <motion.button
+            onClick={() => setIsDesktopMenuOpen(!isDesktopMenuOpen)}
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.95 }}
+            className={`group relative flex items-center justify-center w-12 h-12 rounded-xl transition-all duration-300 ${
+              isDesktopMenuOpen ? 'bg-primary text-white' : 'hover:bg-surfaceAlt'
+            }`}
+            title="Menu"
+          >
+            <MenuIcon size={24} className={isDesktopMenuOpen ? 'text-white' : 'text-primary'} />
+
+            {/* Tooltip */}
+            <div className="absolute left-full ml-2 px-3 py-2 bg-gray-900 text-white text-sm rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-200 z-50">
+              Menu
+              <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-gray-900" />
+            </div>
+          </motion.button>
+
           {/* Admin Button */}
           {isAdmin && (
             <motion.button
@@ -174,6 +203,12 @@ export default function NavigationSidebar() {
           </motion.button>
         </div>
       </motion.nav>
+
+      {/* Desktop Menu */}
+      <DesktopMenu
+        isOpen={isDesktopMenuOpen}
+        onClose={() => setIsDesktopMenuOpen(false)}
+      />
 
       {/* Admin Modal */}
       <AdminModal

@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import AuthCard from '@/components/auth/AuthCard';
 import FormInput from '@/components/auth/FormInput';
 import { signIn, signInWithGoogle, sendMagicLink } from '@/lib/api/auth';
+import { getFriendlyAuthError, successMessages } from '@/lib/utils/friendlyMessages';
 
 function LoginForm() {
   const router = useRouter();
@@ -72,59 +73,53 @@ function LoginForm() {
         // Send magic link
         await sendMagicLink(formData.email);
 
-        toast.success('Link mágico enviado! ✨', {
-          description: 'Verifique seu email para fazer login.',
+        toast.success(successMessages.magicLinkSent.title, {
+          description: successMessages.magicLinkSent.description,
         });
         setLoading(false);
       } else {
         // Regular password login
-        console.log('Iniciando login...');
+        console.log('🔐 Iniciando login...');
         const result = await signIn(formData.email, formData.password);
-        console.log('Login result:', result);
+        console.log('✅ Login bem-sucedido');
 
         if (result) {
-          console.log('Login bem-sucedido, redirecionando...');
+          // Show success message
+          toast.success(successMessages.loginSuccess.title, {
+            description: successMessages.loginSuccess.description,
+          });
 
           // Check if we should force reload (for Edge or after cache clear)
           const forceReload = searchParams.get('force_reload') === 'true';
           const isEdge = /Edg/.test(navigator.userAgent);
 
-          console.log('Navigation info:', {
-            forceReload,
-            isEdge,
-            userAgent: navigator.userAgent,
-          });
+          console.log('🔄 Redirecionando para home...');
 
           if (forceReload || isEdge) {
             // Force hard reload for Edge or when explicitly requested
-            console.log('Usando hard reload (Edge ou após limpeza de cache)');
             setTimeout(() => {
               window.location.href = '/';
             }, 500);
           } else {
             // Use Next.js router for client-side navigation
-            console.log('Usando router.push (navegação client-side)');
             setTimeout(() => {
               router.push('/');
             }, 100);
           }
         } else {
-          console.error('Login falhou - sem resultado');
+          console.error('❌ Login falhou - sem resultado');
           setLoading(false);
-          toast.error('Erro ao fazer login', {
-            description: 'Tente novamente',
+          toast.error('Ops!', {
+            description: 'Não foi possível fazer login. Tente novamente.',
           });
         }
       }
     } catch (error: any) {
-      console.error('Login error:', error);
       setLoading(false);
-      toast.error(
-        useMagicLink ? 'Erro ao enviar link' : 'Erro ao fazer login',
-        {
-          description: error.message || 'Verifique suas credenciais',
-        }
-      );
+      const friendlyError = getFriendlyAuthError(error);
+      toast.error(friendlyError.title, {
+        description: friendlyError.description,
+      });
     }
   };
 
@@ -132,9 +127,9 @@ function LoginForm() {
     try {
       await signInWithGoogle();
     } catch (error: any) {
-      console.error('Google sign in error:', error);
-      toast.error('Erro ao fazer login com Google', {
-        description: error.message,
+      const friendlyError = getFriendlyAuthError(error);
+      toast.error(friendlyError.title, {
+        description: friendlyError.description,
       });
     }
   };
@@ -234,8 +229,21 @@ function LoginForm() {
         </motion.button>
       </form>
 
-      {/* Link para limpar cache em caso de problemas */}
+      {/* Link para Cadastro */}
       <div className="mt-6 text-center">
+        <p className="text-sm text-textSecondary">
+          Não tem uma conta?{' '}
+          <Link
+            href="/auth/signup"
+            className="text-primary font-medium hover:underline"
+          >
+            Criar conta
+          </Link>
+        </p>
+      </div>
+
+      {/* Link para limpar cache em caso de problemas */}
+      <div className="mt-4 text-center">
         <Link
           href="/clear-cache"
           className="text-xs text-textSecondary hover:text-primary transition-colors underline"
