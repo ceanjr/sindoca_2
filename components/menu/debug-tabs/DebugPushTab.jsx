@@ -5,6 +5,7 @@ import { RefreshCw } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { createClient } from '@/lib/supabase/client';
+import MobileLogsViewer from './MobileLogsViewer';
 
 /**
  * DebugPushTab - Tab de debug para Push Notifications
@@ -443,6 +444,11 @@ export default function DebugPushTab() {
           </li>
           <li>Clique no ícone de reload para atualizar o banco</li>
         </ol>
+      </div>
+
+      {/* Mobile Logs Viewer - Para PWAs em mobile sem DevTools */}
+      <div className="bg-gray-50 rounded-2xl p-4">
+        <MobileLogsViewer />
       </div>
     </div>
   );
