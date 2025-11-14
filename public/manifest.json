@@ -1,17 +1,19 @@
 {
-  "name": "Sindoca",
+  "name": "Sindoca - Nosso Cantinho",
   "short_name": "Sindoca",
-  "description": "Nosso cantinho amarelinho",
+  "description": "App privado para casais compartilharem memórias, fotos, músicas e mensagens de amor",
+  "id": "/",
   "theme_color": "#ff6b9d",
   "background_color": "#ffffff",
   "display": "standalone",
-  "display_override": ["standalone", "fullscreen"],
+  "display_override": ["standalone", "minimal-ui"],
   "orientation": "portrait-primary",
   "scope": "/",
   "start_url": "/?source=pwa",
   "lang": "pt-BR",
   "dir": "ltr",
   "prefer_related_applications": false,
+  "related_applications": [],
   "icons": [
     {
       "src": "/icon-72x72.png",
@@ -75,6 +77,8 @@
     }
   ],
   "categories": ["lifestyle", "social"],
+  "iarc_rating_id": "",
+  "screenshots": [],
   "shortcuts": [
     {
       "name": "Fotos",
