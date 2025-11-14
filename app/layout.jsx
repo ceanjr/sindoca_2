@@ -5,6 +5,7 @@ import { PageConfigProvider } from '@/contexts/PageConfigContext';
 import ConditionalLayout from '@/components/ConditionalLayout';
 import { Toaster } from 'sonner';
 import GlobalErrorBoundary from '@/components/GlobalErrorBoundary';
+import InstallPWABanner from '@/components/InstallPWABanner';
 
 export const metadata = {
   title: 'Uma Sindoca para a Todos Governar',
@@ -26,6 +27,7 @@ export const metadata = {
   },
   other: {
     'mobile-web-app-capable': 'yes',
+    'theme-color': '#ff6b9d',
   },
 };
 
@@ -47,6 +49,7 @@ export default function RootLayout({ children }) {
           href="https://fonts.gstatic.com"
           crossOrigin="anonymous"
         />
+        {/* PWA Configuration */}
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta
@@ -55,6 +58,9 @@ export default function RootLayout({ children }) {
         />
         <meta name="apple-mobile-web-app-title" content="Sindoca" />
         <meta name="application-name" content="Sindoca" />
+        {/* Android Chrome PWA */}
+        <meta name="theme-color" content="#ff6b9d" />
+        <meta name="color-scheme" content="light" />
         <link rel="icon" type="image/x-icon" href="/favicon.ico" />
         <link
           rel="icon"
@@ -101,6 +107,9 @@ export default function RootLayout({ children }) {
 
                 {/* Conditional Layout - hides sidebar/footer on auth pages */}
                 <ConditionalLayout>{children}</ConditionalLayout>
+
+                {/* Install PWA Banner */}
+                <InstallPWABanner />
               </AppProvider>
             </PageConfigProvider>
           </AuthProvider>
