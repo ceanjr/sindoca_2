@@ -177,24 +177,17 @@ export default function BottomTabBar() {
                 const canAccess = isMenuTab || isAdmin || pageIsActive;
 
                 return (
-                  <motion.button
+                  <button
                     key={tab.id}
                     onClick={() => handleTabClick(tab)}
-                    whileTap={canAccess ? { scale: isIOS ? 0.92 : 0.95 } : {}}
                     disabled={!canAccess && !isMenuTab}
                     className={`relative flex flex-col items-center justify-center flex-1 ${
                       isIOS ? 'py-1 px-1' : 'py-0.5 px-1'
-                    } rounded-xl transition-all touch-manipulation ${
+                    } rounded-xl touch-manipulation ${
                       !canAccess && !isMenuTab
                         ? 'opacity-40 cursor-not-allowed'
                         : ''
                     }`}
-                    style={{
-                      transitionDuration: isIOS ? '350ms' : '250ms',
-                      transitionTimingFunction: isIOS
-                        ? 'cubic-bezier(0.4, 0, 0.2, 1)'
-                        : 'cubic-bezier(0.4, 0, 0.6, 1)',
-                    }}
                   >
                     {/* Android: Top indicator */}
                     {isAndroid && isActive && canAccess && (
@@ -207,18 +200,7 @@ export default function BottomTabBar() {
                     )}
 
                     {/* Icon Container */}
-                    <motion.div
-                      animate={{
-                        y: isIOS && isActive && canAccess ? -4 : 0,
-                        scale: isIOS && isActive && canAccess ? 1.15 : 1,
-                      }}
-                      transition={{
-                        type: 'spring',
-                        stiffness: 400,
-                        damping: 25,
-                      }}
-                      className="relative"
-                    >
+                    <div className="relative">
                       <Icon
                         size={24}
                         className={`${
@@ -229,21 +211,10 @@ export default function BottomTabBar() {
                             : 'text-textSecondary stroke-[2]'
                         }`}
                       />
-
-                      {/* iOS: Glow effect on active */}
-                      {isIOS && isActive && canAccess && (
-                        <div
-                          className="absolute inset-0 bg-primary/20 rounded-full blur-md -z-10"
-                          style={{ transform: 'scale(1.5)' }}
-                        />
-                      )}
-                    </motion.div>
+                    </div>
 
                     {/* Label */}
-                    <motion.span
-                      animate={{
-                        opacity: isIOS ? (isActive && canAccess ? 1 : 0.7) : 1,
-                      }}
+                    <span
                       className={`mt-1 ${
                         isIOS ? 'text-[11px] font-medium' : 'text-[12px]'
                       } ${
@@ -262,15 +233,9 @@ export default function BottomTabBar() {
                           ⚠️
                         </span>
                       )}
-                    </motion.span>
+                    </span>
 
-                    {/* Android: Ripple effect */}
-                    {isAndroid && (
-                      <span className="absolute inset-0 overflow-hidden rounded-xl">
-                        <span className="ripple" />
-                      </span>
-                    )}
-                  </motion.button>
+                  </button>
                 );
               })}
             </div>
@@ -285,35 +250,6 @@ export default function BottomTabBar() {
         onLogout={handleLogout}
       />
 
-      {/* Android Ripple Effect Styles */}
-      {isAndroid && (
-        <style jsx>{`
-          @keyframes ripple {
-            0% {
-              transform: scale(0);
-              opacity: 0.5;
-            }
-            100% {
-              transform: scale(2);
-              opacity: 0;
-            }
-          }
-          .ripple {
-            position: absolute;
-            inset: 0;
-            background: radial-gradient(
-              circle,
-              rgba(255, 107, 157, 0.3) 0%,
-              transparent 70%
-            );
-            transform: scale(0);
-            pointer-events: none;
-          }
-          button:active .ripple {
-            animation: ripple 0.6s ease-out;
-          }
-        `}</style>
-      )}
     </>
   );
 }
