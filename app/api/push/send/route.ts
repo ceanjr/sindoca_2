@@ -55,6 +55,7 @@ export async function POST(request: NextRequest) {
       badge,
       tag,
       url,
+      notificationType,
       data: notificationData,
     } = await request.json();
 
@@ -110,6 +111,17 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    // Get workspace_id for analytics
+    let workspaceId: string | null = null;
+    if (recipientUserId) {
+      const { data: membership } = await supabase
+        .from('workspace_members')
+        .select('workspace_id')
+        .eq('user_id', recipientUserId)
+        .single();
+      workspaceId = membership?.workspace_id || null;
+    }
+
     // Send push notification to all user's subscriptions
     const results = await Promise.allSettled(
       subscriptions.map(async (sub) => {
@@ -120,9 +132,27 @@ export async function POST(request: NextRequest) {
           };
 
           await webpush.sendNotification(pushSubscription, payload);
-          return { success: true, endpoint: sub.endpoint };
+
+          // Update last_verified and reset verification_failures
+          await supabase
+            .from('push_subscriptions')
+            .update({
+              last_verified: new Date().toISOString(),
+              verification_failures: 0,
+            })
+            .eq('id', sub.id);
+
+          return { success: true, endpoint: sub.endpoint, subscriptionId: sub.id };
         } catch (error: any) {
           console.error('Error sending push to:', sub.endpoint, error);
+
+          // Increment verification_failures
+          await supabase
+            .from('push_subscriptions')
+            .update({
+              verification_failures: (sub.verification_failures || 0) + 1,
+            })
+            .eq('id', sub.id);
 
           // If subscription is invalid/expired, delete it
           if (error.statusCode === 410 || error.statusCode === 404) {
@@ -148,6 +178,34 @@ export async function POST(request: NextRequest) {
         console.error('[Push] Failed to send to subscription', index, result);
       }
     });
+
+    // Record analytics
+    if (workspaceId) {
+      const analyticsRecord = {
+        workspace_id: workspaceId,
+        sender_id: senderId || null,
+        recipient_id: recipientUserId,
+        notification_type: notificationType || 'unknown',
+        title,
+        body: body || '',
+        delivery_status: successful > 0 ? 'sent' : 'failed',
+        error_message: failed > 0 ? 'Some deliveries failed' : null,
+        metadata: {
+          sent_count: successful,
+          failed_count: failed,
+          total_subscriptions: subscriptions.length,
+          url,
+        },
+      };
+
+      await supabase
+        .from('push_notification_analytics')
+        .insert(analyticsRecord)
+        .catch((error) => {
+          console.error('[Push] Failed to record analytics:', error);
+          // Don't fail the request if analytics fails
+        });
+    }
 
     return NextResponse.json({
       success: true,

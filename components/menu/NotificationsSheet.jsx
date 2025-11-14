@@ -26,6 +26,8 @@ export default function NotificationsSheet({ isOpen, onClose }) {
     isSupported,
     permission,
     subscription,
+    dbSubscription,
+    isPushActive: hookIsPushActive,
     requestPermission,
     subscribeToPush,
     unsubscribe,
@@ -105,7 +107,8 @@ export default function NotificationsSheet({ isOpen, onClose }) {
   };
 
   // Verificar se push está realmente ativo
-  const isPushActive = subscription !== null && preferences.push_enabled;
+  // Usa o estado do hook que verifica tanto browser quanto database
+  const isPushActive = hookIsPushActive && preferences.push_enabled;
   const hasPushSupport = isSupported;
 
   // Detectar Safari iOS

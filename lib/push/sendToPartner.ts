@@ -9,6 +9,7 @@ interface PushNotificationData {
   icon?: string;
   badge?: string;
   tag?: string;
+  notificationType?: 'photo' | 'reason' | 'music' | 'reaction' | 'message' | 'achievement' | 'story' | 'unknown';
   data?: Record<string, any>;
 }
 

@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import { logger } from '@/lib/utils/logger'
 import { fetchJSON } from '@/lib/utils/fetchWithTimeout'
 import { config } from '@/lib/config'
+import { createClient } from '@/lib/supabase/client'
 
 /**
  * Hook para gerenciar Push Notifications
@@ -13,6 +14,7 @@ export function usePushNotifications() {
   const [permission, setPermission] = useState('default')
   const [isSupported, setIsSupported] = useState(false)
   const [subscription, setSubscription] = useState(null)
+  const [dbSubscription, setDbSubscription] = useState(null) // Subscription from database
 
   useEffect(() => {
     // Check if Push API is supported
@@ -48,15 +50,21 @@ export function usePushNotifications() {
       if (supported) {
         setPermission(Notification.permission)
 
-        // Load existing subscription from browser
+        // Load existing subscription from browser AND database
         const loadExistingSubscription = async () => {
           try {
             const registration = await navigator.serviceWorker.ready
             const existingSub = await registration.pushManager.getSubscription()
             if (existingSub) {
-              logger.log('[Push] Found existing subscription')
+              logger.log('[Push] Found existing subscription in browser')
               setSubscription(existingSub)
-              // Note: Database sync is handled by AppProvider when user is logged in
+
+              // Also check if subscription exists in database
+              await checkDatabaseSubscription(existingSub.endpoint)
+            } else {
+              logger.log('[Push] No browser subscription found')
+              // Still check database in case there's a stale subscription
+              await checkDatabaseSubscription(null)
             }
           } catch (error) {
             logger.error('[Push] Error loading existing subscription:', error)
@@ -74,6 +82,45 @@ export function usePushNotifications() {
       setIsSupported(false)
     }
   }, [])
+
+  /**
+   * Check if subscription exists in database
+   */
+  const checkDatabaseSubscription = async (endpoint) => {
+    try {
+      const supabase = createClient()
+
+      // Get current user's subscriptions from database
+      const { data, error } = await supabase
+        .from('push_subscriptions')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      if (error) {
+        logger.error('[Push] Error checking database subscription:', error)
+        return
+      }
+
+      if (data) {
+        logger.log('[Push] Found subscription in database')
+        setDbSubscription(data)
+
+        // If browser subscription exists but database has different endpoint,
+        // we need to update the database
+        if (endpoint && data.endpoint !== endpoint) {
+          logger.warn('[Push] Subscription mismatch between browser and database')
+          // The subscription will be re-synced when subscribeToPush is called
+        }
+      } else {
+        logger.log('[Push] No subscription in database')
+        setDbSubscription(null)
+      }
+    } catch (error) {
+      logger.error('[Push] Error checking database subscription:', error)
+    }
+  }
 
   /**
    * Request notification permission
@@ -175,6 +222,9 @@ export function usePushNotifications() {
             }),
           })
           logger.log('[Push] Subscription saved successfully:', result)
+
+          // Refresh database subscription state
+          await checkDatabaseSubscription(sub.endpoint)
         } catch (error) {
           console.error('[Push] Error saving subscription:', error)
           logger.error('[Push] Failed to save subscription to database:', error)
@@ -254,6 +304,7 @@ export function usePushNotifications() {
         }
 
         setSubscription(null)
+        setDbSubscription(null) // Clear database subscription state
         toast.success('Notificações desativadas')
       } catch (error) {
         console.error('Error unsubscribing:', error)
@@ -268,12 +319,15 @@ export function usePushNotifications() {
   return {
     isSupported,
     permission,
-    subscription,
+    subscription, // Browser subscription
+    dbSubscription, // Database subscription (more reliable for checking if push is active)
     requestPermission,
     subscribeToPush,
     showLocalNotification,
     unsubscribe,
     isGranted: permission === 'granted',
+    // Helper to check if push is truly active (both browser and database)
+    isPushActive: subscription !== null && dbSubscription !== null,
   }
 }
 

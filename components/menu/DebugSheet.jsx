@@ -5,6 +5,7 @@ import { ChevronLeft, Bug } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import DebugPushTab from './debug-tabs/DebugPushTab';
 import DebugPushSendTab from './debug-tabs/DebugPushSendTab';
+import DebugAnalyticsTab from './debug-tabs/DebugAnalyticsTab';
 
 const TABS = [
   {
@@ -18,6 +19,12 @@ const TABS = [
     label: 'Testar Envio',
     icon: '🚀',
     component: DebugPushSendTab,
+  },
+  {
+    id: 'analytics',
+    label: 'Analytics',
+    icon: '📊',
+    component: DebugAnalyticsTab,
   },
   // Futuramente: outras tabs de debug
   // { id: 'database', label: 'Database', icon: '💾', component: DebugDatabaseTab },

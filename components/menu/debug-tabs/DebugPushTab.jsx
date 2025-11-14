@@ -11,7 +11,7 @@ import { createClient } from '@/lib/supabase/client';
  */
 export default function DebugPushTab() {
   const { user } = useAuth();
-  const { isSupported, permission, subscription, subscribeToPush } =
+  const { isSupported, permission, subscription, dbSubscription, isPushActive, subscribeToPush } =
     usePushNotifications();
   const [dbSubscriptions, setDbSubscriptions] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -136,12 +136,75 @@ export default function DebugPushTab() {
             </span>
           </div>
           <div className="flex justify-between">
-            <span className="text-textSecondary">Subscription ativa:</span>
+            <span className="text-textSecondary">Subscription navegador:</span>
             <span className={subscription ? 'text-green-600' : 'text-yellow-600'}>
               {subscription ? '✅ Sim' : '⏳ Não'}
             </span>
           </div>
+          <div className="flex justify-between">
+            <span className="text-textSecondary">Subscription banco:</span>
+            <span className={dbSubscription ? 'text-green-600' : 'text-yellow-600'}>
+              {dbSubscription ? '✅ Sim' : '⏳ Não'}
+            </span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-textSecondary">Push ativo (completo):</span>
+            <span className={isPushActive ? 'text-green-600 font-bold' : 'text-red-600 font-bold'}>
+              {isPushActive ? '✅ SIM' : '❌ NÃO'}
+            </span>
+          </div>
         </div>
+
+        {/* Aviso se há divergência */}
+        {subscription && !dbSubscription && (
+          <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <p className="text-xs text-yellow-800 font-medium">
+              ⚠️ Subscription no navegador mas não no banco!
+            </p>
+            <p className="text-xs text-yellow-700 mt-1">
+              Clique em "Testar Subscription" para sincronizar
+            </p>
+          </div>
+        )}
+
+        {!subscription && dbSubscription && (
+          <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <p className="text-xs text-yellow-800 font-medium">
+              ⚠️ Subscription no banco mas não no navegador!
+            </p>
+            <p className="text-xs text-yellow-700 mt-1">
+              O navegador perdeu a subscription. Use o botão abaixo para recriar
+            </p>
+            <button
+              onClick={async () => {
+                setTestResult({ loading: true });
+                try {
+                  const sub = await subscribeToPush();
+                  if (sub) {
+                    setTestResult({
+                      success: true,
+                      message: 'Subscription recriada com sucesso!',
+                    });
+                    setTimeout(loadSubscriptions, 1000);
+                  } else {
+                    setTestResult({
+                      success: false,
+                      message: 'Falha ao recriar subscription',
+                    });
+                  }
+                } catch (error) {
+                  setTestResult({
+                    success: false,
+                    message: error.message,
+                  });
+                }
+              }}
+              className="mt-2 w-full px-3 py-2 bg-yellow-600 text-white rounded-lg text-xs font-semibold hover:bg-yellow-700 transition-colors"
+            >
+              🔄 Reativar Notificações
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Subscription do Navegador */}
