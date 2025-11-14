@@ -1,7 +1,7 @@
 // Service Worker para Sindoca da Maloka
-// Versão v8 - Mobile logging para Android PWA
+// Versão v9 - Melhorias em notificações push
 
-const CACHE_VERSION = 'v8';
+const CACHE_VERSION = 'v9';
 const CACHE_NAME = `sindoca-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `sindoca-runtime-${CACHE_VERSION}`;
 const IMAGE_CACHE = `sindoca-images-${CACHE_VERSION}`;
@@ -25,7 +25,7 @@ const PRECACHE_URLS = [
 
 // Install: Cachear assets essenciais
 self.addEventListener('install', (event) => {
-  console.log('[SW] Install event - v8');
+  console.log('[SW] Install event - v9');
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
@@ -48,7 +48,7 @@ self.addEventListener('install', (event) => {
 
 // Activate: Limpar caches antigos
 self.addEventListener('activate', (event) => {
-  console.log('[SW] Activate event - v8');
+  console.log('[SW] Activate event - v9');
   event.waitUntil(
     caches.keys().then(cacheNames => {
       console.log('[SW] Found caches:', cacheNames);
@@ -65,7 +65,7 @@ self.addEventListener('activate', (event) => {
       console.log('[SW] Claiming clients');
       return self.clients.claim();
     }).then(() => {
-      console.log('[SW] Service Worker v8 activated');
+      console.log('[SW] Service Worker v9 activated');
       // NÃO enviar mensagem de reload para evitar loops infinitos
       // O usuário verá a nova versão naturalmente na próxima navegação
     })
@@ -239,57 +239,67 @@ async function logToClients(level, category, message, data = null) {
 // Push Notification Handler
 self.addEventListener('push', (event) => {
   const timestamp = new Date().toISOString();
-  console.log('[SW] Push notification received at', timestamp);
-  console.log('[SW] Service Worker state:', self.registration.active ? 'active' : 'not active');
+  console.log('🔔 [SW] Push notification received at', timestamp);
+  console.log('🔔 [SW] Service Worker state:', self.registration.active ? 'active' : 'not active');
 
   // Log to clients for mobile debugging
-  logToClients('info', 'SW', 'Push notification received', { timestamp });
-  logToClients('info', 'SW', 'Service Worker state', { active: self.registration.active ? 'active' : 'not active' });
+  logToClients('info', 'PUSH', '🔔 Push notification received', { timestamp });
+  logToClients('info', 'PUSH', 'Service Worker state', { active: self.registration.active ? 'active' : 'not active' });
 
   let data = {};
   if (event.data) {
     try {
       data = event.data.json();
-      console.log('[SW] Push data parsed:', data);
-      logToClients('info', 'SW', 'Push data parsed', data);
+      console.log('📦 [SW] Push data parsed:', data);
+      logToClients('info', 'PUSH', '📦 Push data parsed', data);
     } catch (e) {
-      console.warn('[SW] Failed to parse push data as JSON:', e);
-      logToClients('warn', 'SW', 'Failed to parse push data as JSON', { error: e.message });
+      console.warn('⚠️ [SW] Failed to parse push data as JSON:', e);
+      logToClients('warn', 'PUSH', '⚠️ Failed to parse push data as JSON', { error: e.message });
       data = { title: 'Notificação', body: event.data.text() };
     }
   } else {
-    console.warn('[SW] Push event has no data');
-    logToClients('warn', 'SW', 'Push event has no data');
+    console.warn('⚠️ [SW] Push event has no data');
+    logToClients('warn', 'PUSH', '⚠️ Push event has no data');
+    // Usar valores padrão se não houver dados
+    data = { title: 'Sindoca', body: 'Nova notificação' };
   }
 
-  const title = data.title || 'Sindoca da Maloka';
+  const title = data.title || 'Sindoca';
   const options = {
     body: data.body || 'Nova notificação',
     icon: data.icon || '/icon-192x192.png',
-    // badge removed to prevent "from Sindoca" text on Android notifications
-    data: data.data || data.url || '/',
-    tag: data.tag || 'default',
+    badge: '/icon-96x96.png', // Badge para mostrar no status bar (pequeno ícone)
+    data: data.data || { url: data.url || '/' },
+    tag: data.tag || 'sindoca-notification',
     requireInteraction: false,
+    vibrate: [200, 100, 200], // Padrão de vibração
+    silent: false, // Garantir que não seja silenciosa
+    // Adicionar image se houver
+    ...(data.image && { image: data.image }),
   };
 
-  console.log('[SW] Preparing to show notification:', { title, options });
-  logToClients('info', 'SW', 'Preparing to show notification', { title, body: options.body });
+  console.log('📢 [SW] Preparing to show notification:', { title, options });
+  logToClients('info', 'PUSH', '📢 Preparing to show notification', { title, body: options.body, data: options.data });
 
   event.waitUntil(
     self.registration.showNotification(title, options)
       .then(() => {
         const successTimestamp = new Date().toISOString();
-        console.log('[SW] ✅ Notification displayed successfully at', successTimestamp);
-        logToClients('info', 'SW', '✅ Notification displayed successfully', { timestamp: successTimestamp });
+        console.log('✅ [SW] Notification displayed successfully at', successTimestamp);
+        logToClients('success', 'PUSH', '✅ Notification displayed successfully', {
+          timestamp: successTimestamp,
+          title,
+          body: options.body
+        });
       })
       .catch((error) => {
-        console.error('[SW] ❌ Failed to display notification:', error);
-        console.error('[SW] Notification error details:', {
+        console.error('❌ [SW] Failed to display notification:', error);
+        console.error('❌ [SW] Notification error details:', {
           name: error.name,
           message: error.message,
           timestamp: new Date().toISOString()
         });
-        logToClients('error', 'SW', '❌ Failed to display notification', {
+        logToClients('error', 'PUSH', '❌ Failed to display notification', {
           name: error.name,
           message: error.message,
           stack: error.stack

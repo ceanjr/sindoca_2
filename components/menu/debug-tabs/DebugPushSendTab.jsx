@@ -91,6 +91,13 @@ export default function DebugPushSendTab() {
     setSending(true);
 
     try {
+      console.log('📤 [Debug] Enviando notificação:', {
+        recipientUserId: selectedUser,
+        title: notification.title,
+        body: notification.body,
+        url: notification.url,
+      });
+
       const response = await fetch('/api/push/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -99,24 +106,34 @@ export default function DebugPushSendTab() {
           title: notification.title,
           body: notification.body,
           url: notification.url,
+          notificationType: 'test',
         }),
       });
 
+      console.log('📥 [Debug] Resposta da API:', {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok,
+      });
+
       const result = await response.json();
+      console.log('📊 [Debug] Resultado:', result);
 
       if (response.ok) {
         toast.success('Notificação enviada!', {
-          description: `Enviada para ${
+          description: `✅ Enviada para ${
             users.find((u) => u.id === selectedUser)?.full_name || 'usuário'
-          }`,
+          } - ${result.sent || 0} subscriptions`,
         });
+        console.log('✅ [Debug] Notificação enviada com sucesso');
       } else {
+        console.error('❌ [Debug] Erro na resposta:', result);
         toast.error('Erro ao enviar', {
           description: result.error || 'Erro desconhecido',
         });
       }
     } catch (error) {
-      console.error('Erro ao enviar notificação:', error);
+      console.error('❌ [Debug] Erro ao enviar notificação:', error);
       toast.error('Erro ao enviar notificação', {
         description: error.message,
       });

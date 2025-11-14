@@ -59,10 +59,12 @@ export async function POST(request: NextRequest) {
       data: notificationData,
     } = await request.json();
 
-    console.log('[Push] Sending notification:', {
+    console.log('📤 [Push API] Sending notification:', {
       from: senderId || 'internal',
       to: recipientUserId,
       title,
+      body,
+      notificationType,
     });
 
     if (!recipientUserId || !title) {
@@ -79,14 +81,21 @@ export async function POST(request: NextRequest) {
       .eq('user_id', recipientUserId);
 
     if (subsError) {
-      console.error('[Push] Error fetching subscriptions:', subsError);
+      console.error('❌ [Push API] Error fetching subscriptions:', subsError);
       return NextResponse.json(
         { error: 'Failed to fetch subscriptions', details: subsError.message },
         { status: 500 }
       );
     }
 
-    console.log('[Push] Found subscriptions:', subscriptions?.length || 0);
+    console.log('🔍 [Push API] Found subscriptions:', subscriptions?.length || 0);
+    if (subscriptions && subscriptions.length > 0) {
+      console.log('📋 [Push API] Subscription endpoints:', subscriptions.map(s => ({
+        id: s.id,
+        endpoint: s.endpoint.substring(0, 50) + '...',
+        created: s.created_at,
+      })));
+    }
 
     if (!subscriptions || subscriptions.length === 0) {
       console.warn('[Push] No subscriptions found for recipient:', recipientUserId);
@@ -123,15 +132,20 @@ export async function POST(request: NextRequest) {
     }
 
     // Send push notification to all user's subscriptions
+    console.log('🚀 [Push API] Sending to', subscriptions.length, 'subscription(s)...');
     const results = await Promise.allSettled(
-      subscriptions.map(async (sub) => {
+      subscriptions.map(async (sub, index) => {
         try {
+          console.log(`📨 [Push API] Sending to subscription ${index + 1}/${subscriptions.length}`);
           const pushSubscription = {
             endpoint: sub.endpoint,
             keys: sub.keys,
           };
 
-          await webpush.sendNotification(pushSubscription, payload);
+          const sendResult = await webpush.sendNotification(pushSubscription, payload);
+          console.log(`✅ [Push API] Successfully sent to subscription ${index + 1}`, {
+            statusCode: sendResult.statusCode,
+          });
 
           // Update last_verified and reset verification_failures
           await supabase
@@ -144,7 +158,12 @@ export async function POST(request: NextRequest) {
 
           return { success: true, endpoint: sub.endpoint, subscriptionId: sub.id };
         } catch (error: any) {
-          console.error('Error sending push to:', sub.endpoint, error);
+          console.error(`❌ [Push API] Error sending to subscription ${index + 1}:`, {
+            endpoint: sub.endpoint.substring(0, 50) + '...',
+            error: error.message,
+            statusCode: error.statusCode,
+            body: error.body,
+          });
 
           // Increment verification_failures
           await supabase
@@ -156,13 +175,14 @@ export async function POST(request: NextRequest) {
 
           // If subscription is invalid/expired, delete it
           if (error.statusCode === 410 || error.statusCode === 404) {
+            console.log(`🗑️ [Push API] Deleting invalid subscription (${error.statusCode})`);
             await supabase
               .from('push_subscriptions')
               .delete()
               .eq('id', sub.id);
           }
 
-          return { success: false, endpoint: sub.endpoint, error: error.message };
+          return { success: false, endpoint: sub.endpoint, error: error.message, statusCode: error.statusCode };
         }
       })
     );
@@ -170,7 +190,7 @@ export async function POST(request: NextRequest) {
     const successful = results.filter(r => r.status === 'fulfilled' && r.value.success).length;
     const failed = results.length - successful;
 
-    console.log('[Push] Results:', { successful, failed, total: subscriptions.length });
+    console.log('📊 [Push API] Results:', { successful, failed, total: subscriptions.length });
 
     // Log failures for debugging
     results.forEach((result, index) => {
