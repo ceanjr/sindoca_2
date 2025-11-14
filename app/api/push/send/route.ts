@@ -54,6 +54,7 @@ export async function POST(request: NextRequest) {
       icon,
       badge,
       tag,
+      url,
       data: notificationData,
     } = await request.json();
 
@@ -103,7 +104,10 @@ export async function POST(request: NextRequest) {
       icon: icon || '/icon-192x192.png',
       // badge removed to prevent "from Sindoca" text on Android notifications
       tag: tag || 'notification',
-      data: notificationData || {},
+      data: {
+        url: url || '/',
+        ...notificationData,
+      },
     });
 
     // Send push notification to all user's subscriptions

@@ -217,7 +217,7 @@ export function usePushNotifications() {
       await registration.showNotification(title, {
         body: options.body || '',
         icon: options.icon || '/icon-192x192.png',
-        badge: options.badge || '/icon-192x192.png',
+        // badge removido para evitar "from Sindoca" no Android
         vibrate: options.vibrate || [200, 100, 200],
         tag: options.tag || 'local-notification',
         data: options.data || {},

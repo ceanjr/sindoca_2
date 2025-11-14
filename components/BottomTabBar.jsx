@@ -163,10 +163,10 @@ export default function BottomTabBar() {
                 isIOS ? 'px-3 gap-1.5' : 'px-2 gap-1'
               }`}
               style={{
-                paddingTop: isIOS ? '12px' : '8px',
+                paddingTop: isIOS ? '8px' : '6px',
                 paddingBottom: isIOS
-                  ? 'calc(8px + env(safe-area-inset-bottom))'
-                  : 'calc(4px + env(safe-area-inset-bottom))',
+                  ? 'max(8px, env(safe-area-inset-bottom))'
+                  : 'max(6px, env(safe-area-inset-bottom))',
               }}
             >
               {tabs.map((tab) => {

@@ -4,13 +4,20 @@ import { useState } from 'react';
 import { ChevronLeft, Bug } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import DebugPushTab from './debug-tabs/DebugPushTab';
+import DebugPushSendTab from './debug-tabs/DebugPushSendTab';
 
 const TABS = [
   {
     id: 'push',
-    label: 'Push Notifications',
+    label: 'Push Status',
     icon: '🔔',
     component: DebugPushTab,
+  },
+  {
+    id: 'push-send',
+    label: 'Testar Envio',
+    icon: '🚀',
+    component: DebugPushSendTab,
   },
   // Futuramente: outras tabs de debug
   // { id: 'database', label: 'Database', icon: '💾', component: DebugDatabaseTab },

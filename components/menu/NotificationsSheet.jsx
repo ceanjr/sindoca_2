@@ -57,20 +57,42 @@ export default function NotificationsSheet({ isOpen, onClose }) {
         return;
       }
 
-      // Solicitar permissão e criar subscription
-      const granted = await requestPermission();
-      if (granted) {
-        // requestPermission já chama subscribeToPush internamente
-        await updatePreference('push_enabled', true);
-        toast.success('Notificações ativadas!');
-      } else {
-        toast.error('Permissão de notificações negada');
+      // Mostrar loading toast
+      const loadingToast = toast.loading('Ativando notificações...');
+
+      try {
+        // Solicitar permissão e criar subscription
+        const granted = await requestPermission();
+
+        if (granted) {
+          // requestPermission já chama subscribeToPush internamente
+          // Aguardar um pouco para garantir que a subscription foi criada
+          await new Promise(resolve => setTimeout(resolve, 1000));
+
+          await updatePreference('push_enabled', true);
+          toast.success('Notificações ativadas!', { id: loadingToast });
+        } else {
+          toast.error('Permissão de notificações negada', { id: loadingToast });
+        }
+      } catch (error) {
+        console.error('Erro ao ativar notificações:', error);
+        toast.error('Erro ao ativar notificações', {
+          id: loadingToast,
+          description: error.message
+        });
       }
     } else {
       // Desativar
-      await unsubscribe();
-      await updatePreference('push_enabled', false);
-      toast.info('Notificações desativadas');
+      const loadingToast = toast.loading('Desativando notificações...');
+
+      try {
+        await unsubscribe();
+        await updatePreference('push_enabled', false);
+        toast.success('Notificações desativadas', { id: loadingToast });
+      } catch (error) {
+        console.error('Erro ao desativar notificações:', error);
+        toast.error('Erro ao desativar', { id: loadingToast });
+      }
     }
   };
 
@@ -84,6 +106,7 @@ export default function NotificationsSheet({ isOpen, onClose }) {
 
   // Verificar se push está realmente ativo
   const isPushActive = subscription !== null && preferences.push_enabled;
+  const hasPushSupport = isSupported;
 
   // Detectar Safari iOS
   const isIOS =
@@ -203,7 +226,7 @@ export default function NotificationsSheet({ isOpen, onClose }) {
                   <div className="bg-pink-50 rounded-2xl p-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
+                        <div className="w-12 h-12 flex-shrink-0 bg-primary/10 rounded-full flex items-center justify-center">
                           <Bell size={24} className="text-primary" />
                         </div>
                         <div>
@@ -277,7 +300,7 @@ export default function NotificationsSheet({ isOpen, onClose }) {
                     <div className="bg-gray-50 rounded-2xl p-4">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 bg-pink-100 rounded-full flex items-center justify-center">
+                          <div className="w-12 h-12 flex-shrink-0 bg-pink-100 rounded-full flex items-center justify-center">
                             <Music size={24} className="text-primary" />
                           </div>
                           <div>
@@ -304,7 +327,7 @@ export default function NotificationsSheet({ isOpen, onClose }) {
                     <div className="bg-gray-50 rounded-2xl p-4">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
+                          <div className="w-12 h-12 flex-shrink-0 bg-purple-100 rounded-full flex items-center justify-center">
                             <Image size={24} className="text-purple-500" />
                           </div>
                           <div>
@@ -331,7 +354,7 @@ export default function NotificationsSheet({ isOpen, onClose }) {
                     <div className="bg-gray-50 rounded-2xl p-4">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                          <div className="w-12 h-12 flex-shrink-0 bg-red-100 rounded-full flex items-center justify-center">
                             <Heart size={24} className="text-red-500" />
                           </div>
                           <div>
@@ -358,7 +381,7 @@ export default function NotificationsSheet({ isOpen, onClose }) {
                     <div className="bg-gray-50 rounded-2xl p-4">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center">
+                          <div className="w-12 h-12 flex-shrink-0 bg-yellow-100 rounded-full flex items-center justify-center">
                             <Smile size={24} className="text-yellow-500" />
                           </div>
                           <div>
@@ -392,7 +415,7 @@ export default function NotificationsSheet({ isOpen, onClose }) {
                   <div className="bg-gray-50 rounded-2xl p-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
+                        <div className="w-12 h-12 flex-shrink-0 bg-orange-100 rounded-full flex items-center justify-center">
                           <Clock size={24} className="text-orange-500" />
                         </div>
                         <div>
@@ -419,7 +442,7 @@ export default function NotificationsSheet({ isOpen, onClose }) {
                 {/* Informativo */}
                 <div className="bg-pink-50 rounded-2xl p-4">
                   <div className="flex gap-3">
-                    <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
+                    <div className="w-8 h-8 flex-shrink-0 bg-primary/10 rounded-full flex items-center justify-center">
                       <Info size={18} className="text-primary" />
                     </div>
                     <p className="text-sm text-textSecondary leading-relaxed">
@@ -468,11 +491,9 @@ function Toggle({ enabled, onChange, disabled = false }) {
       }`}
     >
       <motion.span
-        layout
+        animate={{ x: enabled ? 28 : 4 }}
         transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-        className={`inline-block h-6 w-6 transform rounded-full bg-white shadow-lg ${
-          enabled ? 'translate-x-7' : 'translate-x-1'
-        }`}
+        className="inline-block h-6 w-6 rounded-full bg-white shadow-lg"
       />
     </button>
   );
