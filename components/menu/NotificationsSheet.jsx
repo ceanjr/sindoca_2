@@ -57,14 +57,20 @@ export default function NotificationsSheet({ isOpen, onClose }) {
         return;
       }
 
+      // Solicitar permissão e criar subscription
       const granted = await requestPermission();
       if (granted) {
+        // requestPermission já chama subscribeToPush internamente
         await updatePreference('push_enabled', true);
+        toast.success('Notificações ativadas!');
+      } else {
+        toast.error('Permissão de notificações negada');
       }
     } else {
       // Desativar
       await unsubscribe();
       await updatePreference('push_enabled', false);
+      toast.info('Notificações desativadas');
     }
   };
 

@@ -107,7 +107,16 @@ export function usePushNotifications() {
    * Subscribe to push notifications
    */
   const subscribeToPush = async () => {
-    if (!isSupported) return
+    if (!isSupported) {
+      logger.error('[Push] Push notifications not supported')
+      return null
+    }
+
+    // Verificar se tem permissão antes de tentar criar subscription
+    if (permission !== 'granted') {
+      logger.warn('[Push] Permission not granted, cannot subscribe')
+      return null
+    }
 
     try {
       // Add timeout to prevent hanging

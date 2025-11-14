@@ -35,17 +35,22 @@ export async function POST(request: NextRequest) {
 
     console.log('[Subscribe] Saving subscription for user:', user.id);
     console.log('[Subscribe] Endpoint:', subscription.endpoint?.substring(0, 50) + '...');
+    console.log('[Subscribe] Keys:', JSON.stringify(subscription.keys));
 
     // Save or update subscription in database
     const { data, error } = await supabase
       .from('push_subscriptions')
-      .upsert({
-        user_id: user.id,
-        endpoint: subscription.endpoint,
-        keys: subscription.keys,
-      }, {
-        onConflict: 'user_id,endpoint',
-      })
+      .upsert(
+        {
+          user_id: user.id,
+          endpoint: subscription.endpoint,
+          keys: subscription.keys,
+        },
+        {
+          onConflict: 'user_id,endpoint',
+          ignoreDuplicates: false,
+        }
+      )
       .select()
       .single();
 

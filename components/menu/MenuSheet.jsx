@@ -8,12 +8,14 @@ import {
   ChevronRight,
   LogOut as LogOutIcon,
   X,
+  Bug,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
 import AvatarPicker from '@/components/ui/AvatarPicker';
 import ProfileSheet from './ProfileSheet';
 import NotificationsSheet from './NotificationsSheet';
+import DebugSheet from './DebugSheet';
 
 /**
  * MenuSheet - Menu principal do app
@@ -22,6 +24,7 @@ export default function MenuSheet({ isOpen, onClose, onLogout }) {
   const { user, profile } = useAuth();
   const [showProfileSheet, setShowProfileSheet] = useState(false);
   const [showNotificationsSheet, setShowNotificationsSheet] = useState(false);
+  const [showDebugSheet, setShowDebugSheet] = useState(false);
 
   const handleClose = () => {
     if ('vibrate' in navigator) {
@@ -51,6 +54,13 @@ export default function MenuSheet({ isOpen, onClose, onLogout }) {
     setShowNotificationsSheet(true);
   };
 
+  const handleOpenDebug = () => {
+    if ('vibrate' in navigator) {
+      navigator.vibrate(10);
+    }
+    setShowDebugSheet(true);
+  };
+
   const handleLogout = () => {
     if ('vibrate' in navigator) {
       navigator.vibrate(20);
@@ -77,14 +87,14 @@ export default function MenuSheet({ isOpen, onClose, onLogout }) {
 
   // Garantir safe area branca mesmo com sub-sheets abertos
   useEffect(() => {
-    if (isOpen || showProfileSheet || showNotificationsSheet) {
+    if (isOpen || showProfileSheet || showNotificationsSheet || showDebugSheet) {
       // Força safe area branca
       const metaTheme = document.querySelector('meta[name="theme-color"]');
       if (metaTheme) {
         metaTheme.setAttribute('content', '#ffffff');
       }
     }
-  }, [isOpen, showProfileSheet, showNotificationsSheet]);
+  }, [isOpen, showProfileSheet, showNotificationsSheet, showDebugSheet]);
 
   return (
     <>
@@ -263,6 +273,36 @@ export default function MenuSheet({ isOpen, onClose, onLogout }) {
                           />
                         </div>
                       </motion.button>
+
+                      {/* Debug */}
+                      <motion.button
+                        whileTap={{ scale: 0.98 }}
+                        onClick={handleOpenDebug}
+                        className="w-full bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl p-4 hover:from-purple-100 hover:to-pink-100 transition-colors border border-purple-200"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 bg-purple-500/10 rounded-full flex items-center justify-center">
+                              <Bug size={24} className="text-purple-600" />
+                            </div>
+                            <div className="text-left">
+                              <h4 className="font-semibold text-textPrimary flex items-center gap-2">
+                                Debug
+                                <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-medium">
+                                  DEV
+                                </span>
+                              </h4>
+                              <p className="text-sm text-textSecondary">
+                                Ferramentas de diagnóstico
+                              </p>
+                            </div>
+                          </div>
+                          <ChevronRight
+                            size={20}
+                            className="text-textSecondary"
+                          />
+                        </div>
+                      </motion.button>
                     </div>
                   </div>
 
@@ -299,6 +339,11 @@ export default function MenuSheet({ isOpen, onClose, onLogout }) {
       <NotificationsSheet
         isOpen={showNotificationsSheet}
         onClose={() => setShowNotificationsSheet(false)}
+      />
+
+      <DebugSheet
+        isOpen={showDebugSheet}
+        onClose={() => setShowDebugSheet(false)}
       />
     </>
   );

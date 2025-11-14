@@ -160,12 +160,13 @@ export default function BottomTabBar() {
             {/* Tab Buttons */}
             <div
               className={`flex items-center justify-around ${
-                isIOS ? 'px-3 py-3 gap-1.5' : 'px-2 py-2 gap-1'
+                isIOS ? 'px-3 gap-1.5' : 'px-2 gap-1'
               }`}
               style={{
+                paddingTop: isIOS ? '12px' : '8px',
                 paddingBottom: isIOS
-                  ? 'max(12px, env(safe-area-inset-bottom))'
-                  : 'max(8px, env(safe-area-inset-bottom))',
+                  ? 'calc(8px + env(safe-area-inset-bottom))'
+                  : 'calc(4px + env(safe-area-inset-bottom))',
               }}
             >
               {tabs.map((tab) => {
@@ -182,7 +183,7 @@ export default function BottomTabBar() {
                     whileTap={canAccess ? { scale: isIOS ? 0.92 : 0.95 } : {}}
                     disabled={!canAccess && !isMenuTab}
                     className={`relative flex flex-col items-center justify-center flex-1 ${
-                      isIOS ? 'py-2 px-1' : 'py-1.5 px-1'
+                      isIOS ? 'py-1 px-1' : 'py-0.5 px-1'
                     } rounded-xl transition-all touch-manipulation ${
                       !canAccess && !isMenuTab
                         ? 'opacity-40 cursor-not-allowed'
