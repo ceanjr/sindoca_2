@@ -1,7 +1,7 @@
 // Service Worker para Sindoca da Maloka
-// Versão v6 - Melhorias de performance
+// Versão v7 - Debug de notificações
 
-const CACHE_VERSION = 'v6';
+const CACHE_VERSION = 'v7';
 const CACHE_NAME = `sindoca-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `sindoca-runtime-${CACHE_VERSION}`;
 const IMAGE_CACHE = `sindoca-images-${CACHE_VERSION}`;
@@ -25,7 +25,7 @@ const PRECACHE_URLS = [
 
 // Install: Cachear assets essenciais
 self.addEventListener('install', (event) => {
-  console.log('[SW] Install event - v6');
+  console.log('[SW] Install event - v7');
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
@@ -48,7 +48,7 @@ self.addEventListener('install', (event) => {
 
 // Activate: Limpar caches antigos
 self.addEventListener('activate', (event) => {
-  console.log('[SW] Activate event - v6');
+  console.log('[SW] Activate event - v7');
   event.waitUntil(
     caches.keys().then(cacheNames => {
       console.log('[SW] Found caches:', cacheNames);
@@ -65,7 +65,7 @@ self.addEventListener('activate', (event) => {
       console.log('[SW] Claiming clients');
       return self.clients.claim();
     }).then(() => {
-      console.log('[SW] Service Worker v6 activated');
+      console.log('[SW] Service Worker v7 activated');
       // NÃO enviar mensagem de reload para evitar loops infinitos
       // O usuário verá a nova versão naturalmente na próxima navegação
     })
@@ -219,15 +219,21 @@ async function staleWhileRevalidate(request) {
 
 // Push Notification Handler
 self.addEventListener('push', (event) => {
-  console.log('[SW] Push notification received');
+  const timestamp = new Date().toISOString();
+  console.log('[SW] Push notification received at', timestamp);
+  console.log('[SW] Service Worker state:', self.registration.active ? 'active' : 'not active');
 
   let data = {};
   if (event.data) {
     try {
       data = event.data.json();
+      console.log('[SW] Push data parsed:', data);
     } catch (e) {
+      console.warn('[SW] Failed to parse push data as JSON:', e);
       data = { title: 'Notificação', body: event.data.text() };
     }
+  } else {
+    console.warn('[SW] Push event has no data');
   }
 
   const title = data.title || 'Sindoca da Maloka';
@@ -240,8 +246,21 @@ self.addEventListener('push', (event) => {
     requireInteraction: false,
   };
 
+  console.log('[SW] Preparing to show notification:', { title, options });
+
   event.waitUntil(
     self.registration.showNotification(title, options)
+      .then(() => {
+        console.log('[SW] ✅ Notification displayed successfully at', new Date().toISOString());
+      })
+      .catch((error) => {
+        console.error('[SW] ❌ Failed to display notification:', error);
+        console.error('[SW] Notification error details:', {
+          name: error.name,
+          message: error.message,
+          timestamp: new Date().toISOString()
+        });
+      })
   );
 });
 
