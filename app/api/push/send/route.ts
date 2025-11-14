@@ -198,13 +198,14 @@ export async function POST(request: NextRequest) {
         },
       };
 
-      await supabase
+      const { error: analyticsError } = await supabase
         .from('push_notification_analytics')
-        .insert(analyticsRecord)
-        .catch((error) => {
-          console.error('[Push] Failed to record analytics:', error);
-          // Don't fail the request if analytics fails
-        });
+        .insert(analyticsRecord);
+
+      if (analyticsError) {
+        console.error('[Push] Failed to record analytics:', analyticsError);
+        // Don't fail the request if analytics fails
+      }
     }
 
     return NextResponse.json({
