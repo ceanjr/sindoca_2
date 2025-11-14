@@ -188,8 +188,10 @@ export async function POST(request: NextRequest) {
         notification_type: notificationType || 'unknown',
         title,
         body: body || '',
-        delivery_status: successful > 0 ? 'sent' : 'failed',
-        error_message: failed > 0 ? 'Some deliveries failed' : null,
+        // If at least one subscription received it successfully, it's delivered
+        // If all failed, it's failed
+        delivery_status: successful > 0 ? 'delivered' : 'failed',
+        error_message: failed > 0 ? `Delivered to ${successful}/${subscriptions.length} subscriptions` : null,
         metadata: {
           sent_count: successful,
           failed_count: failed,

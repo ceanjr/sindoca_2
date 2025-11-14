@@ -64,9 +64,9 @@ export default function AvatarPicker({ avatarUrl, userId, onAvatarChange }) {
       if (uploadError) throw uploadError;
 
       // Obter URL pública
-      const { data: { publicUrl } } = supabase.storage
-        .from('profile-pictures')
-        .getPublicUrl(filePath);
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from('profile-pictures').getPublicUrl(filePath);
 
       // Atualizar perfil no banco
       const { error: updateError } = await supabase
@@ -126,7 +126,7 @@ export default function AvatarPicker({ avatarUrl, userId, onAvatarChange }) {
           className="relative group focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 rounded-full"
         >
           {/* Avatar circular */}
-          <div className="relative w-32 h-32 rounded-full overflow-hidden bg-gradient-to-br from-primary/20 to-secondary/20 border-4 border-white shadow-soft-xl">
+          <div className="relative w-32 h-32 rounded-full overflow-hidden bg-gradient-to-br from-primary/20 to-secondary/20 border-4 border-primary shadow-soft-xl">
             {avatarUrl ? (
               <img
                 src={avatarUrl}

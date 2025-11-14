@@ -165,7 +165,7 @@ export default function DebugSheet({ isOpen, onClose }) {
                 overscrollBehavior: 'contain',
                 touchAction: 'pan-y',
                 WebkitOverflowScrolling: 'touch',
-                paddingBottom: 'calc(70px + env(safe-area-inset-bottom))',
+                paddingBottom: 'calc(120px + env(safe-area-inset-bottom))',
               }}
               onTouchStart={(e) => e.stopPropagation()}
             >
