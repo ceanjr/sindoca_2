@@ -1,7 +1,7 @@
 // Service Worker para Sindoca da Maloka
-// Versão v7 - Debug de notificações
+// Versão v8 - Mobile logging para Android PWA
 
-const CACHE_VERSION = 'v7';
+const CACHE_VERSION = 'v8';
 const CACHE_NAME = `sindoca-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `sindoca-runtime-${CACHE_VERSION}`;
 const IMAGE_CACHE = `sindoca-images-${CACHE_VERSION}`;
@@ -25,7 +25,7 @@ const PRECACHE_URLS = [
 
 // Install: Cachear assets essenciais
 self.addEventListener('install', (event) => {
-  console.log('[SW] Install event - v7');
+  console.log('[SW] Install event - v8');
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
@@ -48,7 +48,7 @@ self.addEventListener('install', (event) => {
 
 // Activate: Limpar caches antigos
 self.addEventListener('activate', (event) => {
-  console.log('[SW] Activate event - v7');
+  console.log('[SW] Activate event - v8');
   event.waitUntil(
     caches.keys().then(cacheNames => {
       console.log('[SW] Found caches:', cacheNames);
@@ -65,7 +65,7 @@ self.addEventListener('activate', (event) => {
       console.log('[SW] Claiming clients');
       return self.clients.claim();
     }).then(() => {
-      console.log('[SW] Service Worker v7 activated');
+      console.log('[SW] Service Worker v8 activated');
       // NÃO enviar mensagem de reload para evitar loops infinitos
       // O usuário verá a nova versão naturalmente na próxima navegação
     })
@@ -217,23 +217,49 @@ async function staleWhileRevalidate(request) {
   return cached || fetchPromise;
 }
 
+// Helper to send logs to clients (for mobile logger)
+async function logToClients(level, category, message, data = null) {
+  const clients = await self.clients.matchAll({ includeUncontrolled: true, type: 'window' });
+  const logMessage = {
+    type: 'SW_LOG',
+    log: {
+      level,
+      category,
+      message,
+      data,
+      timestamp: new Date().toISOString()
+    }
+  };
+
+  clients.forEach(client => {
+    client.postMessage(logMessage);
+  });
+}
+
 // Push Notification Handler
 self.addEventListener('push', (event) => {
   const timestamp = new Date().toISOString();
   console.log('[SW] Push notification received at', timestamp);
   console.log('[SW] Service Worker state:', self.registration.active ? 'active' : 'not active');
 
+  // Log to clients for mobile debugging
+  logToClients('info', 'SW', 'Push notification received', { timestamp });
+  logToClients('info', 'SW', 'Service Worker state', { active: self.registration.active ? 'active' : 'not active' });
+
   let data = {};
   if (event.data) {
     try {
       data = event.data.json();
       console.log('[SW] Push data parsed:', data);
+      logToClients('info', 'SW', 'Push data parsed', data);
     } catch (e) {
       console.warn('[SW] Failed to parse push data as JSON:', e);
+      logToClients('warn', 'SW', 'Failed to parse push data as JSON', { error: e.message });
       data = { title: 'Notificação', body: event.data.text() };
     }
   } else {
     console.warn('[SW] Push event has no data');
+    logToClients('warn', 'SW', 'Push event has no data');
   }
 
   const title = data.title || 'Sindoca da Maloka';
@@ -247,11 +273,14 @@ self.addEventListener('push', (event) => {
   };
 
   console.log('[SW] Preparing to show notification:', { title, options });
+  logToClients('info', 'SW', 'Preparing to show notification', { title, body: options.body });
 
   event.waitUntil(
     self.registration.showNotification(title, options)
       .then(() => {
-        console.log('[SW] ✅ Notification displayed successfully at', new Date().toISOString());
+        const successTimestamp = new Date().toISOString();
+        console.log('[SW] ✅ Notification displayed successfully at', successTimestamp);
+        logToClients('info', 'SW', '✅ Notification displayed successfully', { timestamp: successTimestamp });
       })
       .catch((error) => {
         console.error('[SW] ❌ Failed to display notification:', error);
@@ -259,6 +288,11 @@ self.addEventListener('push', (event) => {
           name: error.name,
           message: error.message,
           timestamp: new Date().toISOString()
+        });
+        logToClients('error', 'SW', '❌ Failed to display notification', {
+          name: error.name,
+          message: error.message,
+          stack: error.stack
         });
       })
   );
