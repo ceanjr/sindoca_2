@@ -59,41 +59,44 @@ export default function NotificationsSheet({ isOpen, onClose }) {
         return;
       }
 
-      // Mostrar loading toast
-      const loadingToast = toast.loading('Ativando notificações...');
-
       try {
-        // Solicitar permissão e criar subscription
-        const granted = await requestPermission();
+        // Primeiro, atualizar preferência no banco (feedback imediato via UI otimista)
+        await updatePreference('push_enabled', true);
 
-        if (granted) {
-          // requestPermission já chama subscribeToPush internamente
-          // Aguardar um pouco para garantir que a subscription foi criada
-          await new Promise(resolve => setTimeout(resolve, 1000));
+        // Solicitar permissão se necessário
+        let hasPermission = permission === 'granted';
+        if (!hasPermission) {
+          const perm = await Notification.requestPermission();
+          hasPermission = perm === 'granted';
+        }
 
-          await updatePreference('push_enabled', true);
-          toast.success('Notificações ativadas!', { id: loadingToast });
+        if (hasPermission) {
+          // Criar/verificar subscription
+          await subscribeToPush();
         } else {
-          toast.error('Permissão de notificações negada', { id: loadingToast });
+          // Reverter se não concedeu permissão
+          await updatePreference('push_enabled', false);
+          toast.error('Permissão de notificações negada');
         }
       } catch (error) {
         console.error('Erro ao ativar notificações:', error);
+        // Reverter em caso de erro
+        await updatePreference('push_enabled', false);
         toast.error('Erro ao ativar notificações', {
-          id: loadingToast,
           description: error.message
         });
       }
     } else {
       // Desativar
-      const loadingToast = toast.loading('Desativando notificações...');
-
       try {
-        await unsubscribe();
+        // Atualizar preferência primeiro (feedback imediato)
         await updatePreference('push_enabled', false);
-        toast.success('Notificações desativadas', { id: loadingToast });
+
+        // Depois remover subscription do browser e banco
+        await unsubscribe();
       } catch (error) {
         console.error('Erro ao desativar notificações:', error);
-        toast.error('Erro ao desativar', { id: loadingToast });
+        toast.error('Erro ao desativar', { description: error.message });
       }
     }
   };
@@ -107,8 +110,22 @@ export default function NotificationsSheet({ isOpen, onClose }) {
   };
 
   // Verificar se push está realmente ativo
-  // Usa o estado do hook que verifica tanto browser quanto database
-  const isPushActive = hookIsPushActive && preferences.push_enabled;
+  // Sincronizar preferences.push_enabled com o estado real da subscription
+  useEffect(() => {
+    // Se temos subscription ativa mas preferences diz que está desativado, corrigir
+    if (hookIsPushActive && !preferences.push_enabled && !loading) {
+      console.log('[NotificationSheet] Syncing: subscription active but pref disabled, updating pref');
+      updatePreference('push_enabled', true);
+    }
+    // Se não temos subscription mas preferences diz que está ativado, corrigir
+    else if (!hookIsPushActive && preferences.push_enabled && !loading && isSupported) {
+      console.log('[NotificationSheet] Syncing: no subscription but pref enabled, updating pref');
+      updatePreference('push_enabled', false);
+    }
+  }, [hookIsPushActive, preferences.push_enabled, loading, isSupported]);
+
+  // Estado final: usa preferences como fonte da verdade (já sincronizado)
+  const isPushActive = preferences.push_enabled;
   const hasPushSupport = isSupported;
 
   // Detectar Safari iOS
@@ -485,7 +502,7 @@ function Toggle({ enabled, onChange, disabled = false }) {
     <button
       onClick={handleClick}
       disabled={disabled}
-      className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${
+      className={`relative inline-flex h-7 w-12 flex-shrink-0 items-center rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${
         disabled
           ? 'opacity-40 cursor-not-allowed bg-gray-300'
           : enabled
@@ -494,9 +511,9 @@ function Toggle({ enabled, onChange, disabled = false }) {
       }`}
     >
       <motion.span
-        animate={{ x: enabled ? 28 : 4 }}
+        animate={{ x: enabled ? 22 : 3 }}
         transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-        className="inline-block h-6 w-6 rounded-full bg-white shadow-lg"
+        className="inline-block h-5 w-5 rounded-full bg-white shadow-md"
       />
     </button>
   );

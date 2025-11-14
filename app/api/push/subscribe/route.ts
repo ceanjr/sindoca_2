@@ -35,22 +35,61 @@ export async function POST(request: NextRequest) {
 
     console.log('[Subscribe] Saving subscription for user:', user.id);
     console.log('[Subscribe] Endpoint:', subscription.endpoint?.substring(0, 50) + '...');
-    console.log('[Subscribe] Keys:', JSON.stringify(subscription.keys));
 
-    // Save or update subscription in database
+    // Primeiro, verificar se já existe esta subscription exata
+    const { data: existing } = await supabase
+      .from('push_subscriptions')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('endpoint', subscription.endpoint)
+      .maybeSingle();
+
+    if (existing) {
+      console.log('[Subscribe] Subscription already exists, updating:', existing.id);
+
+      // Atualizar subscription existente
+      const { data, error } = await supabase
+        .from('push_subscriptions')
+        .update({
+          keys: subscription.keys,
+          last_verified: new Date().toISOString(),
+          verification_failures: 0,
+        })
+        .eq('id', existing.id)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('[Subscribe] Database error:', error);
+        return NextResponse.json(
+          { error: 'Failed to update subscription', details: error.message },
+          { status: 500 }
+        );
+      }
+
+      console.log('[Subscribe] Subscription updated successfully:', data.id);
+
+      return NextResponse.json({
+        success: true,
+        subscription: data,
+      });
+    }
+
+    // Se não existe, remover outras subscriptions antigas do mesmo user e criar nova
+    console.log('[Subscribe] Removing old subscriptions for user:', user.id);
+    await supabase
+      .from('push_subscriptions')
+      .delete()
+      .eq('user_id', user.id);
+
+    // Inserir nova subscription
     const { data, error } = await supabase
       .from('push_subscriptions')
-      .upsert(
-        {
-          user_id: user.id,
-          endpoint: subscription.endpoint,
-          keys: subscription.keys,
-        },
-        {
-          onConflict: 'user_id,endpoint',
-          ignoreDuplicates: false,
-        }
-      )
+      .insert({
+        user_id: user.id,
+        endpoint: subscription.endpoint,
+        keys: subscription.keys,
+      })
       .select()
       .single();
 
@@ -62,7 +101,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('[Subscribe] Subscription saved successfully:', data.id);
+    console.log('[Subscribe] New subscription saved successfully:', data.id);
 
     return NextResponse.json({
       success: true,

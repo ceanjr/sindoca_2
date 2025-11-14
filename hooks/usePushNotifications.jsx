@@ -127,7 +127,6 @@ export function usePushNotifications() {
    */
   const requestPermission = async () => {
     if (!isSupported) {
-      toast.error('Notificações não suportadas neste navegador')
       return false
     }
 
@@ -136,16 +135,13 @@ export function usePushNotifications() {
       setPermission(permission)
 
       if (permission === 'granted') {
-        toast.success('Notificações ativadas!')
         await subscribeToPush()
         return true
       } else if (permission === 'denied') {
-        toast.error('Permissão de notificações negada')
         return false
       }
     } catch (error) {
       console.error('Error requesting notification permission:', error)
-      toast.error('Erro ao solicitar permissão')
       return false
     }
   }
@@ -228,10 +224,7 @@ export function usePushNotifications() {
         } catch (error) {
           console.error('[Push] Error saving subscription:', error)
           logger.error('[Push] Failed to save subscription to database:', error)
-          // Show error to user
-          toast.error('Erro ao salvar notificações', {
-            description: 'Não foi possível registrar as notificações. Tente novamente mais tarde.',
-          })
+          // Não mostrar erro ao usuário - deixar UI otimista fazer seu trabalho
         }
       }
 
@@ -305,10 +298,10 @@ export function usePushNotifications() {
 
         setSubscription(null)
         setDbSubscription(null) // Clear database subscription state
-        toast.success('Notificações desativadas')
+        logger.log('[Push] Unsubscribed successfully')
       } catch (error) {
         console.error('Error unsubscribing:', error)
-        toast.error('Erro ao desativar notificações')
+        logger.error('[Push] Unsubscribe error:', error)
       }
     }
   }
