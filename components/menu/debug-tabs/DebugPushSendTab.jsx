@@ -152,6 +152,36 @@ export default function DebugPushSendTab() {
         </ol>
       </div>
 
+      {/* Aviso Importante sobre Analytics */}
+      <div className="bg-yellow-50 border border-yellow-300 rounded-2xl p-4">
+        <h3 className="font-semibold text-yellow-900 mb-2 flex items-center gap-2">
+          ⚠️ Importante: Analytics vs Recebimento Real
+        </h3>
+        <div className="text-sm text-yellow-800 space-y-2">
+          <p>
+            <strong>Status "Delivered" no Analytics ≠ Notificação Recebida</strong>
+          </p>
+          <p>
+            Quando o analytics mostra "delivered", significa apenas que o <strong>Push Service</strong> (Google/Apple)
+            aceitou a notificação, mas não garante que:
+          </p>
+          <ul className="ml-4 list-disc space-y-1">
+            <li>O dispositivo recebeu a notificação</li>
+            <li>O Service Worker exibiu a notificação</li>
+            <li>O usuário viu a notificação (pode estar silenciada)</li>
+          </ul>
+          <p className="mt-3 font-semibold">
+            ✅ Para verificar se está realmente funcionando:
+          </p>
+          <ul className="ml-4 list-disc space-y-1">
+            <li>Envie uma notificação de teste</li>
+            <li>Peça ao destinatário confirmar se recebeu</li>
+            <li>Verifique logs do console (F12) no dispositivo do destinatário</li>
+            <li>Procure por logs com prefixo <code className="bg-yellow-100 px-1">[SW]</code></li>
+          </ul>
+        </div>
+      </div>
+
       {/* Seleção de Destinatário */}
       <div className="bg-gray-50 rounded-2xl p-4">
         <h3 className="font-semibold text-textPrimary mb-3 flex items-center gap-2">

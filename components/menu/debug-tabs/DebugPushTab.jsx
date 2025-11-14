@@ -16,6 +16,7 @@ export default function DebugPushTab() {
   const [dbSubscriptions, setDbSubscriptions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [testResult, setTestResult] = useState(null);
+  const [healthCheckResult, setHealthCheckResult] = useState(null);
 
   // Carregar subscriptions do banco
   useEffect(() => {
@@ -80,6 +81,57 @@ export default function DebugPushTab() {
       }
     } catch (error) {
       setTestResult({
+        success: false,
+        message: error.message,
+      });
+    }
+  }
+
+  async function checkSubscriptionHealth() {
+    setHealthCheckResult({ loading: true });
+
+    if (!isPushActive) {
+      setHealthCheckResult({
+        success: false,
+        message: 'Push não está ativo. Ative as notificações primeiro.',
+      });
+      return;
+    }
+
+    try {
+      console.log('[Debug] Enviando notificação de teste para si mesmo...');
+
+      // Enviar notificação de teste para o próprio usuário
+      const response = await fetch('/api/push/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          recipientUserId: user.id,
+          title: '✅ Teste de Saúde',
+          body: 'Sua subscription está funcionando! Esta notificação foi enviada pelo sistema de diagnóstico.',
+          url: '/',
+          notificationType: 'test',
+        }),
+      });
+
+      const result = await response.json();
+
+      if (response.ok && result.success) {
+        setHealthCheckResult({
+          success: true,
+          message: `✅ Notificação enviada com sucesso! Enviada para ${result.sent}/${result.total} subscription(s). Verifique se recebeu a notificação.`,
+          details: result,
+        });
+      } else {
+        setHealthCheckResult({
+          success: false,
+          message: result.error || 'Falha ao enviar notificação de teste',
+          details: result,
+        });
+      }
+    } catch (error) {
+      console.error('[Debug] Erro no health check:', error);
+      setHealthCheckResult({
         success: false,
         message: error.message,
       });
@@ -250,6 +302,49 @@ export default function DebugPushTab() {
           </div>
         )}
       </div>
+
+      {/* Health Check - Testar se notificação é recebida */}
+      {isPushActive && (
+        <div className="bg-green-50 rounded-2xl p-4 border border-green-200">
+          <h3 className="font-semibold text-textPrimary mb-3 flex items-center gap-2">
+            🩺 Verificar Saúde da Subscription
+          </h3>
+          <p className="text-sm text-textSecondary mb-3">
+            Envie uma notificação de teste para você mesmo para verificar se está recebendo corretamente.
+          </p>
+          <button
+            onClick={checkSubscriptionHealth}
+            disabled={healthCheckResult?.loading}
+            className="w-full px-4 py-3 bg-green-600 text-white rounded-xl font-semibold hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {healthCheckResult?.loading ? 'Enviando...' : '🚀 Testar Notificação Real'}
+          </button>
+
+          {healthCheckResult && !healthCheckResult.loading && (
+            <div
+              className={`mt-3 p-3 rounded-lg ${
+                healthCheckResult.success
+                  ? 'bg-green-100 border border-green-300'
+                  : 'bg-red-50 border border-red-200'
+              }`}
+            >
+              <p
+                className={`text-sm font-semibold ${
+                  healthCheckResult.success ? 'text-green-900' : 'text-red-800'
+                }`}
+              >
+                {healthCheckResult.success ? '✅' : '❌'} {healthCheckResult.message}
+              </p>
+              {healthCheckResult.success && (
+                <p className="text-xs text-green-700 mt-2">
+                  ⚠️ Se você NÃO recebeu a notificação, abra o DevTools (F12) → Console e procure por logs com [SW].
+                  Isso indica que a subscription está salva mas o Service Worker não está exibindo a notificação.
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Subscriptions no Banco */}
       <div className="bg-gray-50 rounded-2xl p-4">
