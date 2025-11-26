@@ -918,6 +918,7 @@ export default function MusicSection({ id }) {
         isOpen={searchModalOpen}
         onClose={() => setSearchModalOpen(false)}
         onAddTrack={handleAddTrack}
+        existingTracks={tracks}
       />
 
       {/* Confirm Dialog */}

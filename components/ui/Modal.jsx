@@ -1,11 +1,14 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 
 export default function Modal({ isOpen, onClose, title, children, size = 'md' }) {
   const [isMobile, setIsMobile] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const [viewportHeight, setViewportHeight] = useState(0);
+  const modalRef = useRef(null);
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
@@ -14,14 +17,51 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md' })
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
+  // Detectar abertura do teclado e ajustar altura do modal
+  useEffect(() => {
+    if (!isOpen || !isMobile) return;
+
+    const handleViewportChange = () => {
+      if (window.visualViewport) {
+        const currentHeight = window.visualViewport.height;
+        const fullHeight = window.innerHeight;
+        const diff = fullHeight - currentHeight;
+
+        setViewportHeight(currentHeight);
+        setKeyboardHeight(diff);
+      }
+    };
+
+    // Inicializar
+    if (window.visualViewport) {
+      setViewportHeight(window.visualViewport.height);
+      window.visualViewport.addEventListener('resize', handleViewportChange);
+      window.visualViewport.addEventListener('scroll', handleViewportChange);
+    }
+
+    return () => {
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener('resize', handleViewportChange);
+        window.visualViewport.removeEventListener('scroll', handleViewportChange);
+      }
+    };
+  }, [isOpen, isMobile]);
+
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
+      // Prevenir scroll da página de fundo
+      document.body.style.position = 'fixed';
+      document.body.style.width = '100%';
     } else {
       document.body.style.overflow = 'unset';
+      document.body.style.position = 'unset';
+      document.body.style.width = 'unset';
     }
     return () => {
       document.body.style.overflow = 'unset';
+      document.body.style.position = 'unset';
+      document.body.style.width = 'unset';
     };
   }, [isOpen]);
 
@@ -48,6 +88,7 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md' })
           {/* Modal - Bottom Sheet on Mobile, Centered on Desktop */}
           <div className={`fixed z-[60] ${isMobile ? 'inset-x-0 bottom-0' : 'inset-0 flex items-center justify-center p-4'}`}>
             <motion.div
+              ref={modalRef}
               initial={isMobile ? { y: '100%' } : { opacity: 0, scale: 0.95, y: 20 }}
               animate={isMobile ? { y: 0 } : { opacity: 1, scale: 1, y: 0 }}
               exit={isMobile ? { y: '100%' } : { opacity: 0, scale: 0.95, y: 20 }}
@@ -60,21 +101,24 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md' })
                   onClose();
                 }
               }}
-              className={`bg-surface shadow-soft-lg w-full overflow-y-auto ${
-                isMobile 
-                  ? 'rounded-t-3xl max-h-[90vh]' 
+              style={isMobile && viewportHeight ? {
+                maxHeight: `${viewportHeight - 40}px`, // 40px de margem superior
+              } : undefined}
+              className={`bg-surface shadow-soft-lg w-full flex flex-col ${
+                isMobile
+                  ? 'rounded-t-3xl'
                   : `rounded-3xl ${sizeClasses[size]} max-h-[90vh]`
               }`}
             >
               {/* Drag Handle - Mobile Only */}
               {isMobile && (
-                <div className="flex justify-center pt-3 pb-2">
+                <div className="flex justify-center pt-3 pb-2 flex-shrink-0">
                   <div className="w-10 h-1 bg-gray-300 dark:bg-gray-700 rounded-full" />
                 </div>
               )}
 
               {/* Header */}
-              <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+              <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
                 <h3 className="text-2xl font-bold text-textPrimary">{title}</h3>
                 <button
                   onClick={onClose}
@@ -84,8 +128,16 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md' })
                 </button>
               </div>
 
-              {/* Content */}
-              <div className={`p-6 ${isMobile ? 'pb-24' : ''}`}>{children}</div>
+              {/* Content - Scrollable */}
+              <div
+                className={`p-6 overflow-y-auto flex-1 ${isMobile ? 'pb-24' : ''}`}
+                style={{
+                  overscrollBehavior: 'contain',
+                  WebkitOverflowScrolling: 'touch',
+                }}
+              >
+                {children}
+              </div>
             </motion.div>
           </div>
         </>
