@@ -6,12 +6,27 @@
 
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, X, Play, Pause, Plus, Loader, Music, Check, TrendingUp } from 'lucide-react';
+import {
+  Search,
+  X,
+  Play,
+  Pause,
+  Plus,
+  Loader,
+  Music,
+  Check,
+  TrendingUp,
+} from 'lucide-react';
 import { useSpotifySearch } from '@/hooks/useSpotifySearch';
 import Button from '../ui/Button';
 import Modal from '../ui/Modal';
 
-export default function SpotifySearchModal({ isOpen, onClose, onAddTrack, existingTracks = [] }) {
+export default function SpotifySearchModal({
+  isOpen,
+  onClose,
+  onAddTrack,
+  existingTracks = [],
+}) {
   const { query, setQuery, results, isSearching, error } = useSpotifySearch();
   const [playingPreview, setPlayingPreview] = useState(null);
   const [addingTrack, setAddingTrack] = useState(null);
@@ -30,13 +45,17 @@ export default function SpotifySearchModal({ isOpen, onClose, onAddTrack, existi
 
   // Criar Set de IDs de músicas já adicionadas para busca rápida
   const existingTrackIds = useMemo(() => {
-    return new Set(existingTracks.map(track => track.data?.spotify_track_id).filter(Boolean));
+    return new Set(
+      existingTracks
+        .map((track) => track.data?.spotify_track_id)
+        .filter(Boolean)
+    );
   }, [existingTracks]);
 
   // Extrair artistas únicos da playlist para sugestões
   const playlistArtists = useMemo(() => {
     const artists = existingTracks
-      .map(track => track.description) // description contém o artista
+      .map((track) => track.description) // description contém o artista
       .filter(Boolean);
     return [...new Set(artists)].slice(0, 5); // Top 5 artistas únicos
   }, [existingTracks]);
@@ -112,7 +131,7 @@ export default function SpotifySearchModal({ isOpen, onClose, onAddTrack, existi
       <Modal isOpen={isOpen} onClose={handleClose} title="Adicionar Música">
         <div className="space-y-4">
           {/* Campo de busca - Sticky no topo */}
-          <div className="sticky top-0 bg-surface z-10 pb-4">
+          <div className="sticky top-0 bg-surface z-10">
             <div className="relative">
               <Search
                 className="absolute left-3 top-1/2 -translate-y-1/2 text-textTertiary pointer-events-none"
@@ -170,76 +189,82 @@ export default function SpotifySearchModal({ isOpen, onClose, onAddTrack, existi
                         : 'bg-white hover:bg-gray-50 border-2 border-transparent'
                     }`}
                   >
-                  {/* Album Cover */}
-                  <div className="flex-shrink-0 w-14 h-14 bg-gray-200 rounded-lg overflow-hidden shadow-sm">
-                    {track.albumCover ? (
-                      <img
-                        src={track.albumCover}
-                        alt={track.album}
-                        className="w-full h-full object-cover"
-                        loading="lazy"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <Music size={20} className="text-gray-400" />
-                      </div>
-                    )}
-                  </div>
+                    {/* Album Cover */}
+                    <div className="flex-shrink-0 w-14 h-14 bg-gray-200 rounded-lg overflow-hidden shadow-sm">
+                      {track.albumCover ? (
+                        <img
+                          src={track.albumCover}
+                          alt={track.album}
+                          className="w-full h-full object-cover"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Music size={20} className="text-gray-400" />
+                        </div>
+                      )}
+                    </div>
 
-                  {/* Track Info */}
-                  <div className="flex-1 min-w-0">
-                    <h4 className="font-semibold text-textPrimary truncate text-sm">
-                      {track.name}
-                    </h4>
-                    <p className="text-xs text-textSecondary truncate mt-0.5">
-                      {track.artist} • {formatDuration(track.duration_ms)}
-                    </p>
-                  </div>
+                    {/* Track Info */}
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-semibold text-textPrimary truncate text-sm">
+                        {track.name}
+                      </h4>
+                      <p className="text-xs text-textSecondary truncate mt-0.5">
+                        {track.artist} • {formatDuration(track.duration_ms)}
+                      </p>
+                    </div>
 
-                  {/* Actions */}
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    {track.preview_url && (
-                      <button
-                        onClick={() => handlePlayPreview(track)}
-                        className={`p-2.5 rounded-full transition-all ${
-                          playingPreview === track.id
-                            ? 'bg-primary text-white shadow-md'
-                            : 'bg-gray-100 hover:bg-gray-200 text-textSecondary'
-                        }`}
-                        title="Preview 30s"
-                        aria-label={playingPreview === track.id ? 'Pausar preview' : 'Tocar preview'}
-                      >
-                        {playingPreview === track.id ? (
-                          <Pause size={16} />
-                        ) : (
-                          <Play size={16} />
-                        )}
-                      </button>
-                    )}
+                    {/* Actions */}
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      {track.preview_url && (
+                        <button
+                          onClick={() => handlePlayPreview(track)}
+                          className={`p-2.5 rounded-full transition-all ${
+                            playingPreview === track.id
+                              ? 'bg-primary text-white shadow-md'
+                              : 'bg-gray-100 hover:bg-gray-200 text-textSecondary'
+                          }`}
+                          title="Preview 30s"
+                          aria-label={
+                            playingPreview === track.id
+                              ? 'Pausar preview'
+                              : 'Tocar preview'
+                          }
+                        >
+                          {playingPreview === track.id ? (
+                            <Pause size={16} />
+                          ) : (
+                            <Play size={16} />
+                          )}
+                        </button>
+                      )}
 
-                    {isAdded ? (
-                      <div className="flex items-center gap-1.5 px-3 py-2 rounded-full bg-green-100 text-green-700">
-                        <Check size={16} />
-                        <span className="text-xs font-medium">Adicionada</span>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => handleAddTrack(track)}
-                        disabled={addingTrack === track.id}
-                        className="p-2.5 rounded-full bg-primary hover:bg-primary/90 text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md hover:shadow-lg active:scale-95"
-                        title="Adicionar à playlist"
-                        aria-label="Adicionar música à playlist"
-                      >
-                        {addingTrack === track.id ? (
-                          <Loader size={16} className="animate-spin" />
-                        ) : (
-                          <Plus size={16} />
-                        )}
-                      </button>
-                    )}
-                  </div>
-                </motion.div>
-              );
+                      {isAdded ? (
+                        <div className="flex items-center gap-1.5 px-3 py-2 rounded-full bg-green-100 text-green-700">
+                          <Check size={16} />
+                          <span className="text-xs font-medium">
+                            Adicionada
+                          </span>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => handleAddTrack(track)}
+                          disabled={addingTrack === track.id}
+                          className="p-2.5 rounded-full bg-primary hover:bg-primary/90 text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md hover:shadow-lg active:scale-95"
+                          title="Adicionar à playlist"
+                          aria-label="Adicionar música à playlist"
+                        >
+                          {addingTrack === track.id ? (
+                            <Loader size={16} className="animate-spin" />
+                          ) : (
+                            <Plus size={16} />
+                          )}
+                        </button>
+                      )}
+                    </div>
+                  </motion.div>
+                );
               })}
             </div>
           )}
@@ -258,7 +283,9 @@ export default function SpotifySearchModal({ isOpen, onClose, onAddTrack, existi
             <div className="space-y-4">
               <div className="flex items-center gap-2 text-textSecondary">
                 <TrendingUp size={20} />
-                <h4 className="font-semibold">Sugestões baseadas na sua playlist</h4>
+                <h4 className="font-semibold">
+                  Sugestões baseadas na sua playlist
+                </h4>
               </div>
               <div className="flex flex-wrap gap-2">
                 {playlistArtists.map((artist, index) => (
@@ -277,7 +304,8 @@ export default function SpotifySearchModal({ isOpen, onClose, onAddTrack, existi
               <div className="text-center pt-8">
                 <Search className="mx-auto mb-3 text-textTertiary" size={48} />
                 <p className="text-textSecondary text-sm">
-                  Toque em um artista acima ou busque por músicas, artistas ou álbuns
+                  Toque em um artista acima ou busque por músicas, artistas ou
+                  álbuns
                 </p>
               </div>
             </div>

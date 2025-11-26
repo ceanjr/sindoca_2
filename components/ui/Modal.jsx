@@ -18,32 +18,19 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md' })
   }, []);
 
   // Detectar abertura do teclado e ajustar altura do modal
+  // IMPORTANTE: Altura fixa para evitar mudanças ao abrir/fechar teclado
   useEffect(() => {
     if (!isOpen || !isMobile) return;
 
-    const handleViewportChange = () => {
-      if (window.visualViewport) {
-        const currentHeight = window.visualViewport.height;
-        const fullHeight = window.innerHeight;
-        const diff = fullHeight - currentHeight;
+    // Capturar altura máxima inicial (sem teclado)
+    const initialHeight = window.innerHeight;
+    setViewportHeight(initialHeight);
 
-        setViewportHeight(currentHeight);
-        setKeyboardHeight(diff);
-      }
-    };
-
-    // Inicializar
-    if (window.visualViewport) {
-      setViewportHeight(window.visualViewport.height);
-      window.visualViewport.addEventListener('resize', handleViewportChange);
-      window.visualViewport.addEventListener('scroll', handleViewportChange);
-    }
+    // Não ajustar altura quando teclado abre - manter fixa
+    // Isso previne o modal de "pular" e o scroll de travar
 
     return () => {
-      if (window.visualViewport) {
-        window.visualViewport.removeEventListener('resize', handleViewportChange);
-        window.visualViewport.removeEventListener('scroll', handleViewportChange);
-      }
+      setViewportHeight(0);
     };
   }, [isOpen, isMobile]);
 
@@ -96,13 +83,16 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md' })
               drag={isMobile ? "y" : false}
               dragConstraints={{ top: 0, bottom: 0 }}
               dragElastic={{ top: 0, bottom: 0.2 }}
+              dragMomentum={false}
+              dragTransition={{ bounceStiffness: 600, bounceDamping: 20 }}
               onDragEnd={(e, { offset, velocity }) => {
                 if (isMobile && (offset.y > 150 || velocity.y > 800)) {
                   onClose();
                 }
               }}
               style={isMobile && viewportHeight ? {
-                maxHeight: `${viewportHeight - 40}px`, // 40px de margem superior
+                height: `${viewportHeight * 0.85}px`, // 85% da altura da tela (fixo)
+                maxHeight: `${viewportHeight * 0.85}px`,
               } : undefined}
               className={`bg-surface shadow-soft-lg w-full flex flex-col ${
                 isMobile
@@ -112,13 +102,19 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md' })
             >
               {/* Drag Handle - Mobile Only */}
               {isMobile && (
-                <div className="flex justify-center pt-3 pb-2 flex-shrink-0">
+                <div
+                  className="flex justify-center pt-3 pb-2 flex-shrink-0 cursor-grab active:cursor-grabbing"
+                  style={{ touchAction: 'none' }} // Drag handle pode arrastar
+                >
                   <div className="w-10 h-1 bg-gray-300 dark:bg-gray-700 rounded-full" />
                 </div>
               )}
 
               {/* Header */}
-              <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+              <div
+                className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700 flex-shrink-0"
+                style={{ touchAction: 'none' }} // Header pode arrastar
+              >
                 <h3 className="text-2xl font-bold text-textPrimary">{title}</h3>
                 <button
                   onClick={onClose}
@@ -134,6 +130,11 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md' })
                 style={{
                   overscrollBehavior: 'contain',
                   WebkitOverflowScrolling: 'touch',
+                  touchAction: 'pan-y', // Permite scroll vertical
+                }}
+                onTouchStart={(e) => {
+                  // Permitir scroll no conteúdo sem interferir no drag do modal
+                  e.stopPropagation();
                 }}
               >
                 {children}
