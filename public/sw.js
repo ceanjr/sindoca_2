@@ -1,7 +1,7 @@
 // Service Worker para Sindoca da Maloka
-// Versão v9 - Melhorias em notificações push
+// Versão v10 - Remove badge para eliminar "from Sindoca" nas notificações
 
-const CACHE_VERSION = 'v9';
+const CACHE_VERSION = 'v10';
 const CACHE_NAME = `sindoca-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `sindoca-runtime-${CACHE_VERSION}`;
 const IMAGE_CACHE = `sindoca-images-${CACHE_VERSION}`;
@@ -25,7 +25,7 @@ const PRECACHE_URLS = [
 
 // Install: Cachear assets essenciais
 self.addEventListener('install', (event) => {
-  console.log('[SW] Install event - v9');
+  console.log('[SW] Install event - v10');
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
@@ -48,7 +48,7 @@ self.addEventListener('install', (event) => {
 
 // Activate: Limpar caches antigos
 self.addEventListener('activate', (event) => {
-  console.log('[SW] Activate event - v9');
+  console.log('[SW] Activate event - v10');
   event.waitUntil(
     caches.keys().then(cacheNames => {
       console.log('[SW] Found caches:', cacheNames);
@@ -65,7 +65,7 @@ self.addEventListener('activate', (event) => {
       console.log('[SW] Claiming clients');
       return self.clients.claim();
     }).then(() => {
-      console.log('[SW] Service Worker v9 activated');
+      console.log('[SW] Service Worker v10 activated');
       // NÃO enviar mensagem de reload para evitar loops infinitos
       // O usuário verá a nova versão naturalmente na próxima navegação
     })
@@ -268,7 +268,7 @@ self.addEventListener('push', (event) => {
   const options = {
     body: data.body || 'Nova notificação',
     icon: data.icon || '/icon-192x192.png',
-    badge: '/icon-96x96.png', // Badge para mostrar no status bar (pequeno ícone)
+    // badge removido para evitar texto "from Sindoca" nas notificações Android
     data: data.data || { url: data.url || '/' },
     tag: data.tag || 'sindoca-notification',
     requireInteraction: false,

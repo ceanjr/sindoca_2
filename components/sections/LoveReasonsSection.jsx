@@ -240,8 +240,18 @@ export default function LoveReasonsSection({ id }) {
         toast.success('Nova razão adicionada!');
 
         // Send push notification to partner
-        if (partnerId && partnerProfile) {
+        if (partnerId) {
           try {
+            // Get current user's profile (author of the reason)
+            const supabaseForProfile = createClient();
+            const { data: authorProfile } = await supabaseForProfile
+              .from('profiles')
+              .select('full_name, nickname')
+              .eq('id', user.id)
+              .single();
+
+            const authorName = authorProfile?.nickname || authorProfile?.full_name || 'Alguém';
+
             const result = await fetchJSON('/api/push/send', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -249,9 +259,9 @@ export default function LoveReasonsSection({ id }) {
               timeout: 10000, // 10 seconds timeout
               body: JSON.stringify({
                 recipientUserId: partnerId,
-                title: `${partnerProfile.full_name} adicionou uma nova razão para te aguentar!`,
+                title: `${authorName} adicionou uma nova razão para te aguentar!`,
                 body: `Corre antes que ${
-                  partnerProfile.full_name === 'Sindy' ? 'ela' : 'ele'
+                  authorName === 'Sindy' ? 'ela' : 'ele'
                 } mude de ideia!`,
                 icon: '/icon-192x192.png',
                 tag: 'new-reason',

@@ -365,10 +365,18 @@ export function useSupabasePhotos() {
       // Send push notification to all partners
       if (partnerIdRef.current && partnerIdRef.current.length > 0 && results.length > 0) {
         try {
+          // Get current user's profile (author of the photos)
+          const { data: authorProfile } = await supabaseRef.current
+            .from('profiles')
+            .select('full_name, nickname')
+            .eq('id', userRef.current.id)
+            .single();
+
+          const authorName = authorProfile?.nickname || authorProfile?.full_name || 'Alguém';
           const photoCount = results.length;
           const message = photoCount === 1
-            ? 'Uma nova foto foi adicionada à galeria!'
-            : `${photoCount} novas fotos foram adicionadas à galeria!`;
+            ? `${authorName} adicionou uma nova foto à galeria!`
+            : `${authorName} adicionou ${photoCount} novas fotos à galeria!`;
 
           // Send to all partners in parallel
           const notificationPromises = partnerIdRef.current.map(partnerId =>

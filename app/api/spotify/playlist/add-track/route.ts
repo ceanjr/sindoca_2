@@ -212,6 +212,15 @@ export async function POST(request: NextRequest) {
 
     // Send push notification to ALL partners
     if (partnerIds.length > 0) {
+      // Get current user's profile (author of the music)
+      const { data: authorProfile } = await supabase
+        .from('profiles')
+        .select('full_name, nickname')
+        .eq('id', user.id)
+        .single();
+
+      const authorName = authorProfile?.nickname || authorProfile?.full_name || 'Alguém';
+
       // Send to all partners in parallel
       const notificationPromises = partnerIds.map(partnerId =>
         fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/push/send`, {
@@ -222,7 +231,7 @@ export async function POST(request: NextRequest) {
           },
           body: JSON.stringify({
             recipientUserId: partnerId,
-            title: '🎵 Nova música adicionada!',
+            title: `🎵 ${authorName} adicionou uma nova música!`,
             body: `${track.name} - ${track.artist}`,
             icon: track.albumCover || '/icon-192x192.png',
             tag: 'new-music',
